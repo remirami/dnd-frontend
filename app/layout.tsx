@@ -27,11 +27,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950`}
       >
         {children}
         <Toaster />
-        <footer className="mt-20 py-8 border-t border-slate-800 text-center text-xs text-slate-500 max-w-4xl mx-auto px-4">
+        <footer className="mt-20 py-8 border-t border-slate-800 text-center text-xs text-slate-600 max-w-4xl mx-auto px-4">
           <p className="mb-2">
             This project uses the System Reference Document 5.1 ("SRD 5.1" and "SRD 5.2") provided by Wizards of the Coast LLC under the terms of the Creative Commons Attribution 4.0 International License (CC-BY 4.0).
           </p>

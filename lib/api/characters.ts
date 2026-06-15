@@ -34,6 +34,10 @@ export const charactersApi = {
         apiClient.post(`/characters/${id}/unequip_item/`, data),
     removeItem: (id: number, characterItemId: number) =>
         apiClient.post(`/characters/${id}/remove_item/`, { character_item_id: characterItemId }),
+    attuneItem: (id: number, characterItemId: number) =>
+        apiClient.post(`/characters/${id}/attune_item/`, { character_item_id: characterItemId }),
+    unattuneItem: (id: number, characterItemId: number) =>
+        apiClient.post(`/characters/${id}/unattune_item/`, { character_item_id: characterItemId }),
     updateStats: (id: number, stats: { strength: number; dexterity: number; constitution: number; intelligence: number; wisdom: number; charisma: number }) =>
         apiClient.post(`/characters/${id}/update_stats/`, stats),
 

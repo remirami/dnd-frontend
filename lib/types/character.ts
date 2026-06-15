@@ -137,6 +137,8 @@ export interface CharacterItem {
         description: string;
         weight: number;
         rarity: string;
+        cost?: string;
+        requires_attunement?: boolean;
         category: any;
         properties: any[];
         // Weapon specific
@@ -154,6 +156,7 @@ export interface CharacterItem {
     };
     quantity: number;
     is_equipped: boolean;
+    is_attuned: boolean;
     equipment_slot?: string;
 }
 

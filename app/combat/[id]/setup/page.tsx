@@ -137,10 +137,16 @@ export default function CombatSetupPage() {
             return;
         }
 
+        const hasEnemy = participants.some(p => p.participant_type === 'enemy');
+        if (!hasEnemy) {
+            alert("Add at least one enemy before starting combat");
+            return;
+        }
+
         try {
-            // Update initiative values (we'll need to add this endpoint or handle it differently)
-            // For now, roll initiative automatically
-            await combatApi.rollInitiative(sessionId);
+            // Pass manual initiative values as overrides;
+            // the backend will auto-roll for any participants still at 0
+            await combatApi.rollInitiative(sessionId, initiativeValues);
             await combatApi.start(sessionId);
             router.push(`/combat/${sessionId}`);
         } catch (error) {
@@ -214,7 +220,7 @@ export default function CombatSetupPage() {
                                                 disabled={isAdded}
                                             />
                                             <div className="flex-1">
-                                                <div className="font-semibold">{char.name}</div>
+                                                <div className="font-semibold text-white">{char.name}</div>
                                                 <div className="text-sm text-slate-400">
                                                     Level {char.level} {char.race?.name_display} {char.character_class?.name_display}
                                                 </div>
@@ -299,26 +305,68 @@ export default function CombatSetupPage() {
                         {(!session.participants || session.participants.length === 0) ? (
                             <p className="text-slate-400">No participants yet. Add characters or enemies above.</p>
                         ) : (
-                            <div className="space-y-3">
-                                {session.participants.map((participant) => (
-                                    <div key={participant.id} className="flex items-center gap-4 p-3 rounded bg-slate-900">
-                                        <div className="flex-1">
-                                            <div className="font-semibold">{participant.name}</div>
-                                            <div className="text-sm text-slate-400">
-                                                HP: {participant.current_hp}/{participant.max_hp} | AC: {participant.armor_class}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Label className="text-slate-400 text-sm">Initiative:</Label>
-                                            <Input
-                                                type="number"
-                                                value={initiativeValues[participant.id] || participant.initiative}
-                                                onChange={(e) => handleInitiativeChange(participant.id, e.target.value)}
-                                                className="w-20 bg-slate-950 border-slate-700 text-white text-center"
-                                            />
+                            <div className="space-y-6">
+                                {/* Your Party */}
+                                {session.participants.filter(p => p.participant_type === 'character').length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <span>⚔️</span>
+                                            Your Party ({session.participants.filter(p => p.participant_type === 'character').length})
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {session.participants.filter(p => p.participant_type === 'character').map((participant) => (
+                                                <div key={participant.id} className="flex items-center gap-4 p-3 rounded bg-slate-900 border-l-3 border-emerald-500/50">
+                                                    <div className="flex-1">
+                                                        <div className="font-semibold text-white">{participant.name}</div>
+                                                        <div className="text-sm text-slate-400">
+                                                            HP: {participant.current_hp}/{participant.max_hp} | AC: {participant.armor_class}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Label className="text-slate-400 text-sm">Initiative:</Label>
+                                                        <Input
+                                                            type="number"
+                                                            value={initiativeValues[participant.id] || participant.initiative}
+                                                            onChange={(e) => handleInitiativeChange(participant.id, e.target.value)}
+                                                            className="w-20 bg-slate-950 border-slate-700 text-white text-center"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
+                                )}
+
+                                {/* Enemies */}
+                                {session.participants.filter(p => p.participant_type === 'enemy').length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <span>💀</span>
+                                            Enemies ({session.participants.filter(p => p.participant_type === 'enemy').length})
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {session.participants.filter(p => p.participant_type === 'enemy').map((participant) => (
+                                                <div key={participant.id} className="flex items-center gap-4 p-3 rounded bg-red-950/30 border-l-3 border-red-500/50">
+                                                    <div className="flex-1">
+                                                        <div className="font-semibold text-red-200">{participant.name}</div>
+                                                        <div className="text-sm text-red-300/60">
+                                                            HP: {participant.current_hp}/{participant.max_hp} | AC: {participant.armor_class}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Label className="text-slate-400 text-sm">Initiative:</Label>
+                                                        <Input
+                                                            type="number"
+                                                            value={initiativeValues[participant.id] || participant.initiative}
+                                                            onChange={(e) => handleInitiativeChange(participant.id, e.target.value)}
+                                                            className="w-20 bg-slate-950 border-red-900/50 text-white text-center"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </CardContent>

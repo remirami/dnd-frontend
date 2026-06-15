@@ -137,7 +137,7 @@ export default function CombatListPage() {
                                             Combat #{session.id}
                                         </CardTitle>
                                         <CardDescription className="text-slate-400">
-                                            Round {session.round_number}
+                                            Round {session.current_round}
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -191,7 +191,7 @@ export default function CombatListPage() {
                                             </Button>
                                         </CardTitle>
                                         <CardDescription className="text-slate-400">
-                                            {session.round_number} rounds
+                                            {session.current_round} rounds
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -234,7 +234,7 @@ export default function CombatListPage() {
                         <DialogHeader>
                             <DialogTitle>Combat #{selectedSession?.id} Details</DialogTitle>
                             <DialogDescription className="text-slate-400">
-                                Ended on {selectedSession?.ended_at ? new Date(selectedSession.ended_at).toLocaleString() : 'N/A'} • {selectedSession?.round_number} Rounds
+                                Ended on {selectedSession?.ended_at ? new Date(selectedSession.ended_at).toLocaleString() : 'N/A'} • {selectedSession?.current_round} Rounds
                             </DialogDescription>
                         </DialogHeader>
 

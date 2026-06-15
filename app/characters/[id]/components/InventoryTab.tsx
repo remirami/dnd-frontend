@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Package, Backpack, Search, Shield, Sword, FlaskConical, Sparkles } from "lucide-react";
+import { Package, Backpack, Shield, Sword, FlaskConical, Sparkles, Zap } from "lucide-react";
 import { charactersApi } from "@/lib/api/characters";
 import { itemsApi } from "@/lib/api/items";
 import type { Character, CharacterItem } from "@/lib/types/character";
+import { EquipmentPaperdoll } from "./EquipmentPaperdoll";
 
 interface InventoryTabProps {
     character: Character;
@@ -124,6 +125,28 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
         }
     };
 
+    const handleAttune = async (item: CharacterItem) => {
+        try {
+            await charactersApi.attuneItem(character.id, item.id);
+            onUpdate();
+        } catch (error: any) {
+            const msg = error.response?.data?.error || "Failed to attune item";
+            alert(msg);
+        }
+    };
+
+    const handleUnattune = async (item: CharacterItem) => {
+        try {
+            await charactersApi.unattuneItem(character.id, item.id);
+            onUpdate();
+        } catch (error: any) {
+            const msg = error.response?.data?.error || "Failed to remove attunement";
+            alert(msg);
+        }
+    };
+
+    const attunedCount = character.character_items?.filter(i => i.is_attuned).length ?? 0;
+
     // Filter Buttons Config
     const filters = [
         { id: 'all', label: 'All Items', icon: null },
@@ -139,12 +162,26 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="text-2xl font-bold">Inventory</h2>
                 <div className="flex gap-4 items-center w-full md:w-auto justify-between md:justify-end">
-                    {/* Filter Buttons (Desktop) / Dropdown (Mobile - simplified for now row) */}
+                    {/* Attunement Slots */}
+                    <div className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${
+                        attunedCount >= 3
+                            ? 'border-amber-500/60 bg-amber-950/40 text-amber-400'
+                            : 'border-slate-700 bg-slate-800/60 text-slate-400'
+                    }`}>
+                        <Zap size={13} className={attunedCount >= 3 ? 'text-amber-400' : 'text-slate-500'} />
+                        Attunement: {attunedCount}/3
+                    </div>
                     <div className="text-slate-400">
-                        Total Weight: <span className={totalWeight > 150 ? "text-red-500" : "text-white"}>{totalWeight.toFixed(1)} lb</span>
+                        Weight: <span className={totalWeight > 150 ? "text-red-500" : "text-white"}>{totalWeight.toFixed(1)} lb</span>
                     </div>
                 </div>
             </div>
+
+            {/* Equipment Paperdoll */}
+            <EquipmentPaperdoll
+                characterItems={character.character_items || []}
+                onUnequip={handleUnequip}
+            />
 
             {/* Filters & Search */}
             <div className="space-y-4">
@@ -240,7 +277,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                 !weapons.includes(i) &&
                                 !armor.includes(i) &&
                                 !consumables.includes(i) &&
-                                (i.equipment_slot === 'ring' || i.equipment_slot === 'amulet' ||
+                                (i.equipment_slot === 'ring' || i.equipment_slot === 'ring_2' || i.equipment_slot === 'amulet' ||
                                     i.equipment_slot === 'boots' || i.equipment_slot === 'gloves' ||
                                     i.equipment_slot === 'helmet' || i.equipment_slot === 'cloak' ||
                                     i.item_details.name?.toLowerCase().match(/\b(ring|amulet|necklace|pendant|boots|gloves|gauntlet|helmet|helm|crown|circlet|cloak|cape|mantle)\b/))
@@ -285,7 +322,17 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                     </Badge>
                                                                     {item.is_equipped && (
                                                                         <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-0 h-5 text-[10px] uppercase tracking-wide">
-                                                                            {item.equipment_slot?.replace('_', ' ')}
+                                                                            {item.equipment_slot?.replace(/_/g, ' ')}
+                                                                        </Badge>
+                                                                    )}
+                                                                    {item.is_attuned && (
+                                                                        <Badge className="bg-amber-600/80 hover:bg-amber-600 text-white px-2 py-0 h-5 text-[10px] uppercase tracking-wide">
+                                                                            ⚡ Attuned
+                                                                        </Badge>
+                                                                    )}
+                                                                    {item.item_details.requires_attunement && !item.is_attuned && (
+                                                                        <Badge variant="outline" className="border-amber-700/50 text-amber-600/80 px-2 py-0 h-5 text-[10px] uppercase tracking-wide">
+                                                                            Attunement
                                                                         </Badge>
                                                                     )}
                                                                 </div>
@@ -321,7 +368,29 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex gap-2">
+                                                        <div className="flex gap-2 flex-wrap justify-end">
+                                                            {/* Attune / Unattune (only for attunement items) */}
+                                                            {item.item_details.requires_attunement && (
+                                                                item.is_attuned ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={(e) => { e.stopPropagation(); handleUnattune(item); }}
+                                                                        className="border-amber-700 text-amber-400 hover:bg-amber-950 h-8 text-xs"
+                                                                    >
+                                                                        ⚡ Unatune
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={(e) => { e.stopPropagation(); handleAttune(item); }}
+                                                                        className="border-slate-600 text-slate-300 hover:border-amber-600 hover:text-amber-400 h-8 text-xs"
+                                                                    >
+                                                                        Attune
+                                                                    </Button>
+                                                                )
+                                                            )}
                                                             {item.is_equipped ? (
                                                                 <Button
                                                                     variant="outline"
@@ -350,7 +419,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                             <Button
                                                                 variant="destructive"
                                                                 size="sm"
-                                                                onClick={() => handleRemove(item)}
+                                                                onClick={(e) => { e.stopPropagation(); handleRemove(item); }}
                                                                 className="bg-red-900/50 hover:bg-red-900 text-red-200 h-8"
                                                             >
                                                                 Remove
@@ -402,8 +471,11 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                     </Badge>
                                     {selectedItem.is_equipped && (
                                         <Badge className="bg-blue-600 text-white">
-                                            Equipped: {selectedItem.equipment_slot?.replace('_', ' ')}
+                                            Equipped: {selectedItem.equipment_slot?.replace(/_/g, ' ')}
                                         </Badge>
+                                    )}
+                                    {selectedItem.is_attuned && (
+                                        <Badge className="bg-amber-600 text-white">⚡ Attuned</Badge>
                                     )}
                                 </DialogTitle>
                                 <DialogDescription className="text-slate-400">
@@ -477,7 +549,27 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                     )}
                                 </div>
 
-                                <div className="flex gap-2 pt-4 border-t border-slate-700">
+                                <div className="flex gap-2 flex-wrap pt-4 border-t border-slate-700">
+                                    {/* Attunement button in modal */}
+                                    {selectedItem.item_details.requires_attunement && (
+                                        selectedItem.is_attuned ? (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => { handleUnattune(selectedItem); setSelectedItem(null); }}
+                                                className="border-amber-700 text-amber-400 hover:bg-amber-950"
+                                            >
+                                                ⚡ Remove Attunement
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => { handleAttune(selectedItem); setSelectedItem(null); }}
+                                                className="border-slate-600 text-slate-300 hover:border-amber-600 hover:text-amber-400"
+                                            >
+                                                Attune
+                                            </Button>
+                                        )
+                                    )}
                                     {selectedItem.is_equipped ? (
                                         <Button
                                             variant="outline"
