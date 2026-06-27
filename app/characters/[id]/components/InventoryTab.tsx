@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Package, Backpack, Shield, Sword, FlaskConical, Sparkles, Zap } from "lucide-react";
+import { Package, Backpack, Shield, Sword, FlaskConical, Sparkles, Zap, Swords } from "lucide-react";
 import { charactersApi } from "@/lib/api/characters";
 import { itemsApi } from "@/lib/api/items";
 import type { Character, CharacterItem } from "@/lib/types/character";
@@ -37,6 +37,8 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
     const [isSearching, setIsSearching] = useState(false);
     const [addingItemId, setAddingItemId] = useState<number | null>(null);
     const [activeFilter, setActiveFilter] = useState<string>('all'); // 'all', 'weapons', 'armor', 'consumables', 'accessories', 'other'
+    // Slot picker: shown when equipping a one-handed weapon with main_hand already occupied
+    const [slotPickerItem, setSlotPickerItem] = useState<CharacterItem | null>(null);
 
     // Calculate total weight
     const totalWeight = character.character_items?.reduce((total, item) => {
@@ -82,10 +84,28 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
         }
     };
 
-    const handleEquip = async (item: CharacterItem) => {
+    const handleEquip = (item: CharacterItem) => {
+        const isWeapon = !!item.item_details.weapon_type_display;
+        const isTwoHanded = item.item_details.two_handed === true;
+        const mainHandOccupied = character.character_items?.some(
+            i => i.is_equipped && i.equipment_slot === 'main_hand'
+        ) ?? false;
+
+        // One-handed weapon with main_hand already occupied → show slot picker
+        if (isWeapon && !isTwoHanded && mainHandOccupied) {
+            setSlotPickerItem(item);
+            return;
+        }
+
+        // Everything else: equip directly (backend handles slot auto-detection)
+        handleEquipWithSlot(item, undefined);
+    };
+
+    const handleEquipWithSlot = async (item: CharacterItem, slot: string | undefined) => {
         try {
             await charactersApi.equipItem(character.id, {
-                character_item_id: item.id
+                character_item_id: item.id,
+                ...(slot ? { equipment_slot: slot } : {}),
             });
             onUpdate();
         } catch (error: any) {
@@ -392,17 +412,39 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                 )
                                                             )}
                                                             {item.is_equipped ? (
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleUnequip(item);
-                                                                    }}
-                                                                    className="border-amber-900 text-amber-500 hover:bg-amber-950 hover:text-amber-400 h-8"
-                                                                >
-                                                                    Unequip
-                                                                </Button>
+                                                                <>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleUnequip(item);
+                                                                        }}
+                                                                        className="border-amber-900 text-amber-500 hover:bg-amber-950 hover:text-amber-400 h-8"
+                                                                    >
+                                                                        Unequip
+                                                                    </Button>
+                                                                    {/* Stack dual-wield: show Off-Hand button when qty≥2 one-handed weapon in main_hand */}
+                                                                    {item.equipment_slot === 'main_hand'
+                                                                        && item.quantity >= 2
+                                                                        && !item.item_details.two_handed
+                                                                        && !!item.item_details.weapon_type_display
+                                                                        && !character.character_items?.some(
+                                                                            i => i.is_equipped && i.equipment_slot === 'off_hand'
+                                                                        ) && (
+                                                                        <Button
+                                                                            variant="secondary"
+                                                                            size="sm"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleEquipWithSlot(item, 'off_hand');
+                                                                            }}
+                                                                            className="bg-green-900/40 hover:bg-green-900/70 text-green-300 border border-green-800/50 h-8 text-xs"
+                                                                        >
+                                                                            🗡 Off Hand
+                                                                        </Button>
+                                                                    )}
+                                                                </>
                                                             ) : (
                                                                 <Button
                                                                     variant="secondary"
@@ -571,17 +613,37 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                         )
                                     )}
                                     {selectedItem.is_equipped ? (
-                                        <Button
-                                            variant="outline"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleUnequip(selectedItem);
-                                                setSelectedItem(null);
-                                            }}
-                                            className="border-amber-900 text-amber-500 hover:bg-amber-950"
-                                        >
-                                            Unequip
-                                        </Button>
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUnequip(selectedItem);
+                                                    setSelectedItem(null);
+                                                }}
+                                                className="border-amber-900 text-amber-500 hover:bg-amber-950"
+                                            >
+                                                Unequip
+                                            </Button>
+                                            {selectedItem.equipment_slot === 'main_hand'
+                                                && selectedItem.quantity >= 2
+                                                && !selectedItem.item_details.two_handed
+                                                && !!selectedItem.item_details.weapon_type_display
+                                                && !character.character_items?.some(
+                                                    i => i.is_equipped && i.equipment_slot === 'off_hand'
+                                                ) && (
+                                                <Button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEquipWithSlot(selectedItem, 'off_hand');
+                                                        setSelectedItem(null);
+                                                    }}
+                                                    className="bg-green-900/40 hover:bg-green-900/70 text-green-300 border border-green-800/50"
+                                                >
+                                                    🗡 Equip Off-Hand
+                                                </Button>
+                                            )}
+                                        </>
                                     ) : (
                                         <Button
                                             onClick={(e) => {
@@ -607,6 +669,69 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                     </Button>
                                 </div>
                             </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+            {/* Slot Picker Dialog — shown for one-handed weapons when main_hand is occupied */}
+            <Dialog open={!!slotPickerItem} onOpenChange={(open) => !open && setSlotPickerItem(null)}>
+                <DialogContent className="bg-slate-900 border-slate-700 max-w-sm">
+                    {slotPickerItem && (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle className="text-white flex items-center gap-2">
+                                    <Swords size={18} className="text-blue-400" />
+                                    Choose Weapon Slot
+                                </DialogTitle>
+                                <DialogDescription className="text-slate-400">
+                                    Where do you want to equip{" "}
+                                    <span className="text-white font-medium">{slotPickerItem.item_details.name}</span>?
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="grid grid-cols-2 gap-3 mt-2">
+                                {/* Main Hand */}
+                                <button
+                                    onClick={() => {
+                                        const item = slotPickerItem;
+                                        setSlotPickerItem(null);
+                                        handleEquipWithSlot(item, 'main_hand');
+                                    }}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-700
+                                        bg-slate-800/60 hover:border-blue-500/60 hover:bg-slate-800
+                                        transition-all duration-200 group cursor-pointer"
+                                >
+                                    <span className="text-3xl group-hover:scale-110 transition-transform">⚔</span>
+                                    <span className="text-sm font-semibold text-white">Main Hand</span>
+                                    <span className="text-[10px] text-slate-500 text-center leading-relaxed">
+                                        Replaces current main-hand weapon
+                                    </span>
+                                </button>
+
+                                {/* Off Hand */}
+                                <button
+                                    onClick={() => {
+                                        const item = slotPickerItem;
+                                        setSlotPickerItem(null);
+                                        handleEquipWithSlot(item, 'off_hand');
+                                    }}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-700
+                                        bg-slate-800/60 hover:border-green-500/60 hover:bg-slate-800
+                                        transition-all duration-200 group cursor-pointer"
+                                >
+                                    <span className="text-3xl group-hover:scale-110 transition-transform">🗡</span>
+                                    <span className="text-sm font-semibold text-white">Off Hand</span>
+                                    <span className="text-[10px] text-slate-500 text-center leading-relaxed">
+                                        Dual wield — equip alongside main hand
+                                    </span>
+                                </button>
+                            </div>
+
+                            {slotPickerItem.item_details.light && (
+                                <p className="text-[10px] text-amber-400/70 text-center mt-1">
+                                    ✦ Light weapon — ideal for Two-Weapon Fighting
+                                </p>
+                            )}
                         </>
                     )}
                 </DialogContent>

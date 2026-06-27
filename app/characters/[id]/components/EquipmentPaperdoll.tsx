@@ -24,6 +24,7 @@ const SLOT_DEFS: Record<string, SlotDef> = {
     gloves: { key: "gloves", label: "Gloves", icon: "🧤" },
     boots: { key: "boots", label: "Boots", icon: "👢" },
     cloak: { key: "cloak", label: "Cloak", icon: "🧥" },
+    eyes: { key: "eyes", label: "Eyes", icon: "👁️" }
 };
 
 // ─── Rarity colours ───────────────────────────────────────────────────────────
@@ -86,6 +87,60 @@ function ItemTooltip({ item }: { item: CharacterItem }) {
     );
 }
 
+// ─── Dynamic icon derivation ───────────────────────────────────────────────────
+// Returns an emoji matching the actual equipped item, not the generic slot icon.
+// Name keywords take priority over weapon-type categories so that e.g. a
+// "Handaxe" (martial melee) shows 🪓, not the default ⚔.
+function getItemIcon(item: CharacterItem | undefined, slotKey: string): string {
+    const fallback = SLOT_DEFS[slotKey]?.icon ?? "❓";
+    if (!item) return fallback;
+
+    const name  = (item.item_details.name ?? "").toLowerCase();
+    const wtype = (item.item_details.weapon_type_display ?? "").toLowerCase();
+    const dtype = (item.item_details.damage_type ?? "").toLowerCase();
+
+    // ── Weapon: name keywords first (most specific) ─────────────────────────
+    if (item.item_details.weapon_type_display) {
+        if (/greataxe|battleaxe|handaxe|\baxe\b|hatchet/.test(name))           return "🪓";
+        if (/maul|warhammer|hammer|mace|flail|morningstar|club|greatclub/.test(name)) return "🔨";
+        if (/halberd|glaive|polearm|voulge/.test(name))                         return "🗡";
+        if (/spear|lance|javelin|trident|pike/.test(name))                      return "🔱";
+        if (/longbow|shortbow|\bbow\b|crossbow/.test(name))                     return "🏹";
+        if (/dagger|knife|dirk|stiletto|shiv/.test(name))                       return "🗡";
+        if (/rapier|estoc|smallsword/.test(name))                               return "🤺";
+        if (/greatsword|flamberge|claymore|longsword|broadsword|scimitar|falchion|sabre|cutlass|shortsword|gladius/.test(name)) return "⚔";
+        if (/whip|chain/.test(name))                                            return "🪢";
+        if (/\bnet\b/.test(name))                                               return "🕸";
+        if (/pistol|musket|rifle|arquebus|revolver|\bgun\b/.test(name))         return "🔫";
+        if (/dart|sling|chakram|bola/.test(name))                               return "💫";
+        // Fallback by category / damage type
+        if (wtype.includes("ranged"))          return "🏹";
+        if (dtype.includes("piercing"))        return "🗡";
+        if (dtype.includes("slashing"))        return "⚔";
+        if (dtype.includes("bludgeoning"))     return "🔨";
+        return "⚔";
+    }
+
+    // ── Armor & shields ─────────────────────────────────────────────────────
+    if (item.item_details.armor_type_display) {
+        const atype = item.item_details.armor_type_display.toLowerCase();
+        if (atype === "shield") return "🛡";
+        if (atype === "heavy")  return "🪖";
+        return "🛡";
+    }
+
+    // ── Slot-based accessories ───────────────────────────────────────────────
+    if (slotKey === "ring" || slotKey === "ring_2") return "💍";
+    if (slotKey === "amulet")  return "📿";
+    if (slotKey === "helmet")  return /crown|circlet/.test(name) ? "👑" : "⛑";
+    if (slotKey === "cloak")   return "🧥";
+    if (slotKey === "gloves")  return "🧤";
+    if (slotKey === "boots")   return "👢";
+    if (slotKey === "eyes")    return "🥽";
+
+    return fallback;
+}
+
 // ─── Single slot ──────────────────────────────────────────────────────────────
 function EquipSlot({
     slotKey,
@@ -122,11 +177,10 @@ function EquipSlot({
                     ${sizeClass}
                     ${isRing ? "rounded-full" : "rounded-xl"}
                     ${item
-                        ? `bg-slate-800/90 shadow-lg ${
-                            item.is_attuned
-                                ? 'border-amber-400/80 shadow-amber-500/30 shadow-md'
-                                : rarityBorder[rarity] || rarityBorder.common
-                           }
+                        ? `bg-slate-800/90 shadow-lg ${item.is_attuned
+                            ? 'border-amber-400/80 shadow-amber-500/30 shadow-md'
+                            : rarityBorder[rarity] || rarityBorder.common
+                        }
                            ${hovered ? "scale-110 brightness-125" : "hover:scale-105"}`
                         : `bg-slate-900/50 border-dashed border-slate-700/50
                            hover:border-slate-500/60 hover:bg-slate-800/30`
@@ -140,8 +194,9 @@ function EquipSlot({
 
                 {/* Icon — always centred, same size regardless of state */}
                 <span className={`leading-none select-none ${isArmor ? "text-2xl" : "text-xl"} ${!item && "opacity-25"}`}>
-                    {item ? def.icon : def.icon}
+                    {getItemIcon(item, slotKey)}
                 </span>
+
 
                 {/* Attunement indicator badge */}
                 {item?.is_attuned && (
@@ -209,10 +264,9 @@ export function EquipmentPaperdoll({ characterItems, onUnequip }: Props) {
             {/*
                 5-column grid layout:
                 Col 1       Col 2    Col 3    Col 4    Col 5
-                Row 1: -          -       Helmet   Amulet   -
-                Row 2: MainHand   Ring    Armor    -        OffHand
-                Row 3: -          Gloves  -        Boots    -
-                Row 4: -          -       Cloak    -        -
+                Row 1: -          Cloak   Helmet   Amulet   -
+                Row 2: MainHand   Ring    Armor    Ring2    OffHand
+                Row 3: -          Gloves  Boots    -        -
             */}
             {/* flex wrapper so the grid doesn't stretch full-width */}
             <div className="flex justify-center">
@@ -223,33 +277,27 @@ export function EquipmentPaperdoll({ characterItems, onUnequip }: Props) {
                         gap: "8px",
                     }}
                 >
-                {/* Row 1 */}
-                <EmptyCell />
-                <EmptyCell />
-                <EquipSlot slotKey="helmet" item={item("helmet")} onUnequip={onUnequip} />
-                <EquipSlot slotKey="amulet" item={item("amulet")} onUnequip={onUnequip} />
-                <EmptyCell />
+                    {/* Row 1 */}
+                    <EmptyCell />
+                    <EquipSlot slotKey="cloak" item={item("cloak")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="helmet" item={item("helmet")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="amulet" item={item("amulet")} onUnequip={onUnequip} />
+                    <EmptyCell />
 
-                {/* Row 2 */}
-                <EquipSlot slotKey="main_hand" item={item("main_hand")} onUnequip={onUnequip} />
-                <EquipSlot slotKey="ring" item={item("ring")} onUnequip={onUnequip} />
-                <EquipSlot slotKey="armor" item={item("armor")} onUnequip={onUnequip} />
-                <EquipSlot slotKey="ring_2" item={item("ring_2")} onUnequip={onUnequip} />
-                <EquipSlot slotKey="off_hand" item={item("off_hand")} onUnequip={onUnequip} />
+                    {/* Row 2 */}
+                    <EquipSlot slotKey="main_hand" item={item("main_hand")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="ring" item={item("ring")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="armor" item={item("armor")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="ring_2" item={item("ring_2")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="off_hand" item={item("off_hand")} onUnequip={onUnequip} />
 
-                {/* Row 3 */}
-                <EmptyCell />
-                <EquipSlot slotKey="gloves" item={item("gloves")} onUnequip={onUnequip} />
-                <EmptyCell />
-                <EquipSlot slotKey="boots" item={item("boots")} onUnequip={onUnequip} />
-                <EmptyCell />
-
-                {/* Row 4 */}
-                <EmptyCell />
-                <EmptyCell />
-                <EquipSlot slotKey="cloak" item={item("cloak")} onUnequip={onUnequip} />
-                <EmptyCell />
-                <EmptyCell />
+                    {/* Row 3 */}
+                    <EmptyCell />
+                    <EquipSlot slotKey="gloves" item={item("gloves")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="boots" item={item("boots")} onUnequip={onUnequip} />
+                    <EquipSlot slotKey="eyes" item={item("eyes")} onUnequip={onUnequip} />
+                    <EmptyCell />
+                    <EmptyCell />
                 </div> {/* end grid */}
             </div> {/* end flex wrapper */}
 

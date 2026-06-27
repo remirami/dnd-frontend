@@ -147,6 +147,8 @@ export interface CharacterItem {
         two_handed_damage_dice?: string;
         damage_type?: string;
         properties_display?: string[];
+        two_handed?: boolean;
+        light?: boolean;
         // Armor specific
         armor_type_display?: string;
         base_ac?: number;
