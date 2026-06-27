@@ -87,58 +87,109 @@ function ItemTooltip({ item }: { item: CharacterItem }) {
     );
 }
 
+// ─── GameIcon ──────────────────────────────────────────────────────────────
+// Renders a game-icons.net SVG from /public/icons/.
+// Falls back to the provided emoji if the file hasn’t been added yet.
+function GameIcon({
+    src,
+    fallback,
+    className = "w-7 h-7",
+}: {
+    src: string;
+    fallback: string;
+    className?: string;
+}) {
+    // onError swaps the broken img for the emoji fallback so
+    // missing files are invisible during development.
+    return (
+        <img
+            src={src}
+            alt=""
+            className={`${className} invert opacity-90 object-contain`}
+            onError={(e) => {
+                const parent = (e.target as HTMLImageElement).parentElement;
+                if (parent) {
+                    parent.innerHTML = `<span class="text-xl leading-none select-none">${fallback}</span>`;
+                }
+            }}
+        />
+    );
+}
+
 // ─── Dynamic icon derivation ───────────────────────────────────────────────────
-// Returns an emoji matching the actual equipped item, not the generic slot icon.
-// Name keywords take priority over weapon-type categories so that e.g. a
-// "Handaxe" (martial melee) shows 🪓, not the default ⚔.
-function getItemIcon(item: CharacterItem | undefined, slotKey: string): string {
-    const fallback = SLOT_DEFS[slotKey]?.icon ?? "❓";
-    if (!item) return fallback;
+// Returns a ReactNode: an SVG <img> if the file exists in /public/icons/,
+// or an emoji <span> fallback otherwise.  To upgrade any entry from emoji
+// to SVG, just drop the file in the right folder — no code change needed.
+import type { ReactNode } from "react";
+
+function gi(src: string, fallback: string): ReactNode {
+    return <GameIcon src={src} fallback={fallback} />;
+}
+function em(emoji: string): ReactNode {
+    return <span className="text-xl leading-none select-none">{emoji}</span>;
+}
+
+function getItemIcon(item: CharacterItem | undefined, slotKey: string): ReactNode {
+    const slotEmoji = SLOT_DEFS[slotKey]?.icon ?? "❓";
+    if (!item) return em(slotEmoji);
 
     const name  = (item.item_details.name ?? "").toLowerCase();
     const wtype = (item.item_details.weapon_type_display ?? "").toLowerCase();
     const dtype = (item.item_details.damage_type ?? "").toLowerCase();
 
-    // ── Weapon: name keywords first (most specific) ─────────────────────────
+    // ── Weapons: name keywords first (most specific) ─────────────────────────
     if (item.item_details.weapon_type_display) {
-        if (/greataxe|battleaxe|handaxe|\baxe\b|hatchet/.test(name))           return "🪓";
-        if (/maul|warhammer|hammer|mace|flail|morningstar|club|greatclub/.test(name)) return "🔨";
-        if (/halberd|glaive|polearm|voulge/.test(name))                         return "🗡";
-        if (/spear|lance|javelin|trident|pike/.test(name))                      return "🔱";
-        if (/longbow|shortbow|\bbow\b|crossbow/.test(name))                     return "🏹";
-        if (/dagger|knife|dirk|stiletto|shiv/.test(name))                       return "🗡";
-        if (/rapier|estoc|smallsword/.test(name))                               return "🤺";
-        if (/greatsword|flamberge|claymore|longsword|broadsword|scimitar|falchion|sabre|cutlass|shortsword|gladius/.test(name)) return "⚔";
-        if (/whip|chain/.test(name))                                            return "🪢";
-        if (/\bnet\b/.test(name))                                               return "🕸";
-        if (/pistol|musket|rifle|arquebus|revolver|\bgun\b/.test(name))         return "🔫";
-        if (/dart|sling|chakram|bola/.test(name))                               return "💫";
+        if (/greataxe/.test(name))                                              return gi("/icons/weapons/great-axe.svg",    "🪓");
+        if (/battleaxe|handaxe|\baxe\b|hatchet/.test(name))                    return gi("/icons/weapons/hand-axe.svg",     "🪓");
+        if (/maul|warhammer/.test(name))                                        return gi("/icons/weapons/war-hammer.svg",   "🔨");
+        if (/\bmace\b|morningstar|flail/.test(name))                            return gi("/icons/weapons/mace.svg",         "🔨");
+        if (/greatclub|\bclub\b/.test(name))                                    return gi("/icons/weapons/club.svg",         "🔨");
+        if (/halberd|glaive|polearm|voulge/.test(name))                         return gi("/icons/weapons/halberd.svg",      "🗡");
+        if (/\bpike\b/.test(name))                                              return gi("/icons/weapons/spear.svg",        "🔱");
+        if (/spear|lance|javelin/.test(name))                                   return gi("/icons/weapons/spear.svg",        "🔱");
+        if (/trident/.test(name))                                               return gi("/icons/weapons/trident.svg",      "🔱");
+        if (/crossbow/.test(name))                                              return gi("/icons/weapons/crossbow.svg",     "🏹");
+        if (/longbow|shortbow|\bbow\b/.test(name))                              return gi("/icons/weapons/longbow.svg",      "🏹");
+        if (/dagger|knife|dirk|stiletto|shiv/.test(name))                       return gi("/icons/weapons/dagger.svg",       "🗡");
+        if (/rapier|estoc/.test(name))                                          return gi("/icons/weapons/rapier.svg",       "🤺");
+        if (/greatsword|flamberge|claymore/.test(name))                         return gi("/icons/weapons/greatsword.svg",   "⚔");
+        if (/longsword|broadsword|scimitar|falchion|sabre|cutlass/.test(name))  return gi("/icons/weapons/longsword.svg",    "⚔");
+        if (/shortsword|gladius/.test(name))                                    return gi("/icons/weapons/shortsword.svg",   "⚔");
+        if (/whip|chain/.test(name))                                            return gi("/icons/weapons/whip.svg",         "🪢");
+        if (/\bnet\b/.test(name))                                               return gi("/icons/weapons/net.svg",          "🕸");
+        if (/musket|arquebus|rifle/.test(name))                                 return gi("/icons/weapons/musket.svg",       "🔫");
+        if (/pistol|revolver|\bgun\b/.test(name))                               return gi("/icons/weapons/pistol.svg",       "🔫");
+        if (/dart|sling|chakram|bola/.test(name))                               return gi("/icons/weapons/dart.svg",         "💫");
         // Fallback by category / damage type
-        if (wtype.includes("ranged"))          return "🏹";
-        if (dtype.includes("piercing"))        return "🗡";
-        if (dtype.includes("slashing"))        return "⚔";
-        if (dtype.includes("bludgeoning"))     return "🔨";
-        return "⚔";
+        if (wtype.includes("ranged"))       return gi("/icons/weapons/longbow.svg",   "🏹");
+        if (dtype.includes("piercing"))     return gi("/icons/weapons/dagger.svg",    "🗡");
+        if (dtype.includes("slashing"))     return gi("/icons/weapons/longsword.svg", "⚔");
+        if (dtype.includes("bludgeoning"))  return gi("/icons/weapons/mace.svg",      "🔨");
+        return em("⚔");
     }
 
     // ── Armor & shields ─────────────────────────────────────────────────────
     if (item.item_details.armor_type_display) {
         const atype = item.item_details.armor_type_display.toLowerCase();
-        if (atype === "shield") return "🛡";
-        if (atype === "heavy")  return "🪖";
-        return "🛡";
+        if (atype === "shield") return gi("/icons/armor/shield.svg",       "🛡");
+        if (atype === "heavy")  return gi("/icons/armor/heavy-armor.svg",  "🪖");
+        if (atype === "medium") return gi("/icons/armor/medium-armor.svg", "🛡");
+        return gi("/icons/armor/light-armor.svg", "🛡");
     }
 
     // ── Slot-based accessories ───────────────────────────────────────────────
-    if (slotKey === "ring" || slotKey === "ring_2") return "💍";
-    if (slotKey === "amulet")  return "📿";
-    if (slotKey === "helmet")  return /crown|circlet/.test(name) ? "👑" : "⛑";
-    if (slotKey === "cloak")   return "🧥";
-    if (slotKey === "gloves")  return "🧤";
-    if (slotKey === "boots")   return "👢";
-    if (slotKey === "eyes")    return "🥽";
+    if (slotKey === "ring" || slotKey === "ring_2") return gi("/icons/accessories/ring.svg",    "💍");
+    if (slotKey === "amulet")  return gi("/icons/accessories/amulet.svg",  "📿");
+    if (slotKey === "helmet")  return gi(
+        /crown|circlet/.test(name) ? "/icons/armor/crown.svg" : "/icons/armor/helmet.svg",
+        /crown|circlet/.test(name) ? "👑" : "⛑"
+    );
+    if (slotKey === "cloak")   return gi("/icons/accessories/cloak.svg",   "🧥");
+    if (slotKey === "gloves")  return gi("/icons/accessories/gloves.svg",  "🧤");
+    if (slotKey === "boots")   return gi("/icons/accessories/boots.svg",   "👢");
+    if (slotKey === "eyes")    return gi("/icons/accessories/goggles.svg", "🥽");
 
-    return fallback;
+    return em(slotEmoji);
 }
 
 // ─── Single slot ──────────────────────────────────────────────────────────────
@@ -192,8 +243,8 @@ function EquipSlot({
             >
                 {hovered && item && <ItemTooltip item={item} />}
 
-                {/* Icon — always centred, same size regardless of state */}
-                <span className={`leading-none select-none ${isArmor ? "text-2xl" : "text-xl"} ${!item && "opacity-25"}`}>
+                {/* Icon — SVG when available, emoji fallback otherwise */}
+                <span className={`leading-none select-none flex items-center justify-center ${isArmor ? "text-2xl" : "text-xl"} ${!item && "opacity-25"}`}>
                     {getItemIcon(item, slotKey)}
                 </span>
 
