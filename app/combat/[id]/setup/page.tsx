@@ -82,7 +82,7 @@ export default function CombatSetupPage() {
     const handleToggleCharacter = async (characterId: number, characterName: string) => {
         // ... (keep existing logic)
         const alreadyAdded = session?.participants?.some(
-            p => (p.participant_type === 'character' && p.character === characterId) || p.name === characterName
+            p => (p.participant_type === 'character' && p.character?.id === characterId) || p.name === characterName
         );
 
         if (alreadyAdded) {
@@ -200,7 +200,7 @@ export default function CombatSetupPage() {
                             <div className="space-y-2">
                                 {characters.map((char) => {
                                     const isAdded = session?.participants?.some(
-                                        p => (p.participant_type === 'character' && p.character === char.id) || p.name === char.name
+                                        p => (p.participant_type === 'character' && p.character?.id === char.id) || p.name === char.name
                                     );
                                     return (
                                         <div

@@ -41,9 +41,9 @@ export function CombatLog({ actions }: CombatLogProps) {
                         <span className="text-xs text-slate-600">({action.description.split('|')[0].trim()})</span>
                     </div>
 
-                    {action.hit && action.damage_total !== undefined && (
+                    {action.hit && action.damage_amount !== undefined && (
                         <div className="text-rose-400 font-semibold mt-1">
-                            {action.damage_total} damage
+                            {action.damage_amount} damage
                             {action.damage_type && <span className="text-slate-500 text-xs font-normal ml-1">({action.damage_type})</span>}
                         </div>
                     )}
