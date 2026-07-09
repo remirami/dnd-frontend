@@ -22,6 +22,7 @@ export function LevelUpSpellSelectionDialog({ character, onUpdate }: LevelUpSpel
     useEffect(() => {
         if (pending) {
             loadSpells();
+            setSelectedIds([]);
         }
     }, [pending, character.character_class.name]);
 

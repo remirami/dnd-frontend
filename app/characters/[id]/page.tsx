@@ -366,10 +366,12 @@ export default function CharacterDetailsPage() {
                                 onUpdate={() => loadCharacter(characterId)}
                             />
                         )}
-                        <LevelUpSpellSelectionDialog
-                            character={character}
-                            onUpdate={() => loadCharacter(characterId)}
-                        />
+                        {character.pending_spell_choices && (
+                            <LevelUpSpellSelectionDialog
+                                character={character}
+                                onUpdate={() => loadCharacter(characterId)}
+                            />
+                        )}
                         <LevelUpDialog
                             character={character}
                             onUpdate={() => loadCharacter(characterId)}
