@@ -20,6 +20,7 @@ export default function CombatListPage() {
     const [selectedSession, setSelectedSession] = useState<CombatSession | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [startOpen, setStartOpen] = useState(false);
+    const [selectedParticipantId, setSelectedParticipantId] = useState<number | null>(null);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -84,6 +85,7 @@ export default function CombatListPage() {
     const completedSessions = sessions.filter(s => !s.is_active);
 
     const handleViewSession = async (session: CombatSession) => {
+        setSelectedParticipantId(null);
         setDetailLoading(true);
         setStartOpen(true);
         try {
@@ -234,7 +236,10 @@ export default function CombatListPage() {
                 )}
 
                 {/* Combat Detail Modal */}
-                <Dialog open={startOpen} onOpenChange={setStartOpen}>
+                <Dialog open={startOpen} onOpenChange={(open) => {
+                    setStartOpen(open);
+                    if (!open) setSelectedParticipantId(null);
+                }}>
                     <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-4xl h-[80vh] flex flex-col">
                         <DialogHeader>
                             <DialogTitle>Combat #{selectedSession?.id} Details</DialogTitle>
@@ -250,30 +255,105 @@ export default function CombatListPage() {
                         ) : selectedSession ? (
                             <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden min-h-0">
                                 {/* Left Column: Participants & Stats */}
-                                <div className="space-y-4 overflow-y-auto pr-2">
-                                    <h3 className="text-lg font-semibold">Participants</h3>
+                                <div className="space-y-3 overflow-y-auto pr-2">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-lg font-semibold">Participants</h3>
+                                        {selectedParticipantId !== null && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setSelectedParticipantId(null)}
+                                                className="text-xs text-slate-400 hover:text-white h-7 px-2"
+                                            >
+                                                Show All
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* All Participants Filter Option */}
+                                    <div
+                                        onClick={() => setSelectedParticipantId(null)}
+                                        className={`p-3 rounded border text-sm cursor-pointer transition-all flex items-center justify-between ${
+                                            selectedParticipantId === null
+                                                ? "bg-slate-800 border-amber-500/80 text-white font-medium ring-1 ring-amber-500/40"
+                                                : "bg-slate-800/50 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:border-slate-600"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium">All Participants</span>
+                                            <span className="text-xs text-slate-400">
+                                                ({selectedSession.actions?.length || 0} total actions)
+                                            </span>
+                                        </div>
+                                        {selectedParticipantId === null && (
+                                            <span className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-medium">
+                                                Active
+                                            </span>
+                                        )}
+                                    </div>
+
                                     <div className="space-y-2">
-                                        {selectedSession.participants?.map(p => (
-                                            <div key={p.id} className="bg-slate-800 p-3 rounded border border-slate-700 flex justify-between items-center">
-                                                <div>
-                                                    <div className="font-medium text-white">{p.name}</div>
-                                                    <div className="text-xs text-slate-400">{p.participant_type}</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className={`text-sm ${p.current_hp > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {p.current_hp} / {p.max_hp} HP
+                                        {selectedSession.participants?.map(p => {
+                                            const isSelected = selectedParticipantId === p.id;
+                                            const participantActions = selectedSession.actions?.filter(
+                                                a => a.actor === p.id || a.target === p.id ||
+                                                     (!!a.actor_name && !!p.name && a.actor_name.trim().toLowerCase() === p.name.trim().toLowerCase()) ||
+                                                     (!!a.target_name && !!p.name && a.target_name.trim().toLowerCase() === p.name.trim().toLowerCase())
+                                            ) || [];
+                                            const outgoingActions = selectedSession.actions?.filter(
+                                                a => a.actor === p.id || (!!a.actor_name && !!p.name && a.actor_name.trim().toLowerCase() === p.name.trim().toLowerCase())
+                                            ) || [];
+                                            const incomingActions = selectedSession.actions?.filter(
+                                                a => a.target === p.id || (!!a.target_name && !!p.name && a.target_name.trim().toLowerCase() === p.name.trim().toLowerCase())
+                                            ) || [];
+
+                                            return (
+                                                <div
+                                                    key={p.id}
+                                                    onClick={() => setSelectedParticipantId(isSelected ? null : p.id)}
+                                                    className={`p-3 rounded border transition-all cursor-pointer flex justify-between items-center ${
+                                                        isSelected
+                                                            ? "bg-slate-800 border-amber-500 ring-2 ring-amber-500/50 shadow-md"
+                                                            : "bg-slate-800/80 border-slate-700/80 hover:bg-slate-800 hover:border-slate-600"
+                                                    }`}
+                                                >
+                                                    <div className="space-y-0.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-white">{p.name}</span>
+                                                            <span className="text-[11px] text-slate-400 capitalize">({p.participant_type})</span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                                                            <span className="text-slate-300 font-medium">{participantActions.length} actions</span>
+                                                            <span className="text-slate-600">•</span>
+                                                            <span className="text-emerald-400/90">{outgoingActions.length} taken</span>
+                                                            <span className="text-slate-600">•</span>
+                                                            <span className="text-rose-400/90">{incomingActions.length} received</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <div className={`text-sm font-medium ${p.current_hp > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {p.current_hp} / {p.max_hp} HP
+                                                        </div>
+                                                        {isSelected && (
+                                                            <div className="text-[11px] text-amber-400 font-medium mt-0.5">
+                                                                Filtering Log
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
                                 {/* Right Column: Combat Log */}
                                 <div className="flex flex-col h-full overflow-hidden">
-                                    <h3 className="text-lg font-semibold mb-2">Combat Log</h3>
                                     <div className="flex-1 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
-                                        <CombatLog actions={selectedSession.actions || []} />
+                                        <CombatLog
+                                            actions={selectedSession.actions || []}
+                                            selectedParticipant={selectedSession.participants?.find(p => p.id === selectedParticipantId) || null}
+                                            onClearFilter={() => setSelectedParticipantId(null)}
+                                        />
                                     </div>
                                 </div>
                             </div>
