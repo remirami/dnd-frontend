@@ -12,9 +12,13 @@ export const authApi = {
             email
         }),
 
+    getCurrentUser: () =>
+        apiClient.get('/auth/me/'),
+
     logout: () => {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
         }
     },
 };

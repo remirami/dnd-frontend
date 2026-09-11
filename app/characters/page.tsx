@@ -10,7 +10,7 @@ import type { Character } from "@/lib/types/character";
 
 export default function CharactersPage() {
     const router = useRouter();
-    const { user, isAuthenticated } = useAuthStore();
+    const { user, isAuthenticated, fetchCurrentUser } = useAuthStore();
     const [characters, setCharacters] = useState<Character[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -20,7 +20,12 @@ export default function CharactersPage() {
             return;
         }
 
+        if (!user) {
+            fetchCurrentUser();
+        }
+
         loadCharacters();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, router]);
 
     const loadCharacters = async () => {

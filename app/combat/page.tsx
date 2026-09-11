@@ -12,7 +12,7 @@ import type { CombatSession } from "@/lib/types/combat";
 
 export default function CombatListPage() {
     const router = useRouter();
-    const { user, isAuthenticated } = useAuthStore();
+    const { user, isAuthenticated, fetchCurrentUser } = useAuthStore();
     const [sessions, setSessions] = useState<CombatSession[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -27,7 +27,12 @@ export default function CombatListPage() {
             return;
         }
 
+        if (!user) {
+            fetchCurrentUser();
+        }
+
         loadSessions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, router]);
 
     const loadSessions = async () => {

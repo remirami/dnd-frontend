@@ -24,7 +24,8 @@ export default function LoginPage() {
 
         try {
             const response = await authApi.login(username, password);
-            const { access, user } = response.data;
+            const { access } = response.data;
+            const user = response.data.user || { id: 0, username, email: "" };
 
             login(access, user);
             router.push("/characters");

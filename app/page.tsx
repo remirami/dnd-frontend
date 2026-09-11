@@ -5,14 +5,17 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, fetchCurrentUser } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   // Prevent hydration mismatch by only rendering auth-dependent content after mount
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (isAuthenticated && !user) {
+      fetchCurrentUser();
+    }
+  }, [isAuthenticated, user, fetchCurrentUser]);
 
   const handleLogout = () => {
     logout();

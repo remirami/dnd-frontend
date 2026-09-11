@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { authApi } from '@/lib/api/auth';
 
 interface User {
     id: number;
@@ -16,6 +17,7 @@ interface AuthState {
     logout: () => void;
     setUser: (user: User) => void;
     initialize: () => void;
+    fetchCurrentUser: () => Promise<User | null>;
 }
 
 // Helper to get initial state from localStorage
@@ -51,6 +53,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     initialize: () => {
         const state = getInitialState();
         set({ ...state, initialized: true });
+        if (state.token && !state.user) {
+            authApi.getCurrentUser().then((response) => {
+                if (response.data) {
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('user', JSON.stringify(response.data));
+                    }
+                    set({ user: response.data, isAuthenticated: true });
+                }
+            }).catch((err) => {
+                console.error('Failed to fetch current user on initialize:', err);
+            });
+        }
     },
 
     login: (token, user) => {
@@ -74,5 +88,22 @@ export const useAuthStore = create<AuthState>((set) => ({
             localStorage.setItem('user', JSON.stringify(user));
         }
         set({ user });
+    },
+
+    fetchCurrentUser: async () => {
+        try {
+            const response = await authApi.getCurrentUser();
+            const user = response.data;
+            if (user) {
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem('user', JSON.stringify(user));
+                }
+                set({ user, isAuthenticated: true });
+                return user;
+            }
+        } catch (e) {
+            console.error('Failed to fetch current user:', e);
+        }
+        return null;
     },
 }));
