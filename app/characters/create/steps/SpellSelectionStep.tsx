@@ -74,6 +74,7 @@ export default function SpellSelectionStep({
     const [searchTerm, setSearchTerm] = useState("");
     const [schoolFilter, setSchoolFilter] = useState<string>("all");
     const [showConcentrationOnly, setShowConcentrationOnly] = useState(false);
+    const [showRecommendedOnly, setShowRecommendedOnly] = useState(false);
     const [activeTab, setActiveTab] = useState<"cantrips" | "spells">("cantrips");
 
     // Expanded spell (for showing full description)
@@ -84,10 +85,19 @@ export default function SpellSelectionStep({
     }, []);
 
     const loadSpellOptions = async () => {
+        if (!formData.character_class_id && !formData.character_class_name) {
+            setError("No character class selected. Please go back to Step 1.");
+            setLoading(false);
+            return;
+        }
+
         try {
-            // Get class name from formData
-            const classResponse = await api.get(`/character-classes/${formData.character_class_id}/`);
-            const className = classResponse.data.name;
+            // Get class name from formData or API
+            let className = formData.character_class_name;
+            if (!className && formData.character_class_id) {
+                const classResponse = await api.get(`/character-classes/${formData.character_class_id}/`);
+                className = classResponse.data.name;
+            }
 
             // Fetch spell options
             const response = await api.get(`/characters/starting_spell_choices/?class_name=${className}&ruleset=${formData.ruleset_version || '2014'}`);
@@ -119,6 +129,11 @@ export default function SpellSelectionStep({
 
             // Concentration filter
             if (showConcentrationOnly && !spell.concentration) {
+                return false;
+            }
+
+            // Recommended filter
+            if (showRecommendedOnly && !spell.recommended) {
                 return false;
             }
 
@@ -243,7 +258,7 @@ export default function SpellSelectionStep({
                 <p className="text-slate-300 text-sm mb-3">{spellData.description}</p>
 
                 {/* Progress */}
-                <div className="flex gap-4 text-sm">
+                <div className="flex flex-wrap gap-4 text-sm">
                     {cantripsToSelect > 0 && (
                         <div className={`flex items-center gap-2 ${cantripsComplete ? 'text-green-400' : 'text-yellow-400'}`}>
                             <span className="font-semibold">Cantrips:</span>
@@ -256,6 +271,12 @@ export default function SpellSelectionStep({
                             <span className="font-semibold">Spells:</span>
                             <span>{spellsSelected} / {spellsToSelect}</span>
                             {spellsComplete && <span>✓</span>}
+                        </div>
+                    )}
+                    {spellData.spells_info?.can_prepare_all && (
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <span className="font-semibold">1st-Level Spells:</span>
+                            <span className="text-slate-300">All available (prepared daily)</span>
                         </div>
                     )}
                 </div>
@@ -323,17 +344,16 @@ export default function SpellSelectionStep({
                     ⚗️ Concentration Only
                 </button>
 
-                {/* Recommended Filter - Always available if recommendations exist */}
+                {/* Recommended Filter */}
                 <button
-                    onClick={() => {
-                        // Toggle logic: if we are filtering by recommended, turn it off.
-                        // Wait, I need a state for this. Let's assume I add one or just rely on visual badges.
-                        // Let's add a visual toggle for now, effectively a "sort" or "filter".
-                        // Use a new state variable or just add it to the filter list.
-                    }}
-                    className="px-3 py-2 rounded-md text-sm font-medium bg-amber-900/40 text-amber-200 border border-amber-500/50 cursor-default"
+                    type="button"
+                    onClick={() => setShowRecommendedOnly(!showRecommendedOnly)}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${showRecommendedOnly
+                        ? "bg-amber-600 text-white"
+                        : "bg-amber-900/30 text-amber-200 border border-amber-500/50 hover:bg-amber-900/50"
+                        }`}
                 >
-                    ⭐ Recommended Spells Highlighted
+                    ⭐ {showRecommendedOnly ? "Showing Recommended Only" : "Filter Recommended"}
                 </button>
             </div>
 
