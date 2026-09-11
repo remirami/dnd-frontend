@@ -240,10 +240,10 @@ export default function CombatListPage() {
                     setStartOpen(open);
                     if (!open) setSelectedParticipantId(null);
                 }}>
-                    <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-4xl h-[80vh] flex flex-col">
-                        <DialogHeader>
-                            <DialogTitle>Combat #{selectedSession?.id} Details</DialogTitle>
-                            <DialogDescription className="text-slate-400">
+                    <DialogContent className="bg-slate-900 border-slate-700 text-white w-[96vw] max-w-[96vw] sm:max-w-none md:max-w-5xl lg:max-w-6xl xl:max-w-7xl h-[88vh] max-h-[920px] flex flex-col p-4 sm:p-6 overflow-hidden">
+                        <DialogHeader className="shrink-0 pb-1 sm:pb-2">
+                            <DialogTitle className="text-xl sm:text-2xl font-bold">Combat #{selectedSession?.id} Details</DialogTitle>
+                            <DialogDescription className="text-slate-400 text-xs sm:text-sm">
                                 Ended on {selectedSession?.ended_at ? new Date(selectedSession.ended_at).toLocaleString() : 'N/A'} • {selectedSession?.current_round} Rounds
                             </DialogDescription>
                         </DialogHeader>
@@ -253,11 +253,11 @@ export default function CombatListPage() {
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
                             </div>
                         ) : selectedSession ? (
-                            <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden min-h-0">
-                                {/* Left Column: Participants & Stats */}
-                                <div className="space-y-3 overflow-y-auto pr-2">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-lg font-semibold">Participants</h3>
+                            <div className="flex-1 flex flex-col md:flex-row gap-4 lg:gap-6 overflow-hidden min-h-0 pt-2">
+                                {/* Left Column: Participants */}
+                                <div className="w-full md:w-[320px] lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col min-h-0 overflow-hidden">
+                                    <div className="flex items-center justify-between shrink-0 mb-2">
+                                        <h3 className="text-base sm:text-lg font-semibold text-slate-200">Participants</h3>
                                         {selectedParticipantId !== null && (
                                             <Button
                                                 variant="ghost"
@@ -273,15 +273,15 @@ export default function CombatListPage() {
                                     {/* All Participants Filter Option */}
                                     <div
                                         onClick={() => setSelectedParticipantId(null)}
-                                        className={`p-3 rounded border text-sm cursor-pointer transition-all flex items-center justify-between ${
+                                        className={`p-2.5 sm:p-3 rounded border text-sm cursor-pointer transition-all flex items-center justify-between shrink-0 mb-2.5 ${
                                             selectedParticipantId === null
-                                                ? "bg-slate-800 border-amber-500/80 text-white font-medium ring-1 ring-amber-500/40"
+                                                ? "bg-slate-800 border-amber-500/80 text-white font-medium ring-1 ring-amber-500/40 shadow-sm"
                                                 : "bg-slate-800/50 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:border-slate-600"
                                         }`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <span className="font-medium">All Participants</span>
-                                            <span className="text-xs text-slate-400">
+                                            <span className="text-xs text-slate-400 whitespace-nowrap">
                                                 ({selectedSession.actions?.length || 0} total actions)
                                             </span>
                                         </div>
@@ -292,7 +292,8 @@ export default function CombatListPage() {
                                         )}
                                     </div>
 
-                                    <div className="space-y-2">
+                                    {/* Scrollable list of participants */}
+                                    <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 pr-1.5 min-h-0">
                                         {selectedSession.participants?.map(p => {
                                             const isSelected = selectedParticipantId === p.id;
                                             const participantActions = selectedSession.actions?.filter(
@@ -311,31 +312,31 @@ export default function CombatListPage() {
                                                 <div
                                                     key={p.id}
                                                     onClick={() => setSelectedParticipantId(isSelected ? null : p.id)}
-                                                    className={`p-3 rounded border transition-all cursor-pointer flex justify-between items-center ${
+                                                    className={`p-2.5 sm:p-3 rounded border transition-all cursor-pointer flex justify-between items-center gap-3 ${
                                                         isSelected
                                                             ? "bg-slate-800 border-amber-500 ring-2 ring-amber-500/50 shadow-md"
                                                             : "bg-slate-800/80 border-slate-700/80 hover:bg-slate-800 hover:border-slate-600"
                                                     }`}
                                                 >
-                                                    <div className="space-y-0.5">
+                                                    <div className="min-w-0 flex-1 space-y-0.5">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="font-medium text-white">{p.name}</span>
-                                                            <span className="text-[11px] text-slate-400 capitalize">({p.participant_type})</span>
+                                                            <span className="font-medium text-white truncate">{p.name}</span>
+                                                            <span className="text-[11px] text-slate-400 capitalize shrink-0">({p.participant_type})</span>
                                                         </div>
-                                                        <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                                                            <span className="text-slate-300 font-medium">{participantActions.length} actions</span>
+                                                        <div className="text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
+                                                            <span className="text-slate-300 font-medium whitespace-nowrap">{participantActions.length} actions</span>
                                                             <span className="text-slate-600">•</span>
-                                                            <span className="text-emerald-400/90">{outgoingActions.length} taken</span>
+                                                            <span className="text-emerald-400/90 whitespace-nowrap">{outgoingActions.length} taken</span>
                                                             <span className="text-slate-600">•</span>
-                                                            <span className="text-rose-400/90">{incomingActions.length} received</span>
+                                                            <span className="text-rose-400/90 whitespace-nowrap">{incomingActions.length} received</span>
                                                         </div>
                                                     </div>
                                                     <div className="text-right shrink-0">
-                                                        <div className={`text-sm font-medium ${p.current_hp > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        <div className={`text-sm font-medium whitespace-nowrap ${p.current_hp > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                                             {p.current_hp} / {p.max_hp} HP
                                                         </div>
                                                         {isSelected && (
-                                                            <div className="text-[11px] text-amber-400 font-medium mt-0.5">
+                                                            <div className="text-[11px] text-amber-400 font-medium mt-0.5 whitespace-nowrap">
                                                                 Filtering Log
                                                             </div>
                                                         )}
@@ -347,8 +348,8 @@ export default function CombatListPage() {
                                 </div>
 
                                 {/* Right Column: Combat Log */}
-                                <div className="flex flex-col h-full overflow-hidden">
-                                    <div className="flex-1 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
+                                <div className="flex-1 flex flex-col min-h-0 min-w-0 h-full overflow-hidden">
+                                    <div className="flex-1 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden min-h-0 flex flex-col">
                                         <CombatLog
                                             actions={selectedSession.actions || []}
                                             selectedParticipant={selectedSession.participants?.find(p => p.id === selectedParticipantId) || null}

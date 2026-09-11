@@ -157,32 +157,32 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
     const maxRound = actions.length > 0 ? Math.max(...actions.map(a => a.round_number || 1)) : 1;
 
     return (
-        <Card className="bg-slate-900 border-slate-700 h-[600px] flex flex-col">
-            <CardHeader className="pb-3 border-b border-slate-800 space-y-2">
-                <div className="flex justify-between items-center">
-                    <CardTitle className="text-slate-200 text-lg flex items-center gap-2">
-                        <span>Combat Log</span>
+        <Card className="bg-slate-900/40 border-0 h-full flex flex-col min-h-0 overflow-hidden shadow-none">
+            <CardHeader className="p-3 sm:p-4 pb-3 border-b border-slate-800/80 space-y-2 shrink-0 bg-slate-900/60">
+                <div className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-2">
+                    <CardTitle className="text-slate-200 text-base sm:text-lg flex items-center gap-2 min-w-0">
+                        <span className="whitespace-nowrap font-bold">Combat Log</span>
                         {selectedParticipant && (
-                            <Badge variant="secondary" className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-normal">
+                            <Badge variant="secondary" className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-normal truncate max-w-[180px]">
                                 {selectedParticipant.name}
                             </Badge>
                         )}
                     </CardTitle>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         {selectedParticipant && onClearFilter && (
                             <button
                                 type="button"
                                 onClick={onClearFilter}
-                                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition-colors"
+                                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded transition-colors whitespace-nowrap"
                             >
                                 <X className="w-3 h-3" />
                                 <span>Clear Filter</span>
                             </button>
                         )}
-                        <Badge variant="outline" className="text-slate-400 border-slate-700 font-normal text-xs">
+                        <Badge variant="outline" className="text-slate-400 border-slate-700 font-normal text-xs whitespace-nowrap">
                             {filteredActions.length} action{filteredActions.length === 1 ? '' : 's'}
                         </Badge>
-                        <Badge variant="outline" className="text-slate-500 border-slate-800 font-normal text-xs">
+                        <Badge variant="outline" className="text-slate-500 border-slate-800 font-normal text-xs whitespace-nowrap">
                             Max Round {maxRound}
                         </Badge>
                     </div>
@@ -190,11 +190,11 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
 
                 {/* Sub-filter tabs when a participant is selected */}
                 {selectedParticipant && (
-                    <div className="flex items-center gap-1.5 pt-1">
+                    <div className="flex items-center gap-1.5 pt-1 overflow-x-auto pb-1">
                         <button
                             type="button"
                             onClick={() => setSubFilter('all')}
-                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                                 subFilter === 'all'
                                     ? 'bg-slate-700 text-white shadow-sm'
                                     : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
@@ -205,7 +205,7 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                         <button
                             type="button"
                             onClick={() => setSubFilter('outgoing')}
-                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
+                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
                                 subFilter === 'outgoing'
                                     ? 'bg-emerald-900/60 border border-emerald-600/60 text-emerald-200 shadow-sm'
                                     : 'bg-slate-800/60 text-slate-400 hover:text-emerald-300 hover:bg-slate-800'
@@ -217,7 +217,7 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                         <button
                             type="button"
                             onClick={() => setSubFilter('incoming')}
-                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
+                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
                                 subFilter === 'incoming'
                                     ? 'bg-rose-900/60 border border-rose-600/60 text-rose-200 shadow-sm'
                                     : 'bg-slate-800/60 text-slate-400 hover:text-rose-300 hover:bg-slate-800'
@@ -229,10 +229,10 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                     </div>
                 )}
             </CardHeader>
-            <CardContent className="flex-1 p-0 overflow-hidden relative">
+            <CardContent className="flex-1 p-0 overflow-hidden relative min-h-0">
                 <div
                     ref={scrollRef}
-                    className="absolute inset-0 overflow-y-auto p-4 space-y-4"
+                    className="absolute inset-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3.5"
                 >
                     {filteredActions.length === 0 ? (
                         <div className="text-center text-slate-500 italic mt-12 px-4 space-y-2">
@@ -249,7 +249,7 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                         </div>
                     ) : (
                         filteredActions.map((action) => (
-                            <div key={action.id} className="pb-4 border-b border-slate-800/50 last:border-0 last:pb-0">
+                            <div key={action.id} className="pb-3 border-b border-slate-800/60 last:border-0 last:pb-0">
                                 {formatAction(action)}
                             </div>
                         ))
