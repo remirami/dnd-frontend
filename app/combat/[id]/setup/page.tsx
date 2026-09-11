@@ -25,6 +25,7 @@ export default function CombatSetupPage() {
     const [isSearching, setIsSearching] = useState(false);
     const [initiativeValues, setInitiativeValues] = useState<Record<number, number>>({});
     const [loading, setLoading] = useState(true);
+    const [cancelling, setCancelling] = useState(false);
 
     const sessionId = Number(params.id);
 
@@ -155,6 +156,17 @@ export default function CombatSetupPage() {
         }
     };
 
+    const handleCancel = async () => {
+        setCancelling(true);
+        try {
+            await combatApi.delete(sessionId);
+        } catch (error) {
+            console.error("Failed to delete cancelled combat session:", error);
+        } finally {
+            router.push("/combat");
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center text-white">
@@ -181,10 +193,11 @@ export default function CombatSetupPage() {
                         <p className="text-slate-400">Add participants and set initiative</p>
                     </div>
                     <Button
-                        onClick={() => router.push("/combat")}
-                        className="bg-slate-700 hover:bg-slate-600"
+                        onClick={handleCancel}
+                        disabled={cancelling}
+                        className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
                     >
-                        Cancel
+                        {cancelling ? "Cancelling..." : "Cancel"}
                     </Button>
                 </div>
 

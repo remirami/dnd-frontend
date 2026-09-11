@@ -51,7 +51,7 @@ export default function Home() {
               href="/combat"
               className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-colors"
             >
-              Combat Tracker
+              Combat Simulation
             </a>
             {/* Only render auth button after mount */}
             {mounted ? (
@@ -87,7 +87,7 @@ export default function Home() {
             </div>
 
             <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
-              <h3 className="text-xl font-bold text-white mb-2">🎲 Combat Tracker</h3>
+              <h3 className="text-xl font-bold text-white mb-2">🎲 Combat Simulation</h3>
               <p className="text-slate-400">
                 Track initiative, HP, and actions in real-time
               </p>

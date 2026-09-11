@@ -81,8 +81,8 @@ export default function CombatListPage() {
         );
     }
 
-    const activeSessions = sessions.filter(s => s.is_active);
-    const completedSessions = sessions.filter(s => !s.is_active);
+    const activeSessions = sessions.filter(s => s.is_active || s.status === 'active');
+    const completedSessions = sessions.filter(s => s.status === 'ended');
 
     const handleViewSession = async (session: CombatSession) => {
         setSelectedParticipantId(null);

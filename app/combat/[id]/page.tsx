@@ -551,7 +551,7 @@ export default function CombatPage() {
                 <div className="max-w-[1800px] mx-auto px-6 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <h1 className="text-xl font-bold tracking-tight">
-                            <span className="text-amber-400">⚔</span> Combat Tracker
+                            <span className="text-amber-400">⚔</span> Combat Simulation
                         </h1>
                         <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-sm px-3 py-1">
                             Round {session.current_round}
@@ -713,17 +713,15 @@ export default function CombatPage() {
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <div className="flex-1 h-1.5 bg-slate-950 rounded-full overflow-hidden">
                                                         <div
-                                                            className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${
-                                                                damagedParticipantIds.has(p.id)
+                                                            className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${damagedParticipantIds.has(p.id)
                                                                     ? 'from-red-500 to-red-400'
                                                                     : hpGradient(p.current_hp, p.max_hp)
-                                                            }`}
+                                                                }`}
                                                             style={{ width: `${Math.max(0, (p.current_hp / p.max_hp) * 100)}%` }}
                                                         />
                                                     </div>
-                                                    <span className={`text-[10px] font-mono flex-shrink-0 transition-colors duration-300 ${
-                                                        damagedParticipantIds.has(p.id) ? 'text-red-400 font-bold' : 'text-slate-500'
-                                                    }`}>
+                                                    <span className={`text-[10px] font-mono flex-shrink-0 transition-colors duration-300 ${damagedParticipantIds.has(p.id) ? 'text-red-400 font-bold' : 'text-slate-500'
+                                                        }`}>
                                                         {p.current_hp}/{p.max_hp}
                                                     </span>
                                                 </div>
