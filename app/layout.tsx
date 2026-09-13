@@ -31,12 +31,26 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
-        <footer className="mt-20 py-8 border-t border-slate-800 text-center text-xs text-slate-600 max-w-4xl mx-auto px-4">
-          <p className="mb-2">
-            This project uses the System Reference Document 5.1 ("SRD 5.1" and "SRD 5.2") provided by Wizards of the Coast LLC under the terms of the Creative Commons Attribution 4.0 International License (CC-BY 4.0).
+        <footer className="mt-20 py-8 border-t border-slate-800 text-center text-xs text-slate-500 max-w-4xl mx-auto px-4 space-y-3">
+          <div className="flex justify-center items-center gap-4 text-slate-400">
+            <a href="/" className="hover:text-white transition-colors">Home</a>
+            <span>•</span>
+            <a href="/characters" className="hover:text-white transition-colors">Characters</a>
+            <span>•</span>
+            <a href="/combat" className="hover:text-white transition-colors">Combat</a>
+            <span>•</span>
+            <a href="/changelog" className="hover:text-amber-400 text-slate-300 font-medium transition-colors flex items-center gap-1">
+              <span>📜 Updates & Changelog</span>
+              <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-600/50 px-1.5 py-0.2 rounded-full">
+                v1.5.0
+              </span>
+            </a>
+          </div>
+          <p>
+            This project uses the System Reference Document 5.1 (&ldquo;SRD 5.1&rdquo; and &ldquo;SRD 5.2&rdquo;) provided by Wizards of the Coast LLC under the terms of the Creative Commons Attribution 4.0 International License (CC-BY 4.0).
           </p>
           <p>
-            "Wizards of the Coast", "Dungeons & Dragons", and their logos are trademarks of Wizards of the Coast LLC in the United States and other countries.
+            &ldquo;Wizards of the Coast&rdquo;, &ldquo;Dungeons & Dragons&rdquo;, and their logos are trademarks of Wizards of the Coast LLC in the United States and other countries.
             This website is not affiliated with, endorsed, sponsored, or specifically approved by Wizards of the Coast LLC.
           </p>
         </footer>

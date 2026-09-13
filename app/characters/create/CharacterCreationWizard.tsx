@@ -62,9 +62,12 @@ const STEPS = [
     { number: 7, name: "Review", description: "Confirm your character" },
 ];
 
+import { charactersApi } from "@/lib/api/characters";
+
 export default function CharacterCreationWizard() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
+    const [isRandomizing, setIsRandomizing] = useState(false);
     const [formData, setFormData] = useState<CharacterFormData>({
         name: "",
         ruleset_version: "2014",
@@ -93,6 +96,49 @@ export default function CharacterCreationWizard() {
 
     const updateFormData = (updates: Partial<CharacterFormData>) => {
         setFormData(prev => ({ ...prev, ...updates }));
+    };
+
+    const handleRandomizeAll = async () => {
+        setIsRandomizing(true);
+        try {
+            const res = await charactersApi.generateRandom({
+                preview: true,
+                ruleset_version: formData.ruleset_version
+            });
+            const data = res.data;
+            setFormData({
+                name: data.name || "",
+                ruleset_version: data.ruleset_version || "2014",
+                race_id: data.race_id || null,
+                character_class_id: data.character_class_id || null,
+                character_class_name: data.character_class_name,
+                subclass: data.subclass || null,
+                background_id: data.background_id || null,
+                background_asi_selection: {},
+                alignment: data.alignment || "N",
+                bonds: data.bonds || "",
+                flaws: data.flaws || "",
+                ideals: data.ideals || "",
+                strength: data.strength ?? 10,
+                dexterity: data.dexterity ?? 10,
+                constitution: data.constitution ?? 10,
+                intelligence: data.intelligence ?? 10,
+                wisdom: data.wisdom ?? 10,
+                charisma: data.charisma ?? 10,
+                hp_method: data.hp_method || "fixed",
+                equipment_selections: data.equipment_selections || {},
+                cantrip_ids: data.cantrip_ids || [],
+                spell_ids: data.spell_ids || [],
+                language_ids: data.language_ids || [],
+            });
+            // Jump directly to Review step so user can review the whole character or tweak!
+            setCurrentStep(7);
+        } catch (err) {
+            console.error("Failed to randomize character:", err);
+            alert("Failed to roll random character. Please try again.");
+        } finally {
+            setIsRandomizing(false);
+        }
     };
 
     const shouldShowSubclassStep = (data: CharacterFormData) => {
@@ -227,45 +273,68 @@ export default function CharacterCreationWizard() {
 
                 <Card className="bg-slate-800 border-slate-700">
                     <CardHeader>
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                             <div>
                                 <CardTitle className="text-3xl text-white">Create Character</CardTitle>
                                 <CardDescription className="text-slate-400">
                                     Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].name}
                                 </CardDescription>
                             </div>
-                            <div className="text-right">
-                                <div className="text-sm text-slate-400 mb-1">Progress</div>
-                                <div className="text-2xl font-bold text-green-400">{Math.round(progress)}%</div>
+                            <div className="flex items-center gap-4">
+                                <Button
+                                    type="button"
+                                    onClick={handleRandomizeAll}
+                                    disabled={isRandomizing}
+                                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs sm:text-sm px-3 sm:px-4 shadow-md transition-all active:scale-95"
+                                >
+                                    {isRandomizing ? "🎲 Rolling..." : "🎲 Randomize Character"}
+                                </Button>
+                                <div className="text-right hidden sm:block">
+                                    <div className="text-sm text-slate-400 mb-1">Progress</div>
+                                    <div className="text-2xl font-bold text-green-400">{Math.round(progress)}%</div>
+                                </div>
                             </div>
                         </div>
                         <Progress value={progress} className="h-2" />
 
                         {/* Step Indicators */}
                         <div className="flex justify-between mt-6">
-                            {STEPS.map((step) => (
-                                <div
-                                    key={step.number}
-                                    className={`flex flex-col items-center flex-1 ${step.number < currentStep
-                                        ? "text-green-400"
-                                        : step.number === currentStep
-                                            ? "text-white"
-                                            : "text-slate-500"
-                                        }`}
-                                >
+                            {STEPS.map((step) => {
+                                const isClickable = !!(formData.name && formData.race_id && formData.character_class_id) || step.number <= currentStep;
+                                return (
                                     <div
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 ${step.number < currentStep
-                                            ? "bg-green-600"
-                                            : step.number === currentStep
-                                                ? "bg-blue-600"
-                                                : "bg-slate-700"
-                                            }`}
+                                        key={step.number}
+                                        onClick={() => {
+                                            if (isClickable) {
+                                                if (step.number === 2 && !shouldShowSubclassStep(formData)) return;
+                                                setCurrentStep(step.number);
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center flex-1 transition-all ${
+                                            isClickable ? "cursor-pointer hover:opacity-90" : "cursor-default"
+                                        } ${
+                                            step.number < currentStep
+                                                ? "text-green-400"
+                                                : step.number === currentStep
+                                                    ? "text-white"
+                                                    : "text-slate-500"
+                                        }`}
                                     >
-                                        {step.number < currentStep ? "✓" : step.number}
+                                        <div
+                                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 transition-colors ${
+                                                step.number < currentStep
+                                                    ? "bg-green-600"
+                                                    : step.number === currentStep
+                                                        ? "bg-blue-600"
+                                                        : "bg-slate-700"
+                                            }`}
+                                        >
+                                            {step.number < currentStep ? "✓" : step.number}
+                                        </div>
+                                        <div className="text-xs text-center hidden sm:block">{step.name}</div>
                                     </div>
-                                    <div className="text-xs text-center hidden sm:block">{step.name}</div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </CardHeader>
                     <CardContent className="text-white">

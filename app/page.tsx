@@ -40,7 +40,7 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex gap-4 justify-center mt-8">
+          <div className="flex flex-wrap gap-4 justify-center mt-8">
             <a
               href="/characters"
               className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
@@ -52,6 +52,15 @@ export default function Home() {
               className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-colors"
             >
               Combat Simulation
+            </a>
+            <a
+              href="/changelog"
+              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all flex items-center gap-2 shadow-lg shadow-purple-900/30"
+            >
+              <span>📜 Updates</span>
+              <span className="text-xs bg-purple-900/80 px-2 py-0.5 rounded-full border border-purple-400/40 text-purple-200">
+                v1.5.0
+              </span>
             </a>
             {/* Only render auth button after mount */}
             {mounted ? (
@@ -78,27 +87,44 @@ export default function Home() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 max-w-4xl mx-auto">
-            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-16 max-w-5xl mx-auto">
+            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 text-left">
               <h3 className="text-xl font-bold text-white mb-2">⚔️ Character Builder</h3>
-              <p className="text-slate-400">
-                Create 5e characters with 12 classes and races
+              <p className="text-slate-400 text-sm">
+                Create 5e characters with 12 classes, races, and randomized level 1 rolls.
               </p>
             </div>
 
-            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 text-left">
               <h3 className="text-xl font-bold text-white mb-2">🎲 Combat Simulation</h3>
-              <p className="text-slate-400">
-                Track initiative, HP, and actions in real-time
+              <p className="text-slate-400 text-sm">
+                Track initiative, HP, and actions in real-time with participant filtering.
               </p>
             </div>
 
-            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+            <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 text-left">
               <h3 className="text-xl font-bold text-white mb-2">🏆 Gauntlet Mode</h3>
-              <p className="text-slate-400">
-                Face sequential encounters with automated enemies
+              <p className="text-slate-400 text-sm">
+                Face sequential encounters with automated enemies and monster AI.
               </p>
             </div>
+
+            <a
+              href="/changelog"
+              className="bg-gradient-to-br from-purple-950/60 to-slate-800 p-6 rounded-lg border border-purple-600/40 text-left hover:border-purple-500 transition-all group block cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors">
+                  📜 Changelog
+                </h3>
+                <span className="text-xs bg-purple-900/90 text-purple-300 border border-purple-600 px-2 py-0.5 rounded-full">
+                  v1.5.0
+                </span>
+              </div>
+              <p className="text-slate-400 text-sm">
+                Explore release history, combat mechanics fixes, and rule updates.
+              </p>
+            </a>
           </div>
 
           <div className="mt-12 text-slate-500 text-sm">

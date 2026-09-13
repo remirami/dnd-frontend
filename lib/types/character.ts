@@ -60,6 +60,12 @@ export interface Character {
     ideals?: string;
     notes?: string;
 
+    gold_pieces?: number;
+    silver_pieces?: number;
+    copper_pieces?: number;
+    electrum_pieces?: number;
+    platinum_pieces?: number;
+
     user: number;
     created_at: string;
     character_items?: CharacterItem[];

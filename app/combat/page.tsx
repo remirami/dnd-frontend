@@ -118,6 +118,13 @@ export default function CombatListPage() {
                             Home
                         </Button>
                         <Button
+                            onClick={() => router.push("/changelog")}
+                            variant="outline"
+                            className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
+                        >
+                            📜 Updates
+                        </Button>
+                        <Button
                             onClick={handleCreateSession}
                             size="lg"
                             className="bg-red-600 hover:bg-red-700"
