@@ -36,6 +36,10 @@ export const combatApi = {
     addParticipant: (id: number, data: { participant_type: 'character' | 'enemy'; character_id?: number; enemy_id?: number; enemy_name?: string }) =>
         apiClient.post<CombatSession>(`/combat/sessions/${id}/add_participant/`, data),
 
+    // Remove participant from combat
+    removeParticipant: (id: number, data: { participant_id?: number; character_id?: number }) =>
+        apiClient.post<{ message: string; session: CombatSession }>(`/combat/sessions/${id}/remove_participant/`, data),
+
     // Roll initiative for participants (auto-rolls for those without manual overrides)
     rollInitiative: (id: number, overrides?: Record<number, number>) =>
         apiClient.post<CombatSession>(`/combat/sessions/${id}/roll_initiative/`, overrides ? { overrides } : {}),

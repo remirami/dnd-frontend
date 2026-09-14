@@ -61,6 +61,16 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
                 title: "🧹 Empty Combat Session Cleanup",
                 description: "Cancelling an encounter during combat creation setup no longer leaves empty orphan combat session records in your combat log.",
                 category: "fix"
+            },
+            {
+                id: "1.5.0-5",
+                title: "🔄 Combat Setup Character De-selection",
+                description: "Easily select and de-select characters during combat encounter setup with a single click, or remove unwanted participants with the delete button.",
+                category: "combat",
+                details: [
+                    "Clicking an already added character immediately de-selects and removes them from the encounter.",
+                    "Added remove ('✕') buttons directly next to participants in the party and enemy lists."
+                ]
             }
         ]
     },

@@ -81,16 +81,32 @@ export default function CombatSetupPage() {
     };
 
     const handleToggleCharacter = async (characterId: number, characterName: string) => {
-        // ... (keep existing logic)
-        const alreadyAdded = session?.participants?.some(
+        const existingParticipant = session?.participants?.find(
             p => (p.participant_type === 'character' && p.character?.id === characterId) || p.name === characterName
         );
 
-        if (alreadyAdded) {
-            alert("Character already in combat. To remove, you'll need to create a new combat session.");
+        if (existingParticipant) {
+            // De-select character
+            try {
+                await combatApi.removeParticipant(sessionId, {
+                    participant_id: existingParticipant.id,
+                    character_id: characterId,
+                });
+                setInitiativeValues(prev => {
+                    const copy = { ...prev };
+                    delete copy[existingParticipant.id];
+                    return copy;
+                });
+                const response = await combatApi.getById(sessionId);
+                setSession(response.data);
+            } catch (error: any) {
+                console.error("Failed to remove character:", error);
+                alert(`Failed to remove character: ${error.response?.data?.error || error.message}`);
+            }
             return;
         }
 
+        // Add character
         try {
             await combatApi.addParticipant(sessionId, {
                 participant_type: 'character',
@@ -103,6 +119,24 @@ export default function CombatSetupPage() {
         } catch (error: any) {
             console.error("Failed to add character:", error);
             alert(`Failed to add character: ${error.response?.data?.error || error.message}`);
+        }
+    };
+
+    const handleRemoveParticipant = async (participantId: number) => {
+        try {
+            await combatApi.removeParticipant(sessionId, {
+                participant_id: participantId,
+            });
+            setInitiativeValues(prev => {
+                const copy = { ...prev };
+                delete copy[participantId];
+                return copy;
+            });
+            const response = await combatApi.getById(sessionId);
+            setSession(response.data);
+        } catch (error: any) {
+            console.error("Failed to remove participant:", error);
+            alert(`Failed to remove participant: ${error.response?.data?.error || error.message}`);
         }
     };
 
@@ -218,28 +252,40 @@ export default function CombatSetupPage() {
                                     return (
                                         <div
                                             key={char.id}
-                                            className={`flex items-center gap-3 p-3 rounded transition-colors ${isAdded
-                                                ? 'bg-green-900/30 border-2 border-green-600 cursor-not-allowed'
-                                                : 'bg-slate-900 hover:bg-slate-700 cursor-pointer'
+                                            className={`flex items-center gap-3 p-3 rounded transition-all cursor-pointer select-none group ${isAdded
+                                                ? 'bg-emerald-950/40 border-2 border-emerald-500 hover:border-emerald-400 hover:bg-emerald-900/30 shadow-sm'
+                                                : 'bg-slate-900 hover:bg-slate-700/80 border-2 border-transparent'
                                                 }`}
-                                            onClick={() => !isAdded && handleToggleCharacter(char.id, char.name)}
-                                            title={isAdded ? "Already added to combat" : "Click to add to combat"}
+                                            onClick={() => handleToggleCharacter(char.id, char.name)}
+                                            title={isAdded ? "Click to de-select character" : "Click to select character for combat"}
                                         >
                                             <input
                                                 type="checkbox"
                                                 checked={isAdded || false}
                                                 onChange={() => { }}
-                                                className="w-4 h-4"
-                                                disabled={isAdded}
+                                                className="w-4 h-4 cursor-pointer accent-emerald-500 pointer-events-none"
                                             />
                                             <div className="flex-1">
-                                                <div className="font-semibold text-white">{char.name}</div>
+                                                <div className="font-semibold text-white group-hover:text-emerald-300 transition-colors">
+                                                    {char.name}
+                                                </div>
                                                 <div className="text-sm text-slate-400">
                                                     Level {char.level} {char.race?.name_display} {char.character_class?.name_display}
                                                 </div>
                                             </div>
-                                            {isAdded && (
-                                                <span className="text-xs text-green-400 font-semibold">Added ✓</span>
+                                            {isAdded ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-emerald-400 font-semibold bg-emerald-900/50 px-2 py-0.5 rounded border border-emerald-600/40">
+                                                        Selected ✓
+                                                    </span>
+                                                    <span className="text-xs text-red-400 hover:text-red-300 underline font-medium">
+                                                        De-select
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 group-hover:text-slate-200 transition-colors">
+                                                    + Select
+                                                </span>
                                             )}
                                         </div>
                                     );
@@ -343,6 +389,15 @@ export default function CombatSetupPage() {
                                                             onChange={(e) => handleInitiativeChange(participant.id, e.target.value)}
                                                             className="w-20 bg-slate-950 border-slate-700 text-white text-center"
                                                         />
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleRemoveParticipant(participant.id)}
+                                                            className="text-slate-400 hover:text-red-400 hover:bg-red-950/40 h-9 w-9 p-0 text-base"
+                                                            title="Remove character from combat"
+                                                        >
+                                                            ✕
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -374,6 +429,15 @@ export default function CombatSetupPage() {
                                                             onChange={(e) => handleInitiativeChange(participant.id, e.target.value)}
                                                             className="w-20 bg-slate-950 border-red-900/50 text-white text-center"
                                                         />
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleRemoveParticipant(participant.id)}
+                                                            className="text-slate-400 hover:text-red-400 hover:bg-red-950/40 h-9 w-9 p-0 text-base"
+                                                            title="Remove enemy from combat"
+                                                        >
+                                                            ✕
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             ))}
