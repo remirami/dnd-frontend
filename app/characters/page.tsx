@@ -28,7 +28,10 @@ export default function CharactersPage() {
     const [characters, setCharacters] = useState<Character[]>([]);
     const [loading, setLoading] = useState(true);
     const [rolling, setRolling] = useState(false);
-    const [createdHero, setCreatedHero] = useState<any | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [previewHero, setPreviewHero] = useState<any | null>(null);
+    const [savedHero, setSavedHero] = useState<any | null>(null);
+    const [isConfirmed, setIsConfirmed] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
 
     useEffect(() => {
@@ -58,19 +61,41 @@ export default function CharactersPage() {
         }
     };
 
+    // Step 1: Roll preview data without adding to database
     const handleQuickRoll = async () => {
         setRolling(true);
+        setIsConfirmed(false);
+        setSavedHero(null);
         try {
-            const res = await charactersApi.generateRandom({ preview: false });
-            const newChar = res.data;
-            setCreatedHero(newChar);
+            const res = await charactersApi.generateRandom({ preview: true });
+            setPreviewHero(res.data);
             setModalOpen(true);
-            await loadCharacters();
         } catch (err) {
-            console.error("Failed to quick-roll random character:", err);
-            alert("Could not generate random character. Please try again.");
+            console.error("Failed to roll random character preview:", err);
+            alert("Could not roll random character preview. Please try again.");
         } finally {
             setRolling(false);
+        }
+    };
+
+    // Step 2: Confirm character and persist to database
+    const handleConfirmHero = async () => {
+        if (!previewHero) return;
+        setSaving(true);
+        try {
+            const res = await charactersApi.generateRandom({
+                preview: false,
+                character_data: previewHero
+            });
+            const createdChar = res.data;
+            setSavedHero(createdChar);
+            setIsConfirmed(true);
+            await loadCharacters();
+        } catch (err) {
+            console.error("Failed to confirm character:", err);
+            alert("Could not save character. Please try again.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -81,6 +106,8 @@ export default function CharactersPage() {
             </div>
         );
     }
+
+    const currentHero = isConfirmed ? savedHero : previewHero;
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
@@ -101,18 +128,11 @@ export default function CharactersPage() {
                             Home
                         </Button>
                         <Button
-                            onClick={() => router.push("/changelog")}
-                            variant="outline"
-                            className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
-                        >
-                            📜 Updates
-                        </Button>
-                        <Button
                             onClick={handleQuickRoll}
                             disabled={rolling}
                             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold shadow-lg shadow-purple-900/30 transition-all active:scale-95"
                         >
-                            {rolling ? "🎲 Rolling Hero..." : "🎲 Quick Random"}
+                            {rolling ? "🎲 Rolling..." : "🎲 Quick Random"}
                         </Button>
                         <Button
                             onClick={() => router.push("/characters/create")}
@@ -129,7 +149,7 @@ export default function CharactersPage() {
                         <CardHeader>
                             <CardTitle className="text-white">No Characters Yet</CardTitle>
                             <CardDescription className="text-slate-400">
-                                Create your first 5e character to get started, or roll a completely randomized level 1 hero instantly!
+                                Create your first 5e character to get started, or preview and roll a randomized level 1 hero instantly!
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -145,7 +165,7 @@ export default function CharactersPage() {
                                     disabled={rolling}
                                     className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white"
                                 >
-                                    {rolling ? "🎲 Rolling Hero..." : "🎲 Quick Random Character"}
+                                    {rolling ? "🎲 Rolling..." : "🎲 Quick Random Character"}
                                 </Button>
                             </div>
                         </CardContent>
@@ -196,47 +216,53 @@ export default function CharactersPage() {
                     </div>
                 )}
 
-                {/* Quick Roll Result Modal */}
+                {/* Quick Roll Result Modal (Preview & Confirm) */}
                 <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                     <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-xl">
                         <DialogHeader>
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="text-2xl">🎲</span>
-                                <Badge className="bg-purple-900/60 text-purple-300 border-purple-600 font-medium">
-                                    New Level 1 Adventurer
+                                <Badge
+                                    className={
+                                        isConfirmed
+                                            ? "bg-emerald-900/60 text-emerald-300 border-emerald-600 font-medium"
+                                            : "bg-purple-900/60 text-purple-300 border-purple-600 font-medium"
+                                    }
+                                >
+                                    {isConfirmed ? "✓ Character Added to List" : "Preview: Level 1 Character"}
                                 </Badge>
                             </div>
                             <DialogTitle className="text-2xl font-bold text-white tracking-wide">
-                                {createdHero?.name}
+                                {currentHero?.name}
                             </DialogTitle>
                             <DialogDescription className="text-slate-300 text-sm">
-                                Level {createdHero?.level} {createdHero?.race?.name || createdHero?.race_name || ""} {createdHero?.character_class?.name || createdHero?.character_class_name || ""}
-                                {createdHero?.subclass ? ` (${createdHero.subclass})` : ""}
-                                {createdHero?.background?.name ? ` • ${createdHero.background.name}` : ""}
-                                {createdHero?.alignment ? ` • ${createdHero.alignment}` : ""}
+                                Level {currentHero?.level || 1} {currentHero?.race?.name || currentHero?.race_name || ""} {currentHero?.character_class?.name || currentHero?.character_class_name || ""}
+                                {currentHero?.subclass ? ` (${currentHero.subclass})` : ""}
+                                {currentHero?.background?.name || currentHero?.background_name ? ` • ${currentHero.background?.name || currentHero.background_name}` : ""}
+                                {currentHero?.alignment ? ` • ${currentHero.alignment}` : ""}
                             </DialogDescription>
                         </DialogHeader>
 
-                        {createdHero && (
+                        {currentHero && (
                             <div className="space-y-4 py-2">
                                 {/* HP, AC, Gold summary */}
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="bg-slate-800/80 rounded-lg p-3 text-center border border-slate-700">
                                         <div className="text-xs text-slate-400 uppercase font-semibold">Hit Points</div>
                                         <div className="text-xl font-bold text-emerald-400 mt-1">
-                                            {createdHero.stats?.hit_points ?? createdHero.stats?.max_hit_points ?? "-"}
+                                            {currentHero.stats?.hit_points ?? currentHero.hit_points ?? "-"}
                                         </div>
                                     </div>
                                     <div className="bg-slate-800/80 rounded-lg p-3 text-center border border-slate-700">
                                         <div className="text-xs text-slate-400 uppercase font-semibold">Armor Class</div>
                                         <div className="text-xl font-bold text-blue-400 mt-1">
-                                            {createdHero.stats?.armor_class ?? "-"}
+                                            {currentHero.stats?.armor_class ?? currentHero.armor_class ?? "-"}
                                         </div>
                                     </div>
                                     <div className="bg-slate-800/80 rounded-lg p-3 text-center border border-slate-700">
                                         <div className="text-xs text-slate-400 uppercase font-semibold">Starting Gold</div>
                                         <div className="text-xl font-bold text-amber-300 mt-1">
-                                            {createdHero.gold_pieces ?? 0} gp
+                                            {currentHero.gold_pieces ?? 0} gp
                                         </div>
                                     </div>
                                 </div>
@@ -246,12 +272,12 @@ export default function CharactersPage() {
                                     <div className="text-xs font-semibold uppercase text-slate-400 mb-2">Rolled Ability Scores (4d6 Drop Lowest)</div>
                                     <div className="grid grid-cols-6 gap-2">
                                         {[
-                                            { label: 'STR', val: createdHero.stats?.strength ?? 10 },
-                                            { label: 'DEX', val: createdHero.stats?.dexterity ?? 10 },
-                                            { label: 'CON', val: createdHero.stats?.constitution ?? 10 },
-                                            { label: 'INT', val: createdHero.stats?.intelligence ?? 10 },
-                                            { label: 'WIS', val: createdHero.stats?.wisdom ?? 10 },
-                                            { label: 'CHA', val: createdHero.stats?.charisma ?? 10 },
+                                            { label: 'STR', val: currentHero.stats?.strength ?? currentHero.strength ?? 10 },
+                                            { label: 'DEX', val: currentHero.stats?.dexterity ?? currentHero.dexterity ?? 10 },
+                                            { label: 'CON', val: currentHero.stats?.constitution ?? currentHero.constitution ?? 10 },
+                                            { label: 'INT', val: currentHero.stats?.intelligence ?? currentHero.intelligence ?? 10 },
+                                            { label: 'WIS', val: currentHero.stats?.wisdom ?? currentHero.wisdom ?? 10 },
+                                            { label: 'CHA', val: currentHero.stats?.charisma ?? currentHero.charisma ?? 10 },
                                         ].map((stat) => (
                                             <div
                                                 key={stat.label}
@@ -265,36 +291,83 @@ export default function CharactersPage() {
                                     </div>
                                 </div>
 
+                                {/* Starting Spells if present */}
+                                {(currentHero.cantrip_names?.length > 0 || currentHero.spell_names?.length > 0) && (
+                                    <div className="bg-slate-800/60 rounded-md p-3 border border-slate-700/60">
+                                        <div className="text-xs font-semibold text-purple-300 uppercase mb-1.5">Starting Spells:</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {currentHero.cantrip_names?.map((c: string) => (
+                                                <span key={c} className="bg-purple-950/80 text-purple-200 border border-purple-800 px-2 py-0.5 rounded text-xs">
+                                                    ✨ {c} (Cantrip)
+                                                </span>
+                                            ))}
+                                            {currentHero.spell_names?.map((s: string) => (
+                                                <span key={s} className="bg-indigo-950/80 text-indigo-200 border border-indigo-800 px-2 py-0.5 rounded text-xs">
+                                                    🔮 {s} (Lvl 1)
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Ideals / Personality snippet if available */}
-                                {createdHero.ideals && (
+                                {currentHero.ideals && (
                                     <div className="bg-slate-800/50 rounded-md p-3 border border-slate-700/60 text-xs text-slate-300 italic">
-                                        &ldquo;{createdHero.ideals}&rdquo;
+                                        &ldquo;{currentHero.ideals}&rdquo;
                                     </div>
                                 )}
                             </div>
                         )}
 
                         <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-                            <Button
-                                variant="outline"
-                                onClick={() => setModalOpen(false)}
-                                className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                            >
-                                Close
-                            </Button>
-                            <Button
-                                onClick={handleQuickRoll}
-                                disabled={rolling}
-                                className="bg-purple-600 hover:bg-purple-700 text-white"
-                            >
-                                {rolling ? "Rolling..." : "🎲 Roll Another"}
-                            </Button>
-                            <Button
-                                onClick={() => router.push(`/characters/${createdHero?.id}`)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                            >
-                                Open Character Sheet →
-                            </Button>
+                            {!isConfirmed ? (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setModalOpen(false)}
+                                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleQuickRoll}
+                                        disabled={rolling || saving}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                                    >
+                                        {rolling ? "Rolling..." : "🎲 Re-roll"}
+                                    </Button>
+                                    <Button
+                                        onClick={handleConfirmHero}
+                                        disabled={saving}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-900/30"
+                                    >
+                                        {saving ? "Creating..." : "Confirm & Add to List"}
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setModalOpen(false)}
+                                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                                    >
+                                        Close
+                                    </Button>
+                                    <Button
+                                        onClick={handleQuickRoll}
+                                        disabled={rolling}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                                    >
+                                        {rolling ? "Rolling..." : "🎲 Roll Another"}
+                                    </Button>
+                                    <Button
+                                        onClick={() => router.push(`/characters/${savedHero?.id}`)}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                                    >
+                                        Open Character Sheet →
+                                    </Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

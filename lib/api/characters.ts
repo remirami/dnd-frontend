@@ -16,7 +16,7 @@ export const charactersApi = {
     create: (data: CharacterCreateData) =>
         apiClient.post<Character>('/characters/', data),
 
-    generateRandom: (data?: { preview?: boolean; ruleset_version?: string; character_class_id?: number; race_id?: number }) =>
+    generateRandom: (data?: { preview?: boolean; ruleset_version?: string; character_class_id?: number; race_id?: number; character_data?: any }) =>
         apiClient.post<any>('/characters/generate_random/', data || {}),
 
     update: (id: number, data: Partial<Character>) =>
