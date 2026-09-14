@@ -17,12 +17,67 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
+export const CURRENT_VERSION = "v1.6.0";
+
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.6.0",
+        date: "September 14, 2026",
+        title: "Random Character Preview Confirmation & Martial Starting Armor",
+        tag: "Latest",
+        summary: "Introduced 2-step interactive preview & confirmation for random characters, full standard armor and shield support for martial classes, Barbarian Smart-Hybrid defense optimization, and realistic 5e starting gold.",
+        items: [
+            {
+                id: "1.6.0-1",
+                title: "🎲 Two-Step Random Character Preview & Confirmation",
+                description: "Replaced instant character insertion with an interactive preview modal allowing players to review or re-roll attributes, HP, AC, wealth, and spells before committing.",
+                category: "feature",
+                details: [
+                    "Clicking 'Quick Random' generates a live preview displaying rolled stats, HP, AC, wealth, and starting spells without saving to the database.",
+                    "Players can freely 'Re-roll' as many times as desired or 'Confirm & Add to List' to persist the exact displayed hero.",
+                    "Post-creation screen offers direct links to 'Open Character Sheet' or 'Roll Another'."
+                ]
+            },
+            {
+                id: "1.6.0-2",
+                title: "🛡️ Martial Class Starting Armor & Shields",
+                description: "Martial classes (Fighters, Paladins, Clerics, etc.) now roll with authentic D&D 5e starting armors and shields, accurately reflecting heavy, medium, and light armor mechanics.",
+                category: "character",
+                details: [
+                    "Populated all 13 standard SRD armors and shields in the database (Chain Mail, Scale Mail, Leather Armor, Shield, etc.).",
+                    "Paladins start with heavy Chain Mail (base AC 16); Fighters choose between Chain Mail (AC 16) or Leather Armor + archery kit.",
+                    "Shields automatically equip to the off-hand, granting their authentic +2 AC bonus.",
+                    "Accurate DEX caps applied based on armor type (max +2 on medium armor, no DEX bonus on heavy armor)."
+                ]
+            },
+            {
+                id: "1.6.0-3",
+                title: "🪓 Barbarian Smart-Hybrid Defense System",
+                description: "Barbarians now receive a starting equipment choice between Scale Mail and an Unarmored Warrior kit with intelligent auto-equip optimization.",
+                category: "character",
+                details: [
+                    "Added starting equipment choice between Scale Mail (medium armor) or Unarmored Warrior (extra javelins).",
+                    "Smart-Hybrid auto-equip: Scale Mail is only auto-equipped if armored AC beats or equals their natural Unarmored Defense (10 + DEX mod + CON mod).",
+                    "If natural Unarmored Defense is superior, Scale Mail is safely stored in inventory without penalizing character AC."
+                ]
+            },
+            {
+                id: "1.6.0-4",
+                title: "🪙 5e Background Starting Wealth & Stat Parity",
+                description: "Rebalanced random starting gold to authentic D&D 5e background pouches, and guaranteed 100% preview-to-sheet stat parity.",
+                category: "fix",
+                details: [
+                    "Starting gold now accurately reflects background pouches (10–25 GP + small purse change) alongside full class starting equipment, avoiding inflated 100–190+ GP purses.",
+                    "Pre-applied racial ability score increases during preview generation to eliminate stat, HP, or AC discrepancies between preview and final sheet."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.5.0",
         date: "September 13, 2026",
         title: "Random Character Generator & Combat Enhancements",
-        tag: "Latest",
+        tag: "Major",
         summary: "Introduced instant random level 1 character generation with 4d6-drop-lowest stats, along with combat turn attack fixes and empty session cleanup.",
         items: [
             {

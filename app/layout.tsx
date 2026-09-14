@@ -42,7 +42,7 @@ export default function RootLayout({
             <a href="/changelog" className="hover:text-amber-400 text-slate-300 font-medium transition-colors flex items-center gap-1">
               <span>📜 Updates & Changelog</span>
               <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-600/50 px-1.5 py-0.2 rounded-full">
-                v1.5.0
+                v1.6.0
               </span>
             </a>
           </div>

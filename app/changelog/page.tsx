@@ -107,7 +107,7 @@ export default function ChangelogPage() {
                     <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 backdrop-blur">
                         <div className="text-xs text-slate-400 font-medium">Current Version</div>
                         <div className="text-xl font-bold text-amber-400 mt-0.5 flex items-center gap-1.5">
-                            v1.5.0
+                            {CHANGELOG_DATA[0]?.version || "v1.6.0"}
                             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                         </div>
                     </div>

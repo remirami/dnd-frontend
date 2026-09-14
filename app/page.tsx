@@ -59,7 +59,7 @@ export default function Home() {
             >
               <span>📜 Updates</span>
               <span className="text-xs bg-purple-900/80 px-2 py-0.5 rounded-full border border-purple-400/40 text-purple-200">
-                v1.5.0
+                v1.6.0
               </span>
             </a>
             {/* Only render auth button after mount */}
@@ -118,7 +118,7 @@ export default function Home() {
                   📜 Changelog
                 </h3>
                 <span className="text-xs bg-purple-900/90 text-purple-300 border border-purple-600 px-2 py-0.5 rounded-full">
-                  v1.5.0
+                  v1.6.0
                 </span>
               </div>
               <p className="text-slate-400 text-sm">
