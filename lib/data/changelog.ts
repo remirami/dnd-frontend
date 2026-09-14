@@ -17,14 +17,58 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.6.0";
+export const CURRENT_VERSION = "v1.7.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.7.0",
+        date: "September 14, 2026",
+        title: "Combat Encounter Participant Hard Limits",
+        tag: "Latest",
+        summary: "Enforced balanced tabletop combat limits (16 total participants, 6 party members, 10 enemies) across backend API and frontend setup UI with live counters, capacity warnings, and smooth de-selection.",
+        items: [
+            {
+                id: "1.7.0-1",
+                title: "⚖️ Balanced Tabletop Participant Limits",
+                description: "Enforced hard limits during encounter setup to guarantee clear tactical positioning, responsive turn orders, and balanced action economy.",
+                category: "combat",
+                details: [
+                    "Maximum 16 total combatants per encounter across all factions.",
+                    "Maximum 6 party members (player characters) in line with standard 5e party sizes.",
+                    "Maximum 10 enemies per encounter for optimal bestiary balance and screen clarity.",
+                    "Duplicate character protection: Prevents accidentally adding the same character multiple times."
+                ]
+            },
+            {
+                id: "1.7.0-2",
+                title: "📊 Live Roster Badges & Intuitive Setup UX",
+                description: "Upgraded the combat setup screen with real-time capacity badges, contextual warnings, and smart card states.",
+                category: "ui",
+                details: [
+                    "Header displays live total combatant counter: 'Total: X/16'.",
+                    "Party column displays 'Party: X/6' with amber warning pill when at capacity.",
+                    "Enemies column displays 'Enemies: X/10' with bestiary search input auto-disabling when full.",
+                    "Character cards smoothly disable when party or encounter is full, while already-selected heroes remain fully clickable for easy de-selection."
+                ]
+            },
+            {
+                id: "1.7.0-3",
+                title: "🛡️ Backend Enforcement & Defensive Validation",
+                description: "Hardened both participant addition and combat start API endpoints to prevent exceeding bounds even in concurrent scenarios.",
+                category: "fix",
+                details: [
+                    "POST /api/combat/sessions/{id}/add_participant/ validates total (16), party (6), and enemy (10) bounds before database insertion.",
+                    "POST /api/combat/sessions/{id}/start/ includes defensive safeguards validating participant counts before starting the encounter.",
+                    "Added full automated unit test suite verifying limits and boundary conditions."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.6.0",
         date: "September 14, 2026",
         title: "Random Character Preview Confirmation & Martial Starting Armor",
-        tag: "Latest",
+        tag: "Major",
         summary: "Introduced 2-step interactive preview & confirmation for random characters, full standard armor and shield support for martial classes, Barbarian Smart-Hybrid defense optimization, and realistic 5e starting gold.",
         items: [
             {
@@ -41,7 +85,7 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
             {
                 id: "1.6.0-2",
                 title: "🛡️ Martial Class Starting Armor & Shields",
-                description: "Martial classes (Fighters, Paladins, Clerics, etc.) now roll with authentic D&D 5e starting armors and shields, accurately reflecting heavy, medium, and light armor mechanics.",
+                description: "Martial classes (Fighters, Paladins, Clerics, etc.) now roll with authentic 5e SRD starting armors and shields, accurately reflecting heavy, medium, and light armor mechanics.",
                 category: "character",
                 details: [
                     "Populated all 13 standard SRD armors and shields in the database (Chain Mail, Scale Mail, Leather Armor, Shield, etc.).",
@@ -64,7 +108,7 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
             {
                 id: "1.6.0-4",
                 title: "🪙 5e Background Starting Wealth & Stat Parity",
-                description: "Rebalanced random starting gold to authentic D&D 5e background pouches, and guaranteed 100% preview-to-sheet stat parity.",
+                description: "Rebalanced random starting gold to authentic 5e SRD background pouches, and guaranteed 100% preview-to-sheet stat parity.",
                 category: "fix",
                 details: [
                     "Starting gold now accurately reflects background pouches (10–25 GP + small purse change) alongside full class starting equipment, avoiding inflated 100–190+ GP purses.",
@@ -251,7 +295,7 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
         items: [
             {
                 id: "1.0.0-1",
-                title: "🏰 Core D&D 5e System",
+                title: "🏰 Core 5e SRD System",
                 description: "Full implementation of the SRD 5.1 ruleset with 12 core classes (Barbarian to Wizard), 9 playable races, and 12 backgrounds.",
                 category: "feature"
             },
@@ -264,7 +308,7 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
             {
                 id: "1.0.0-3",
                 title: "📖 5e Spell Library",
-                description: "Extensive database of over 300 D&D 5e spells with filterable schools, casting times, and class assignments.",
+                description: "Extensive database of over 300 5e SRD spells with filterable schools, casting times, and class assignments.",
                 category: "spell"
             }
         ]

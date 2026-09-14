@@ -26,7 +26,7 @@ import { SkillsAndSaves } from "./components/SkillsAndSaves";
 import { DiceRoller } from "@/components/DiceRoller";
 import { Edit } from "lucide-react";
 
-// D&D 5e XP thresholds
+// 5e SRD XP thresholds
 const XP_THRESHOLDS: Record<number, number> = {
     2: 300,
     3: 900,

@@ -19,7 +19,7 @@ interface AddExperienceDialogProps {
     onUpdate: () => void;
 }
 
-// D&D 5e XP thresholds
+// 5e SRD XP thresholds
 const XP_THRESHOLDS: Record<number, number> = {
     2: 300,
     3: 900,

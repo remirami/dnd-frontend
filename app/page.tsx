@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useRouter } from "next/navigation";
+import { CURRENT_VERSION } from "@/lib/data/changelog";
 
 export default function Home() {
   const { user, isAuthenticated, logout, fetchCurrentUser } = useAuthStore();
@@ -23,15 +24,17 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-white">
       <div className="container mx-auto px-4 py-16">
-        <div className="text-center space-y-8">
-          <h1 className="text-6xl font-bold text-white mb-4">
-            5e Campaign Manager
-          </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Create characters, track combat, and run epic gauntlet campaigns
-          </p>
+        <div className="max-w-4xl mx-auto text-center space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+              5e Campaign Manager
+            </h1>
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+              Character creation, tactical combat, and encounter management built on official 5e SRD rules.
+            </p>
+          </div>
 
           {/* Auth Status - only show after mount to prevent hydration mismatch */}
           {mounted && isAuthenticated && user && (
@@ -40,18 +43,18 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-4 justify-center mt-8">
+          <div className="flex flex-wrap justify-center gap-4 pt-4">
             <a
               href="/characters"
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/30"
             >
-              My Characters
+              <span>⚔️ Characters</span>
             </a>
             <a
               href="/combat"
-              className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-colors"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-emerald-900/30"
             >
-              Combat Simulation
+              <span>🎲 Combat Simulator</span>
             </a>
             <a
               href="/changelog"
@@ -59,7 +62,7 @@ export default function Home() {
             >
               <span>📜 Updates</span>
               <span className="text-xs bg-purple-900/80 px-2 py-0.5 rounded-full border border-purple-400/40 text-purple-200">
-                v1.6.0
+                {CURRENT_VERSION}
               </span>
             </a>
             {/* Only render auth button after mount */}
@@ -118,7 +121,7 @@ export default function Home() {
                   📜 Changelog
                 </h3>
                 <span className="text-xs bg-purple-900/90 text-purple-300 border border-purple-600 px-2 py-0.5 rounded-full">
-                  v1.6.0
+                  {CURRENT_VERSION}
                 </span>
               </div>
               <p className="text-slate-400 text-sm">
@@ -133,6 +136,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

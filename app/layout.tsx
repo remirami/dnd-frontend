@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from "@/components/ui/sonner";
+import { CURRENT_VERSION } from "@/lib/data/changelog";
 
 export default function RootLayout({
   children,
@@ -25,13 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-50 min-h-screen flex flex-col`}
       >
-        {children}
+        <main className="flex-1">{children}</main>
         <Toaster />
-        <footer className="mt-20 py-8 border-t border-slate-800 text-center text-xs text-slate-500 max-w-4xl mx-auto px-4 space-y-3">
+        <footer className="border-t border-slate-800/80 bg-slate-950 py-8 px-4 text-center text-xs text-slate-500 space-y-3">
           <div className="flex justify-center items-center gap-4 text-slate-400">
             <a href="/" className="hover:text-white transition-colors">Home</a>
             <span>•</span>
@@ -42,7 +43,7 @@ export default function RootLayout({
             <a href="/changelog" className="hover:text-amber-400 text-slate-300 font-medium transition-colors flex items-center gap-1">
               <span>📜 Updates & Changelog</span>
               <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-600/50 px-1.5 py-0.2 rounded-full">
-                v1.6.0
+                {CURRENT_VERSION}
               </span>
             </a>
           </div>
