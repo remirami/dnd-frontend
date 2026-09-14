@@ -78,6 +78,51 @@ export default function CharactersPage() {
         }
     };
 
+    // Handle Barbarian smart-hybrid defense choice toggle
+    const handleToggleBarbarianArmor = (useScaleMail: boolean) => {
+        if (!previewHero) return;
+        const dex = previewHero.dexterity ?? 10;
+        const con = previewHero.constitution ?? 10;
+        const dexMod = Math.floor((dex - 10) / 2);
+        const conMod = Math.floor((con - 10) / 2);
+        const unarmoredAc = 10 + dexMod + conMod;
+        const scaleAc = 14 + Math.min(dexMod, 2);
+
+        const newSelections = { ...(previewHero.equipment_selections || {}) };
+        let newAc = unarmoredAc;
+        let newSummary = `Unarmored Defense (AC ${unarmoredAc})`;
+
+        // Update equipment list
+        let newEquipList = [...(previewHero.equipment_list || [])];
+        if (useScaleMail) {
+            newSelections['4'] = '(a) Scale Mail';
+            if (scaleAc >= unarmoredAc) {
+                newAc = scaleAc;
+                newSummary = `Scale Mail (AC ${scaleAc})`;
+            } else {
+                newAc = unarmoredAc;
+                newSummary = `Unarmored Defense (AC ${unarmoredAc}) • Scale Mail stored in bag`;
+            }
+            if (!newEquipList.includes('Scale Mail')) {
+                newEquipList.push('Scale Mail');
+            }
+        } else {
+            newSelections['4'] = '(b) Unarmored Warrior (Two Extra Javelins)';
+            newAc = unarmoredAc;
+            newSummary = `Unarmored Defense (AC ${unarmoredAc})`;
+            newEquipList = newEquipList.filter(item => !item.includes('Scale Mail'));
+        }
+
+        setPreviewHero({
+            ...previewHero,
+            equipment_selections: newSelections,
+            equipment_list: newEquipList,
+            has_scale_mail: useScaleMail,
+            armor_class: newAc,
+            defense_summary: newSummary,
+        });
+    };
+
     // Step 2: Confirm character and persist to database
     const handleConfirmHero = async () => {
         if (!previewHero) return;
@@ -91,9 +136,10 @@ export default function CharactersPage() {
             setSavedHero(createdChar);
             setIsConfirmed(true);
             await loadCharacters();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to confirm character:", err);
-            alert("Could not save character. Please try again.");
+            const errorMsg = err?.response?.data?.error || err?.message || "Could not save character. Please try again.";
+            alert(errorMsg);
         } finally {
             setSaving(false);
         }
@@ -258,6 +304,11 @@ export default function CharactersPage() {
                                         <div className="text-xl font-bold text-blue-400 mt-1">
                                             {currentHero.stats?.armor_class ?? currentHero.armor_class ?? "-"}
                                         </div>
+                                        {currentHero.defense_summary && (
+                                            <div className="text-[10px] text-slate-400 mt-0.5 truncate font-medium" title={currentHero.defense_summary}>
+                                                {currentHero.defense_summary}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="bg-slate-800/80 rounded-lg p-3 text-center border border-slate-700">
                                         <div className="text-xs text-slate-400 uppercase font-semibold">Starting Gold</div>
@@ -266,6 +317,64 @@ export default function CharactersPage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Barbarian Armor / Defense Choice (Smart Hybrid) */}
+                                {(currentHero.character_class_name?.toLowerCase() === 'barbarian' || currentHero.character_class?.name?.toLowerCase() === 'barbarian') && !isConfirmed && (
+                                    <div className="bg-slate-800/80 rounded-lg p-3 border border-amber-500/40">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                                                🛡️ Barbarian Defense Choice (Smart Hybrid)
+                                            </span>
+                                            <span className="text-[11px] text-slate-400">
+                                                Effective AC: <strong className="text-amber-300 font-bold">{currentHero.armor_class}</strong>
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleBarbarianArmor(true)}
+                                                className={`p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer ${
+                                                    currentHero.has_scale_mail
+                                                        ? "bg-amber-950/70 border-amber-500 text-white shadow-md ring-1 ring-amber-500/50"
+                                                        : "bg-slate-900/60 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600"
+                                                }`}
+                                            >
+                                                <div className="font-bold flex items-center justify-between">
+                                                    <span className="text-amber-200">🛡️ Scale Mail</span>
+                                                    {currentHero.has_scale_mail && (
+                                                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-semibold">
+                                                            Selected
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-[11px] text-slate-400 mt-1">
+                                                    Medium Armor (AC 14 + DEX max 2)
+                                                </div>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleBarbarianArmor(false)}
+                                                className={`p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer ${
+                                                    !currentHero.has_scale_mail
+                                                        ? "bg-amber-950/70 border-amber-500 text-white shadow-md ring-1 ring-amber-500/50"
+                                                        : "bg-slate-900/60 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600"
+                                                }`}
+                                            >
+                                                <div className="font-bold flex items-center justify-between">
+                                                    <span className="text-amber-200">🪓 Unarmored Warrior</span>
+                                                    {!currentHero.has_scale_mail && (
+                                                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-semibold">
+                                                            Selected
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-[11px] text-slate-400 mt-1">
+                                                    Unarmored (10 + DEX + CON) + 2 Javelins
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Rolled Ability Scores */}
                                 <div>
@@ -290,6 +399,22 @@ export default function CharactersPage() {
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Starting Equipment if present */}
+                                {currentHero.equipment_list && currentHero.equipment_list.length > 0 && (
+                                    <div className="bg-slate-800/60 rounded-md p-3 border border-slate-700/60">
+                                        <div className="text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center gap-1.5">
+                                            🎒 Starting Equipment:
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {currentHero.equipment_list.map((item: string, idx: number) => (
+                                                <span key={idx} className="bg-slate-900/80 text-slate-300 border border-slate-700 px-2 py-0.5 rounded text-xs">
+                                                    {item}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Starting Spells if present */}
                                 {(currentHero.cantrip_names?.length > 0 || currentHero.spell_names?.length > 0) && (
