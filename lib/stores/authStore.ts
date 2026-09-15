@@ -75,11 +75,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ token, user, isAuthenticated: true });
     },
 
-    logout: () => {
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-        }
+    logout: async () => {
+        await authApi.logout();
         set({ token: null, user: null, isAuthenticated: false });
     },
 
