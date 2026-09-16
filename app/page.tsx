@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { Users, Swords, Skull, User as UserIcon, LogOut, ExternalLink } from "lucide-react";
 import FantasyCard from "@/components/ui/FantasyCard";
+import ParchmentScroll from "@/components/ui/ParchmentScroll";
 import { CURRENT_VERSION, CHANGELOG_DATA } from "@/lib/data/changelog";
 
 interface PillarItem {
@@ -225,38 +226,68 @@ export default function Home() {
           })}
         </div>
 
-        {/* Changelog Card */}
-        <div className="bg-[#181a21] border border-[#c5a059]/40 rounded p-5 font-lora text-sm shadow-md max-w-4xl mx-auto">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-[#c5a059] tracking-wide text-base">
-                Changelog
-              </span>
-              <span className="text-xs text-[#a63a3a] font-semibold font-fira-sans">
-                {CURRENT_VERSION}
-              </span>
-            </div>
-            <Link
-              href="/changelog"
-              className="text-xs text-[#d1cdb8]/70 hover:text-[#c5a059] flex items-center gap-1 transition-colors"
-            >
-              <span>Full History</span>
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          </div>
+        {/* Lower Realm Documents: 2-Column Dual-Tome Grid (Option B) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-stretch max-w-5xl mx-auto">
+          {/* Column 1: The Adventurer's Charter Parchment Scroll */}
+          <ParchmentScroll className="h-full" />
 
-          <ul className="space-y-2 text-xs text-[#d1cdb8] leading-relaxed">
-            {CHANGELOG_DATA[0]?.items.slice(0, 4).map((item) => (
-              <li key={item.id} className="flex items-start gap-2">
-                <span className="text-[#a63a3a] font-bold mt-0.5">•</span>
-                <span>
-                  <strong className="text-[#d1cdb8] font-semibold">{item.title}</strong>
-                  {" — "}
-                  <span className="text-[#d1cdb8]/80">{item.description}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {/* Column 2: The Chronicles (Changelog Card) */}
+          <FantasyCard className="p-6 md:p-7 font-lora shadow-2xl flex flex-col justify-between h-full" glowOnHover={false}>
+            <div>
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#c5a059]/30">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#c5a059]/80">
+                    Chronicles
+                  </span>
+                  <span className="text-xs text-[#a63a3a] bg-[#a63a3a]/15 border border-[#a63a3a]/40 px-1.5 py-0.5 rounded font-semibold font-fira-sans">
+                    {CURRENT_VERSION}
+                  </span>
+                </div>
+                <Link
+                  href="/changelog"
+                  className="text-xs text-[#d1cdb8]/70 hover:text-[#c5a059] flex items-center gap-1 transition-colors"
+                >
+                  <span>Full History</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+
+              <h2 className="font-cinzel-decorative text-lg md:text-xl font-bold tracking-wider text-[#c5a059] mb-1">
+                RECENT UPDATES
+              </h2>
+
+              {/* Filigree Divider */}
+              <div className="flex items-center gap-2 mb-3.5 opacity-70">
+                <div className="h-[1px] w-10 bg-gradient-to-r from-transparent to-[#c5a059]" />
+                <span className="text-[9px] text-[#c5a059]">✦</span>
+                <div className="h-[1px] w-14 bg-gradient-to-r from-[#c5a059] to-transparent" />
+              </div>
+
+              <ul className="space-y-2.5 text-xs text-[#d1cdb8] leading-relaxed">
+                {CHANGELOG_DATA[0]?.items.slice(0, 4).map((item) => (
+                  <li key={item.id} className="flex items-start gap-2">
+                    <span className="text-[#a63a3a] font-bold mt-0.5">•</span>
+                    <span>
+                      <strong className="text-[#d1cdb8] font-semibold">{item.title}</strong>
+                      {" — "}
+                      <span className="text-[#d1cdb8]/80">{item.description}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-[#c5a059]/20 flex items-center justify-between text-[10px] text-[#d1cdb8]/60 italic">
+              <span>Patch Notes & Release Ledger</span>
+              <Link
+                href="/changelog"
+                className="text-[#c5a059] not-italic font-semibold hover:text-[#e0bc75] hover:underline flex items-center gap-1"
+              >
+                <span>View Full Ledger</span>
+                <span>→</span>
+              </Link>
+            </div>
+          </FantasyCard>
         </div>
       </div>
 

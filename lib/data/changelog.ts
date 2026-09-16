@@ -23,14 +23,14 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
     {
         version: "v1.8.0",
         date: "September 16, 2026",
-        title: "Dark-Fantasy Visual Overhaul & Enterprise Security Suite",
+        title: "Tabletop Visual Overhaul & Class Heraldry",
         tag: "Latest",
-        summary: "Delivered a complete aesthetic redesign with deep obsidian and gold styling, authentic tabletop typography, Option A slide-down tooltips, hardened HttpOnly cookie authentication with token blacklisting, and successful migration to Neon Cloud PostgreSQL 16.",
+        summary: "Transformed the realm into an authentic dark-and-gold tabletop aesthetic featuring 12 core class heraldic crests, layered fantasy card framing, responsive 2-column character rosters, and the Adventurer's Charter parchment scroll.",
         items: [
             {
                 id: "1.8.0-1",
                 title: "🎨 Dark-Fantasy Aesthetics & Tabletop Typography",
-                description: "Rebuilt the 5E Dashboard and Characters roster with an immersive tabletop aesthetic featuring deep obsidian (#0c0d12), slate surfaces (#181a21), and radiant gold (#c5a059).",
+                description: "Rebuilt the 5E Dashboard and character views with an immersive tabletop aesthetic featuring deep obsidian (#0c0d12), slate surfaces (#181a21), and radiant gold (#c5a059).",
                 category: "ui",
                 details: [
                     "Cinzel Decorative typography for main headers, pillars, and 5E branding.",
@@ -42,37 +42,46 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
             },
             {
                 id: "1.8.0-2",
-                title: "🔐 Enterprise Security Suite & HttpOnly Cookie Tokens",
-                description: "Hardened authentication architecture against XSS and session hijacking with bank-grade standards.",
-                category: "feature",
+                title: "🛡️ 12 Core Class Heraldic Crests & Medallions",
+                description: "Handcrafted vector heraldic insignias for all 12 core classes embedded into character cards and roll previews.",
+                category: "character",
                 details: [
-                    "Stored refresh tokens in HttpOnly, SameSite=Lax, Secure cookies, removing long-lived secrets from JavaScript memory.",
-                    "Shortened access token lifespan to 15 minutes with transparent Axios interceptor background renewal.",
-                    "Integrated Django REST Framework SimpleJWT token blacklisting upon logout and token rotation.",
-                    "Secure password reset workflow with anti-enumeration protection and complete session revocation.",
-                    "Scoped rate throttling (5 attempts/min) on sensitive login and recovery endpoints."
+                    "Paladin Crusader shield, Barbarian battleaxes, Wizard grimoire, Rogue daggers, Cleric radiant sunburst, and more.",
+                    "Circular medallion framing with dark vignette gradient, gold borders, and hover aura.",
+                    "Immediate visual recognition of your heroes' classes at a glance."
                 ]
             },
             {
                 id: "1.8.0-3",
-                title: "🐘 Neon Serverless Cloud PostgreSQL 16 Migration",
-                description: "Fully migrated database from local SQLite to high-availability Neon PostgreSQL in Frankfurt (eu-central-1).",
-                category: "feature",
+                title: "📜 Interactive Characters Roster & Stat Badges",
+                description: "Revamped character management with responsive 2-column layout, real-time HP indicators, and Quick Roll preview.",
+                category: "character",
                 details: [
-                    "Migrated 28,753 application records across 36 database models via direct multi-batch streaming pipeline in 143 seconds.",
-                    "Resynchronized all 67 PostgreSQL primary key sequences with automated verification.",
-                    "Adopted dual-branch cloud strategy (dev for local work, production for live hosting)."
+                    "Real-time hit points displayed in vibrant emerald green (#22c55e), armor class (AC), and starting wealth.",
+                    "Interactive 2-step Quick Random hero preview with barbarian unarmored defense calculation.",
+                    "Instant navigation to full interactive character sheets."
                 ]
             },
             {
                 id: "1.8.0-4",
-                title: "📜 Interactive Characters Roster & Quick Roll Preview",
-                description: "Revamped character management with responsive 2-column layout and smart preview modal.",
-                category: "character",
+                title: "⚔️ High-Speed Combat Arena Summoning",
+                description: "Overhauled the Combat Arena view with fantasy loading states and lightning-fast battle session summoning.",
+                category: "combat",
                 details: [
-                    "Displaying real-time hit points in emerald green (#22c55e), armor class, and starting gold.",
-                    "Restyled Quick Random generator with smart barbarian hybrid defense toggle.",
-                    "Seamless navigation to full interactive character sheets."
+                    "Streamlined encounter data transfer for instant battle setup and turn management.",
+                    "Replaced plain loading text with an animated golden fantasy spinner.",
+                    "Prepares the arena for the upcoming tactical battlemap and encounter runner."
+                ]
+            },
+            {
+                id: "1.8.0-5",
+                title: "📜 The Adventurer's Charter Parchment Scroll",
+                description: "Added an unfurled ancient parchment scroll on the main dashboard detailing core gameplay mechanics, hero management, combat simulation, and the official 5E SRD ruleset.",
+                category: "ui",
+                details: [
+                    "Curled wooden roller dowels with brass golden finials and weathered dark vellum texture.",
+                    "Crimson wax seal stamp and illuminated drop-cap calligraphy.",
+                    "Balanced 2-column Dual-Tome lower layout paired with the Chronicles."
                 ]
             }
         ]
