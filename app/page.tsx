@@ -7,6 +7,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { Users, Swords, Skull, User as UserIcon, LogOut, ExternalLink } from "lucide-react";
 import FantasyCard from "@/components/ui/FantasyCard";
 import ParchmentScroll from "@/components/ui/ParchmentScroll";
+import FancyHeaderLogo from "@/components/ui/FancyHeaderLogo";
 import { CURRENT_VERSION, CHANGELOG_DATA } from "@/lib/data/changelog";
 
 interface PillarItem {
@@ -80,15 +81,25 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0c0d12] text-slate-100 flex flex-col justify-between p-4 md:p-8 relative">
-      {/* Top Bar with Title & Account Menu */}
-      <div className="w-full max-w-6xl mx-auto flex items-center justify-between pt-2 pb-8">
-        <div className="w-10" /> {/* Spacer to balance account icon */}
+    <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,#1a1d29_0%,#0e1017_45%,#07080b_100%)] text-slate-100 flex flex-col justify-between p-4 md:p-8 relative overflow-x-hidden">
+      {/* Ambient Background Lighting Layers */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[850px] h-[360px] bg-[radial-gradient(ellipse_at_top,rgba(197,160,89,0.14)_0%,transparent_70%)] pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[950px] h-[480px] bg-[radial-gradient(ellipse,rgba(197,160,89,0.05)_0%,transparent_65%)] pointer-events-none -z-10" />
+      <div className="absolute -bottom-24 -left-24 w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(26,32,48,0.35)_0%,transparent_70%)] pointer-events-none -z-10" />
+      <div className="absolute -bottom-24 -right-24 w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(26,32,48,0.35)_0%,transparent_70%)] pointer-events-none -z-10" />
+      {/* Edge Vignette Frame */}
+      <div className="fixed inset-0 pointer-events-none shadow-[inset_0_0_120px_rgba(0,0,0,0.85)] -z-10" />
 
-        {/* Center Title in Cinzel Decorative */}
-        <h1 className="font-cinzel-decorative text-3xl md:text-5xl font-bold tracking-widest text-[#c5a059] text-center drop-shadow-[0_2px_10px_rgba(197,160,89,0.3)]">
-          5E DASHBOARD
-        </h1>
+      {/* Top Bar with Fancy Logo & Account Menu */}
+      <div className="w-full max-w-6xl mx-auto flex items-start justify-between pt-2 pb-8">
+        <div className="w-10 md:w-11" /> {/* Spacer to balance account icon */}
+
+        {/* Center Fancy Logo with Filigree Wings & Crest */}
+        <FancyHeaderLogo
+          title="5E DASHBOARD"
+          subtitle="FIFTH EDITION TABLETOP REALM"
+          className="flex-1 mx-2"
+        />
 
         {/* Account Circle & Dropdown */}
         <div className="relative" ref={dropdownRef}>
