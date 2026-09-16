@@ -17,14 +17,71 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.7.0";
+export const CURRENT_VERSION = "v1.8.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.8.0",
+        date: "September 16, 2026",
+        title: "Dark-Fantasy Visual Overhaul & Enterprise Security Suite",
+        tag: "Latest",
+        summary: "Delivered a complete aesthetic redesign with deep obsidian and gold styling, authentic tabletop typography, Option A slide-down tooltips, hardened HttpOnly cookie authentication with token blacklisting, and successful migration to Neon Cloud PostgreSQL 16.",
+        items: [
+            {
+                id: "1.8.0-1",
+                title: "🎨 Dark-Fantasy Aesthetics & Tabletop Typography",
+                description: "Rebuilt the 5E Dashboard and Characters roster with an immersive tabletop aesthetic featuring deep obsidian (#0c0d12), slate surfaces (#181a21), and radiant gold (#c5a059).",
+                category: "ui",
+                details: [
+                    "Cinzel Decorative typography for main headers, pillars, and 5E branding.",
+                    "Lora serif typography for lore, character classes, dialogues, and legalese.",
+                    "Fira Sans typography for crisp tactical numbers, levels, hit points, and armor class.",
+                    "Option A interactive tooltips: desktop hover slide/fade reveals and mobile touch toggles with diamond headers.",
+                    "Custom FantasyCard frame with 4 diagonal antique gold corner ornaments."
+                ]
+            },
+            {
+                id: "1.8.0-2",
+                title: "🔐 Enterprise Security Suite & HttpOnly Cookie Tokens",
+                description: "Hardened authentication architecture against XSS and session hijacking with bank-grade standards.",
+                category: "feature",
+                details: [
+                    "Stored refresh tokens in HttpOnly, SameSite=Lax, Secure cookies, removing long-lived secrets from JavaScript memory.",
+                    "Shortened access token lifespan to 15 minutes with transparent Axios interceptor background renewal.",
+                    "Integrated Django REST Framework SimpleJWT token blacklisting upon logout and token rotation.",
+                    "Secure password reset workflow with anti-enumeration protection and complete session revocation.",
+                    "Scoped rate throttling (5 attempts/min) on sensitive login and recovery endpoints."
+                ]
+            },
+            {
+                id: "1.8.0-3",
+                title: "🐘 Neon Serverless Cloud PostgreSQL 16 Migration",
+                description: "Fully migrated database from local SQLite to high-availability Neon PostgreSQL in Frankfurt (eu-central-1).",
+                category: "feature",
+                details: [
+                    "Migrated 28,753 application records across 36 database models via direct multi-batch streaming pipeline in 143 seconds.",
+                    "Resynchronized all 67 PostgreSQL primary key sequences with automated verification.",
+                    "Adopted dual-branch cloud strategy (dev for local work, production for live hosting)."
+                ]
+            },
+            {
+                id: "1.8.0-4",
+                title: "📜 Interactive Characters Roster & Quick Roll Preview",
+                description: "Revamped character management with responsive 2-column layout and smart preview modal.",
+                category: "character",
+                details: [
+                    "Displaying real-time hit points in emerald green (#22c55e), armor class, and starting gold.",
+                    "Restyled Quick Random generator with smart barbarian hybrid defense toggle.",
+                    "Seamless navigation to full interactive character sheets."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.7.0",
         date: "September 14, 2026",
         title: "Combat Encounter Participant Hard Limits",
-        tag: "Latest",
+        tag: "Major",
         summary: "Enforced balanced tabletop combat limits (16 total participants, 6 party members, 10 enemies) across backend API and frontend setup UI with live counters, capacity warnings, and smooth de-selection.",
         items: [
             {

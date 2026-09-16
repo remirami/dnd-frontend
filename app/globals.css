@@ -140,3 +140,16 @@
     background: rgba(148, 163, 184, 0.7);
   }
 }
+
+/* D&D 5E Custom Typography */
+.font-cinzel-decorative {
+  font-family: var(--font-cinzel-decorative), serif;
+}
+
+.font-lora {
+  font-family: var(--font-lora), serif;
+}
+
+.font-fira-sans {
+  font-family: var(--font-fira-sans), sans-serif;
+}
