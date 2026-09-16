@@ -4,11 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authApi } from "@/lib/api/auth";
-import { Button } from "@/components/ui/button";
+import FantasyCard from "@/components/ui/FantasyCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldAlert, Sparkles, User, Mail, Lock, Eye, EyeOff, Check, X, ArrowRight } from "lucide-react";
+import { ShieldAlert, User, Mail, Lock, Eye, EyeOff, Check, X, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -67,29 +66,40 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0c0d12] flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-1/4 w-64 h-64 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#c5a059]/5 rounded-full blur-3xl pointer-events-none" />
 
-      <Card className="w-full max-w-md border-amber-500/20 bg-slate-900/85 backdrop-blur-xl shadow-[0_0_60px_-15px_rgba(245,158,11,0.2)] text-slate-100 rounded-2xl overflow-hidden">
-        <div className="h-1.5 w-full bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600" />
-        
-        <CardHeader className="space-y-2 text-center pt-8 pb-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.25)]">
-            <Sparkles className="w-6 h-6" />
+      <div className="w-full max-w-md">
+        {/* Brand Header */}
+        <div className="text-center mb-6">
+          <Link
+            href="/"
+            className="font-cinzel-decorative text-2xl md:text-3xl font-bold tracking-widest text-[#c5a059] hover:text-[#e0bc75] transition-colors drop-shadow-[0_2px_10px_rgba(197,160,89,0.3)] inline-block"
+          >
+            5E DASHBOARD
+          </Link>
+        </div>
+
+        <FantasyCard className="p-8 font-lora shadow-2xl">
+          {/* Header & Filigree */}
+          <div className="text-center mb-6">
+            <h1 className="font-cinzel-decorative text-2xl font-bold tracking-wider text-[#c5a059]">
+              CREATE ACCOUNT
+            </h1>
+            <p className="text-xs text-[#d1cdb8]/80 mt-1">
+              Forge your adventurer credentials to begin your saga
+            </p>
+
+            <div className="flex items-center justify-center gap-2 mt-3 opacity-70">
+              <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#c5a059]" />
+              <span className="text-[9px] text-[#c5a059]">✦</span>
+              <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-[#c5a059]" />
+            </div>
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight bg-gradient-to-b from-amber-100 to-amber-300/80 bg-clip-text text-transparent">
-            Forge Your Legend
-          </CardTitle>
-          <CardDescription className="text-slate-400 text-sm">
-            Create an account to embark on quests and track your characters
-          </CardDescription>
-        </CardHeader>
 
-        <CardContent className="space-y-5 px-6 pb-8">
           {error && (
-            <div className="p-3 text-xs flex items-center gap-2 text-rose-300 bg-rose-950/50 border border-rose-500/30 rounded-lg">
+            <div className="mb-4 p-3 text-xs flex items-center gap-2 text-rose-300 bg-rose-950/60 border border-rose-500/40 rounded animate-shake">
               <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
               <span>{error}</span>
             </div>
@@ -97,7 +107,10 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="register-username" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <Label
+                htmlFor="register-username"
+                className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider"
+              >
                 Adventurer Handle (Username)
               </Label>
               <div className="relative">
@@ -109,13 +122,16 @@ export default function RegisterPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  className="pl-9 bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-amber-500/50 focus:ring-amber-500/20 h-10 transition-colors"
+                  className="pl-9 bg-[#0c0d12] border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-[#c5a059] focus:ring-[#c5a059]/20 h-10 text-xs transition-colors font-lora"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="register-email" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <Label
+                htmlFor="register-email"
+                className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider"
+              >
                 Email Address
               </Label>
               <div className="relative">
@@ -127,13 +143,16 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="pl-9 bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-amber-500/50 focus:ring-amber-500/20 h-10 transition-colors"
+                  className="pl-9 bg-[#0c0d12] border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-[#c5a059] focus:ring-[#c5a059]/20 h-10 text-xs transition-colors font-lora"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="register-password" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <Label
+                htmlFor="register-password"
+                className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider"
+              >
                 Password
               </Label>
               <div className="relative">
@@ -145,12 +164,12 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pl-9 pr-10 bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-amber-500/50 focus:ring-amber-500/20 h-10 transition-colors"
+                  className="pl-9 pr-10 bg-[#0c0d12] border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-[#c5a059] focus:ring-[#c5a059]/20 h-10 text-xs transition-colors font-lora"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -158,7 +177,10 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="register-confirm-password" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <Label
+                htmlFor="register-confirm-password"
+                className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider"
+              >
                 Confirm Password
               </Label>
               <div className="relative">
@@ -170,28 +192,32 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="pl-9 pr-10 bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-amber-500/50 focus:ring-amber-500/20 h-10 transition-colors"
+                  className="pl-9 pr-10 bg-[#0c0d12] border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-[#c5a059] focus:ring-[#c5a059]/20 h-10 text-xs transition-colors font-lora"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* Validation helpers */}
+            {/* Validation Checklist */}
             {password.length > 0 && (
-              <div className="p-2.5 bg-slate-950/40 border border-slate-800 rounded-lg text-xs space-y-1">
+              <div className="p-2.5 bg-[#0c0d12] border border-slate-800 rounded text-xs space-y-1 font-lora">
                 <div className="flex items-center gap-1.5">
                   {hasMinLength ? (
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
                   ) : (
-                    <X className="w-3.5 h-3.5 text-slate-500" />
+                    <X className="w-3.5 h-3.5 text-slate-600" />
                   )}
-                  <span className={hasMinLength ? "text-emerald-300" : "text-slate-400"}>
+                  <span className={hasMinLength ? "text-emerald-300" : "text-slate-500"}>
                     At least 8 characters
                   </span>
                 </div>
@@ -210,28 +236,35 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <Button
+            <button
               type="submit"
               id="register-submit"
               disabled={loading}
-              className="w-full mt-2 h-11 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold shadow-md shadow-amber-600/25 transition-all duration-200"
+              className="w-full mt-2 h-10 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_20px_rgba(197,160,89,0.3)] cursor-pointer flex items-center justify-center gap-2"
             >
-              {loading ? "Forging Account..." : (
-                <span className="flex items-center justify-center gap-2">
-                  Create Account <ArrowRight className="w-4 h-4" />
-                </span>
+              {loading ? (
+                "Forging Account..."
+              ) : (
+                <>
+                  <span>Forge Account</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
               )}
-            </Button>
+            </button>
 
-            <p className="text-center text-xs text-slate-400 pt-2">
-              Already have an account?{" "}
-              <Link href="/login" id="link-login" className="text-amber-400 hover:text-amber-300 font-semibold hover:underline">
-                Enter the Tavern (Login)
+            <p className="text-center text-xs text-[#d1cdb8]/70 pt-2">
+              Already an adventurer?{" "}
+              <Link
+                href="/login"
+                id="link-login"
+                className="text-[#c5a059] hover:text-[#e0bc75] font-semibold hover:underline"
+              >
+                Sign In
               </Link>
             </p>
           </form>
-        </CardContent>
-      </Card>
+        </FantasyCard>
+      </div>
     </div>
   );
 }
