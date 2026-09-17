@@ -67,6 +67,10 @@ export default function CharactersPage() {
 
   // Step 1: Roll preview data without adding to database
   const handleQuickRoll = async () => {
+    if (characters.length >= 20) {
+      alert("Hero limit reached (20/20). Please delete an existing character before creating a new one.");
+      return;
+    }
     setRolling(true);
     setIsConfirmed(false);
     setSavedHero(null);
@@ -154,15 +158,24 @@ export default function CharactersPage() {
 
   const currentHero = isConfirmed ? savedHero : previewHero;
 
+  const isLimitReached = characters.length >= 20;
+
   return (
     <div className="min-h-screen bg-[#0c0d12] text-slate-100 flex flex-col">
       {/* Universal 5E Navbar with Subpage Actions */}
-      <Navbar showActions={true} onQuickRandom={handleQuickRoll} />
+      <Navbar
+        showActions={true}
+        onQuickRandom={handleQuickRoll}
+        disableCreate={isLimitReached}
+        createDisabledTooltip="Hero roster limit reached (20/20). Delete a hero to forge a new one."
+        disableQuickRandom={isLimitReached || rolling}
+        quickRandomDisabledTooltip="Hero roster limit reached (20/20). Delete a hero to roll a new one."
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12">
         {/* Page Title & Decorative Ornament */}
-        <div className="text-center mb-8 md:mb-12">
+        <div className="text-center mb-6 md:mb-8">
           <h1 className="font-cinzel-decorative text-3xl md:text-5xl font-bold tracking-widest text-[#c5a059] drop-shadow-[0_2px_12px_rgba(197,160,89,0.3)]">
             MY CHARACTERS
           </h1>
@@ -172,6 +185,38 @@ export default function CharactersPage() {
             <span className="text-xs text-[#c5a059]">✦</span>
             <div className="h-[1px] w-16 sm:w-28 bg-gradient-to-l from-transparent to-[#c5a059]" />
           </div>
+
+          {/* Hero Roster Limit Counter Badge */}
+          <div className="flex items-center justify-center mt-3">
+            <span
+              className={`inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-lora border transition-all ${
+                isLimitReached
+                  ? "bg-amber-950/40 border-amber-500/60 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                  : "bg-[#12141a] border-[#c5a059]/40 text-[#c5a059]"
+              }`}
+            >
+              <span className="text-[10px]">✦</span>
+              <span className="font-semibold">{characters.length} / 20 Heroes</span>
+              {isLimitReached && (
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
+                  (Roster Full)
+                </span>
+              )}
+            </span>
+          </div>
+
+          {/* Warning Banner when roster limit reached */}
+          {isLimitReached && (
+            <div className="mt-5 max-w-2xl mx-auto p-4 rounded bg-[#181a21] border border-amber-500/50 flex items-start gap-3 text-amber-200 text-sm font-lora shadow-[0_0_15px_rgba(245,158,11,0.15)] text-left">
+              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-300">Hero Limit Reached (20 / 20)</p>
+                <p className="text-xs text-amber-200/80 mt-0.5 leading-relaxed">
+                  Your adventuring company has reached capacity. To forge a new hero or perform a Quick Roll, retire (delete) an existing character from your collection.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mobile Action Bar (only shown on small screens where navbar center items are hidden) */}
@@ -185,21 +230,37 @@ export default function CharactersPage() {
           </Link>
 
           <button
-            onClick={handleQuickRoll}
-            disabled={rolling}
-            className="px-3 py-1.5 text-xs text-[#c5a059] border border-[#c5a059] rounded hover:bg-[#c5a059]/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+            onClick={isLimitReached ? undefined : handleQuickRoll}
+            disabled={rolling || isLimitReached}
+            title={isLimitReached ? "Hero limit reached (20/20)" : "Quick Random"}
+            className={`px-3 py-1.5 text-xs rounded transition-colors flex items-center gap-1.5 ${
+              isLimitReached
+                ? "border border-[#c5a059]/20 text-[#d1cdb8]/40 bg-[#12141a] cursor-not-allowed"
+                : "text-[#c5a059] border border-[#c5a059] hover:bg-[#c5a059]/10 cursor-pointer"
+            }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{rolling ? "Rolling..." : "Quick Random"}</span>
           </button>
 
-          <Link
-            href="/characters/create"
-            className="px-3 py-1.5 text-xs text-[#c5a059] border border-[#c5a059] rounded hover:bg-[#c5a059]/10 transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create</span>
-          </Link>
+          {isLimitReached ? (
+            <button
+              disabled
+              title="Hero limit reached (20/20)"
+              className="px-3 py-1.5 text-xs border border-[#c5a059]/20 text-[#d1cdb8]/40 bg-[#12141a] rounded flex items-center gap-1.5 cursor-not-allowed"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create</span>
+            </button>
+          ) : (
+            <Link
+              href="/characters/create"
+              className="px-3 py-1.5 text-xs text-[#c5a059] border border-[#c5a059] rounded hover:bg-[#c5a059]/10 transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create</span>
+            </Link>
+          )}
         </div>
 
         {/* Loading State */}

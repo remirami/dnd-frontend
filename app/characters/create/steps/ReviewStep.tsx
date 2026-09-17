@@ -119,12 +119,14 @@ export default function ReviewStep({ formData, onBack }: ReviewStepProps) {
         } catch (err: any) {
             console.error("Character creation error:", err);
             const errorData = err.response?.data;
-            if (typeof errorData === 'object' && errorData !== null) {
+            if (errorData?.error) {
+                setError(errorData.error);
+            } else if (typeof errorData === 'object' && errorData !== null) {
                 const firstError = Object.entries(errorData)[0];
                 if (firstError) {
                     const [field, messages] = firstError;
                     const message = Array.isArray(messages) ? messages[0] : messages;
-                    setError(`${field}: ${message}`);
+                    setError(field === 'error' || field === 'detail' ? String(message) : `${field}: ${message}`);
                 } else {
                     setError("Failed to create character");
                 }

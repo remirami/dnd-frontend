@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import FantasyCard from "@/components/ui/FantasyCard";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ShieldAlert } from "lucide-react";
 
 // Import step components (we'll create these)
 import BasicInfoStep from "./steps/BasicInfoStep";
@@ -95,11 +95,32 @@ export default function CharacterCreationWizard() {
         language_ids: [],
     });
 
+    const [characterCount, setCharacterCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        const checkLimit = async () => {
+            try {
+                const res = await charactersApi.getAll();
+                const total = res.data?.results?.length ?? (Array.isArray(res.data) ? res.data.length : 0);
+                setCharacterCount(total);
+            } catch (err) {
+                console.error("Failed to check character count:", err);
+            }
+        };
+        checkLimit();
+    }, []);
+
     const updateFormData = (updates: Partial<CharacterFormData>) => {
         setFormData(prev => ({ ...prev, ...updates }));
     };
 
+    const isLimitReached = characterCount !== null && characterCount >= 20;
+
     const handleRandomizeAll = async () => {
+        if (isLimitReached) {
+            alert("Hero limit reached (20/20). Please delete an existing character before creating a new one.");
+            return;
+        }
         setIsRandomizing(true);
         try {
             const res = await charactersApi.generateRandom({
@@ -251,7 +272,14 @@ export default function CharacterCreationWizard() {
     return (
         <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col">
             {/* Universal 5E Navbar with Quick Random action */}
-            <Navbar showActions={true} onQuickRandom={handleRandomizeAll} />
+            <Navbar
+                showActions={true}
+                onQuickRandom={handleRandomizeAll}
+                disableCreate={isLimitReached}
+                createDisabledTooltip="Hero roster limit reached (20/20). Delete a hero to forge a new one."
+                disableQuickRandom={isLimitReached || isRandomizing}
+                quickRandomDisabledTooltip="Hero roster limit reached (20/20). Delete a hero to roll a new one."
+            />
 
             {/* Main Content Area */}
             <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 space-y-6">
@@ -263,6 +291,25 @@ export default function CharacterCreationWizard() {
                     <span className="text-[#c5a059]/40">/</span>
                     <span className="text-[#c5a059] font-medium">Create</span>
                 </div>
+
+                {/* Hero Limit Warning Banner if Roster Full */}
+                {isLimitReached && (
+                    <div className="p-4 rounded bg-[#181a21] border border-amber-500/50 flex items-start gap-3 text-amber-200 text-sm font-lora shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+                        <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                        <div className="space-y-1 text-left">
+                            <p className="font-bold text-amber-300">Hero Limit Reached (20 / 20)</p>
+                            <p className="text-xs text-amber-200/80 leading-relaxed">
+                                Your account has reached the limit of 20 characters. You cannot persist a new hero to your roster until you delete an existing character.
+                            </p>
+                            <Link
+                                href="/characters"
+                                className="inline-block mt-2 text-xs font-semibold text-[#c5a059] underline hover:text-[#e0bc75] transition-colors"
+                            >
+                                ← Return to My Characters to manage heroes
+                            </Link>
+                        </div>
+                    </div>
+                )}
 
                 {/* Page Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -279,8 +326,9 @@ export default function CharacterCreationWizard() {
                         <button
                             type="button"
                             onClick={handleRandomizeAll}
-                            disabled={isRandomizing}
-                            className="px-4 py-2 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] hover:text-[#e0bc75] font-lora font-semibold text-xs sm:text-sm rounded border border-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:shadow-[0_0_20px_rgba(197,160,89,0.35)] transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                            disabled={isRandomizing || isLimitReached}
+                            title={isLimitReached ? "Hero roster limit reached (20/20)" : "Randomize character"}
+                            className="px-4 py-2 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] hover:text-[#e0bc75] font-lora font-semibold text-xs sm:text-sm rounded border border-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:shadow-[0_0_20px_rgba(197,160,89,0.35)] transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Sparkles className="w-4 h-4 text-[#c5a059]" />
                             <span>{isRandomizing ? "Rolling..." : "Randomize Character"}</span>

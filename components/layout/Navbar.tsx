@@ -9,9 +9,20 @@ import { User as UserIcon, LogOut, Sparkles, Plus, Home } from "lucide-react";
 interface NavbarProps {
   showActions?: boolean;
   onQuickRandom?: () => void;
+  disableCreate?: boolean;
+  createDisabledTooltip?: string;
+  disableQuickRandom?: boolean;
+  quickRandomDisabledTooltip?: string;
 }
 
-export default function Navbar({ showActions = false, onQuickRandom }: NavbarProps) {
+export default function Navbar({
+  showActions = false,
+  onQuickRandom,
+  disableCreate = false,
+  createDisabledTooltip,
+  disableQuickRandom = false,
+  quickRandomDisabledTooltip,
+}: NavbarProps) {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -59,21 +70,38 @@ export default function Navbar({ showActions = false, onQuickRandom }: NavbarPro
 
           {onQuickRandom && (
             <button
-              onClick={onQuickRandom}
-              className="px-3.5 py-1.5 text-xs text-[#c5a059] border border-[#c5a059] rounded hover:bg-[#c5a059]/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+              onClick={disableQuickRandom ? undefined : onQuickRandom}
+              disabled={disableQuickRandom}
+              title={disableQuickRandom ? quickRandomDisabledTooltip : "Roll a quick randomized character"}
+              className={`px-3.5 py-1.5 text-xs rounded transition-colors flex items-center gap-1.5 ${
+                disableQuickRandom
+                  ? "border border-[#c5a059]/20 text-[#d1cdb8]/40 bg-[#12141a] cursor-not-allowed"
+                  : "text-[#c5a059] border border-[#c5a059] hover:bg-[#c5a059]/10 cursor-pointer"
+              }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Quick Random</span>
             </button>
           )}
 
-          <Link
-            href="/characters/create"
-            className="px-3.5 py-1.5 text-xs text-[#c5a059] border border-[#c5a059] rounded hover:bg-[#c5a059]/10 transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create character</span>
-          </Link>
+          {disableCreate ? (
+            <button
+              disabled
+              title={createDisabledTooltip || "Character limit reached"}
+              className="px-3.5 py-1.5 text-xs border border-[#c5a059]/20 text-[#d1cdb8]/40 bg-[#12141a] rounded flex items-center gap-1.5 cursor-not-allowed"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create character</span>
+            </button>
+          ) : (
+            <Link
+              href="/characters/create"
+              className="px-3.5 py-1.5 text-xs text-[#c5a059] border border-[#c5a059] rounded hover:bg-[#c5a059]/10 transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create character</span>
+            </Link>
+          )}
         </div>
       )}
 

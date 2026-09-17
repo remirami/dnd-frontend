@@ -61,13 +61,38 @@ export default function CombatListPage() {
     }
   };
 
+  const activeSessions = sessions.filter(
+    (s) => s.is_active || s.status === "active" || s.status === "preparing"
+  );
+  const completedSessions = sessions.filter((s) => s.status === "ended");
+  const activeLimitReached = activeSessions.length >= 2;
+  const totalLimitReached = sessions.length >= 10;
+  const cannotCreateCombat = activeLimitReached || totalLimitReached;
+  const createDisabledReason = activeLimitReached
+    ? "Active combat limit reached (2/2). Finish or delete an ongoing battle before starting a new encounter."
+    : totalLimitReached
+    ? "Total combat limit reached (10/10). Delete an older session from your history before starting a new encounter."
+    : "";
+
   const handleCreateSession = async () => {
+    if (activeLimitReached) {
+      alert(createDisabledReason);
+      return;
+    }
+    if (totalLimitReached) {
+      alert(createDisabledReason);
+      return;
+    }
     try {
       const response = await combatApi.create({});
       router.push(`/combat/${response.data.id}/setup`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create combat session:", error);
-      alert("Failed to create combat session");
+      const errorMsg =
+        error?.response?.data?.error ||
+        error?.response?.data?.detail ||
+        "Failed to create combat session";
+      alert(errorMsg);
     }
   };
 
@@ -113,11 +138,6 @@ export default function CombatListPage() {
     );
   }
 
-  const activeSessions = sessions.filter(
-    (s) => s.is_active || s.status === "active" || s.status === "preparing"
-  );
-  const completedSessions = sessions.filter((s) => s.status === "ended");
-
   return (
     <div className="min-h-screen bg-[#0c0d12] text-slate-100 flex flex-col">
       {/* Universal 5E Navbar */}
@@ -126,7 +146,7 @@ export default function CombatListPage() {
       {/* Main Content */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12">
         {/* Title Header with Filigree Divider */}
-        <div className="text-center mb-8 md:mb-12">
+        <div className="text-center mb-6 md:mb-8">
           <h1 className="font-cinzel-decorative text-3xl md:text-5xl font-bold tracking-widest text-[#c5a059] drop-shadow-[0_2px_12px_rgba(197,160,89,0.3)]">
             COMBAT ARENA
           </h1>
@@ -138,6 +158,56 @@ export default function CombatListPage() {
             <span className="text-xs text-[#c5a059]">✦</span>
             <div className="h-[1px] w-16 sm:w-28 bg-gradient-to-l from-transparent to-[#c5a059]" />
           </div>
+
+          {/* Combat Limits Counter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+            <span
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-lora border transition-all ${
+                activeLimitReached
+                  ? "bg-amber-950/40 border-amber-500/60 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                  : "bg-[#12141a] border-[#c5a059]/40 text-[#c5a059]"
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="font-semibold">Active: {activeSessions.length} / 2</span>
+              {activeLimitReached && (
+                <span className="text-[10px] uppercase font-bold text-amber-400">(Max)</span>
+              )}
+            </span>
+
+            <span
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-lora border transition-all ${
+                totalLimitReached
+                  ? "bg-amber-950/40 border-amber-500/60 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                  : "bg-[#12141a] border-[#c5a059]/40 text-[#c5a059]"
+              }`}
+            >
+              <History className="w-3.5 h-3.5 text-[#c5a059]" />
+              <span className="font-semibold">Archive: {sessions.length} / 10</span>
+              {totalLimitReached && (
+                <span className="text-[10px] uppercase font-bold text-amber-400">(Full)</span>
+              )}
+            </span>
+          </div>
+
+          {/* Limit Warning Banner */}
+          {cannotCreateCombat && (
+            <div className="mt-5 max-w-2xl mx-auto p-4 rounded bg-[#181a21] border border-amber-500/50 flex items-start gap-3 text-amber-200 text-sm font-lora shadow-[0_0_15px_rgba(245,158,11,0.15)] text-left">
+              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-300">
+                  {activeLimitReached
+                    ? "Active Combat Limit Reached (2 / 2)"
+                    : "Combat Archive Limit Reached (10 / 10)"}
+                </p>
+                <p className="text-xs text-amber-200/80 mt-0.5 leading-relaxed">
+                  {activeLimitReached
+                    ? "You have 2 active or preparing skirmishes in progress. Finish or delete an ongoing battle before commencing a new encounter."
+                    : "Your war archives have reached the limit of 10 total sessions. Delete an older battle from your history to liberate capacity."}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action Header */}
@@ -153,8 +223,14 @@ export default function CombatListPage() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handleCreateSession}
-              className="px-5 py-2.5 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_20px_rgba(197,160,89,0.3)] flex items-center gap-2 cursor-pointer"
+              onClick={cannotCreateCombat ? undefined : handleCreateSession}
+              disabled={cannotCreateCombat}
+              title={createDisabledReason || "Start a new tactical skirmish"}
+              className={`px-5 py-2.5 font-bold text-xs rounded transition-all flex items-center gap-2 ${
+                cannotCreateCombat
+                  ? "bg-[#181a21] border border-[#c5a059]/20 text-[#d1cdb8]/40 cursor-not-allowed opacity-60"
+                  : "bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] shadow-[0_0_20px_rgba(197,160,89,0.3)] cursor-pointer"
+              }`}
             >
               <Swords className="w-4 h-4" />
               <span>New Encounter</span>
