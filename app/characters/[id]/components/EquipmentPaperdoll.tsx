@@ -29,19 +29,19 @@ const SLOT_DEFS: Record<string, SlotDef> = {
 
 // ─── Rarity colours ───────────────────────────────────────────────────────────
 const rarityBorder: Record<string, string> = {
-    common: "border-slate-500/60   shadow-slate-500/20",
-    uncommon: "border-green-500/60   shadow-green-500/25",
-    rare: "border-blue-500/60    shadow-blue-500/25",
-    "very rare": "border-purple-500/60  shadow-purple-500/25",
-    legendary: "border-amber-500/70   shadow-amber-500/35",
-    artifact: "border-red-500/70     shadow-red-500/35",
+    common: "border-[#c5a059]/30 shadow-[#c5a059]/10",
+    uncommon: "border-green-500/60 shadow-green-500/20",
+    rare: "border-blue-400/60 shadow-blue-400/20",
+    "very rare": "border-purple-400/60 shadow-purple-400/20",
+    legendary: "border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.35)]",
+    artifact: "border-red-500/70 shadow-red-500/30",
 };
 const rarityText: Record<string, string> = {
-    common: "text-slate-300",
+    common: "text-[#d1cdb8]",
     uncommon: "text-green-400",
     rare: "text-blue-400",
     "very rare": "text-purple-400",
-    legendary: "text-amber-400",
+    legendary: "text-[#e0bc75]",
     artifact: "text-red-400",
 };
 
@@ -50,39 +50,39 @@ function ItemTooltip({ item }: { item: CharacterItem }) {
     const rarity = item.item_details.rarity?.toLowerCase() || "common";
     return (
         <div className={`
-            absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56
-            bg-slate-950 border rounded-xl shadow-2xl p-3 pointer-events-none text-left
+            absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-60
+            bg-[#12141a] border rounded-sm shadow-2xl p-3.5 pointer-events-none text-left
             ${rarityBorder[rarity] || rarityBorder.common}
         `}>
-            <div className={`font-bold text-sm mb-0.5 ${rarityText[rarity] || "text-white"}`}>
+            <div className={`font-cinzel-decorative font-bold text-sm mb-0.5 ${rarityText[rarity] || "text-[#c5a059]"}`}>
                 {item.item_details.name}
             </div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-2">
+            <div className="text-[10px] text-[#c5a059]/70 font-cinzel-decorative uppercase tracking-wider mb-2">
                 {item.item_details.rarity} · {item.item_details.category?.name}
             </div>
             {item.item_details.damage_dice && (
-                <div className="text-xs text-red-300 mb-0.5">
+                <div className="text-xs text-red-300 font-fira-sans mb-0.5">
                     ⚔ {item.item_details.damage_dice} {item.item_details.damage_type}
                 </div>
             )}
             {item.item_details.base_ac !== undefined && (
-                <div className="text-xs text-blue-300 mb-0.5">🛡 AC {item.item_details.base_ac}</div>
+                <div className="text-xs text-[#c5a059] font-fira-sans mb-0.5">🛡 AC {item.item_details.base_ac}</div>
             )}
             {item.item_details.ac_bonus !== undefined && (
-                <div className="text-xs text-blue-300 mb-0.5">🛡 +{item.item_details.ac_bonus} AC</div>
+                <div className="text-xs text-[#c5a059] font-fira-sans mb-0.5">🛡 +{item.item_details.ac_bonus} AC</div>
             )}
             {item.item_details.description && (
-                <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed line-clamp-3 border-t border-slate-800 pt-1.5">
+                <p className="text-[11px] text-[#d1cdb8]/80 font-lora mt-2 leading-relaxed line-clamp-3 border-t border-[#c5a059]/20 pt-2">
                     {item.item_details.description}
                 </p>
             )}
             {item.is_attuned && (
-                <div className="text-[10px] text-amber-400 mt-1 font-medium">⚡ Attuned</div>
+                <div className="text-[10px] text-[#c5a059] font-fira-sans mt-1.5 font-semibold">⚡ Attuned</div>
             )}
             {item.item_details.requires_attunement && !item.is_attuned && (
-                <div className="text-[10px] text-amber-600/70 mt-1">Requires attunement</div>
+                <div className="text-[10px] text-[#c5a059]/60 font-lora italic mt-1">Requires attunement</div>
             )}
-            <div className="text-[9px] text-slate-600 mt-2 italic">Click to unequip</div>
+            <div className="text-[9px] text-[#c5a059]/50 font-lora mt-2 italic">Click to unequip</div>
         </div>
     );
 }
@@ -225,15 +225,15 @@ function EquipSlot({
                     relative border-2 transition-all duration-200 cursor-pointer
                     flex flex-col items-center justify-center gap-1
                     ${sizeClass}
-                    ${isRing ? "rounded-full" : "rounded-xl"}
+                    ${isRing ? "rounded-full" : "rounded-sm"}
                     ${item
-                        ? `bg-slate-800/90 shadow-lg ${item.is_attuned
-                            ? 'border-amber-400/80 shadow-amber-500/30 shadow-md'
+                        ? `bg-[#181a21] shadow-lg ${item.is_attuned
+                            ? 'border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.35)]'
                             : rarityBorder[rarity] || rarityBorder.common
                         }
-                           ${hovered ? "scale-110 brightness-125" : "hover:scale-105"}`
-                        : `bg-slate-900/50 border-dashed border-slate-700/50
-                           hover:border-slate-500/60 hover:bg-slate-800/30`
+                           ${hovered ? "scale-105 border-[#e0bc75] shadow-[0_0_15px_rgba(197,160,89,0.4)]" : "hover:border-[#c5a059]"}`
+                        : `bg-[#0c0d12] border-dashed border-[#c5a059]/25
+                           hover:border-[#c5a059]/60 hover:bg-[#181a21]/50`
                     }
                 `}
                 onMouseEnter={() => setHovered(true)}
@@ -243,14 +243,13 @@ function EquipSlot({
                 {hovered && item && <ItemTooltip item={item} />}
 
                 {/* Icon — SVG when available, emoji fallback otherwise */}
-                <span className={`leading-none select-none flex items-center justify-center ${isArmor ? "text-2xl" : "text-xl"} ${!item && "opacity-25"}`}>
+                <span className={`leading-none select-none flex items-center justify-center ${isArmor ? "text-2xl" : "text-xl"} ${!item ? "opacity-25" : "text-[#c5a059]"}`}>
                     {getItemIcon(item, slotKey)}
                 </span>
 
-
                 {/* Attunement indicator badge */}
                 {item?.is_attuned && (
-                    <span className="absolute -top-1.5 -right-1.5 text-[10px] leading-none bg-amber-500 text-slate-900 rounded-full w-4 h-4 flex items-center justify-center font-bold shadow">
+                    <span className="absolute -top-1.5 -right-1.5 text-[10px] leading-none bg-[#c5a059] text-[#0c0d12] rounded-full w-4 h-4 flex items-center justify-center font-bold shadow">
                         ⚡
                     </span>
                 )}
@@ -259,7 +258,7 @@ function EquipSlot({
                 {item && (
                     <span className={`
                         text-center leading-tight font-medium px-1 w-full
-                        text-[8px] line-clamp-2
+                        text-[8px] line-clamp-2 font-cinzel-decorative
                         ${rarityText[rarity]}
                     `}>
                         {item.item_details.name}
@@ -268,7 +267,7 @@ function EquipSlot({
             </div>
 
             {/* Label */}
-            <span className="text-[9px] uppercase tracking-widest text-slate-600 font-medium whitespace-nowrap">
+            <span className="text-[9px] uppercase tracking-widest text-[#c5a059]/70 font-cinzel-decorative font-semibold whitespace-nowrap">
                 {def.label}
             </span>
         </div>
@@ -300,14 +299,14 @@ export function EquipmentPaperdoll({ characterItems, onUnequip }: Props) {
     const totalSlots = Object.keys(SLOT_DEFS).length;
 
     return (
-        <div className="bg-slate-900/70 border border-slate-700/40 rounded-2xl p-5">
+        <div className="bg-[#12141a] border border-[#c5a059]/30 rounded-sm p-5 shadow-lg">
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-semibold uppercase tracking-widest text-slate-400">
-                    Equipment
+            <div className="flex items-center justify-between mb-5 border-b border-[#c5a059]/20 pb-3">
+                <h3 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059]">
+                    Equipment Overview
                 </h3>
-                <span className="text-xs text-slate-600">
-                    {equippedCount} / {totalSlots} slots filled
+                <span className="text-xs font-fira-sans text-[#c5a059]/70">
+                    <span className="font-bold text-[#c5a059]">{equippedCount}</span> / {totalSlots} slots filled
                 </span>
             </div>
 
@@ -324,7 +323,7 @@ export function EquipmentPaperdoll({ characterItems, onUnequip }: Props) {
                     className="grid items-center justify-items-center"
                     style={{
                         gridTemplateColumns: "72px 72px 88px 72px 72px",
-                        gap: "8px",
+                        gap: "10px",
                     }}
                 >
                     {/* Row 1 */}
@@ -352,10 +351,11 @@ export function EquipmentPaperdoll({ characterItems, onUnequip }: Props) {
             </div> {/* end flex wrapper */}
 
             {/* Legend */}
-            <div className="mt-5 pt-3 border-t border-slate-800/60 flex flex-wrap gap-x-4 gap-y-1 justify-center">
-                <span className="text-[9px] text-slate-600">Hover to inspect · Click to unequip</span>
+            <div className="mt-5 pt-3 border-t border-[#c5a059]/20 flex flex-wrap gap-x-4 gap-y-1 justify-center items-center">
+                <span className="text-[10px] text-[#c5a059]/60 font-lora italic">Hover to inspect · Click to unequip</span>
+                <span className="text-[#c5a059]/30">|</span>
                 {Object.entries(rarityText).map(([r, cls]) => (
-                    <span key={r} className={`text-[9px] capitalize ${cls}`}>{r}</span>
+                    <span key={r} className={`text-[10px] font-cinzel-decorative capitalize ${cls}`}>{r}</span>
                 ))}
             </div>
         </div>

@@ -56,40 +56,42 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
         }}>
             <DialogTrigger asChild>
                 {children || (
-                    <Button variant="outline" className={className}>
+                    <Button variant="outline" className={className || "bg-[#181a21] border border-[#c5a059]/50 text-[#c5a059] hover:bg-[#c5a059]/15 text-xs font-lora"}>
                         Short Rest
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-[425px]">
+            <DialogContent className="bg-[#12141a] border border-[#c5a059] text-slate-100 sm:max-w-[425px] shadow-[0_0_30px_rgba(0,0,0,0.8)]">
                 <DialogHeader>
-                    <DialogTitle>Take a Short Rest</DialogTitle>
-                    <DialogDescription className="text-slate-400">
+                    <DialogTitle className="font-cinzel-decorative text-lg text-[#c5a059] font-bold tracking-wide">
+                        Take a Short Rest
+                    </DialogTitle>
+                    <DialogDescription className="font-lora text-xs text-[#d1cdb8]/70">
                         Spend Hit Dice to regain Hit Points, or simply rest to reset abilities.
                     </DialogDescription>
                 </DialogHeader>
 
                 {result ? (
-                    <div className="py-6 text-center space-y-4">
-                        <div className="text-green-400 text-lg font-semibold">
+                    <div className="py-6 text-center space-y-4 font-lora">
+                        <div className="text-[#c5a059] text-lg font-semibold">
                             {result.message || `You regained ${result.hp_gained} Hit Points!`}
                         </div>
-                        <Button onClick={handleClose} className="w-full">
+                        <Button onClick={handleClose} className="w-full bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs">
                             Close
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid gap-4 py-4">
-                        <div className="flex justify-between items-center text-sm p-4 bg-slate-800 rounded-lg">
-                            <span className="text-slate-400">Available Hit Dice:</span>
-                            <span className="text-xl font-bold font-mono">
-                                {availableHitDice} <span className="text-slate-500 text-base">/ {totalHitDice}</span>
+                    <div className="grid gap-4 py-4 font-lora">
+                        <div className="flex justify-between items-center text-xs p-3.5 bg-[#181a21] border border-[#c5a059]/30 rounded">
+                            <span className="text-[#d1cdb8]">Available Hit Dice:</span>
+                            <span className="text-lg font-bold font-fira-sans text-[#c5a059]">
+                                {availableHitDice} <span className="text-[#d1cdb8]/40 text-sm">/ {totalHitDice}</span>
                             </span>
                         </div>
 
                         {availableHitDice >= 0 ? (
                             <div className="space-y-2">
-                                <label className="text-sm text-slate-300">
+                                <label className="text-xs text-[#d1cdb8]">
                                     Hit Dice to Spend:
                                 </label>
                                 <div className="flex items-center gap-4">
@@ -98,10 +100,11 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
                                         size="icon"
                                         onClick={() => setHitDiceToSpend(prev => Math.max(0, prev - 1))}
                                         disabled={hitDiceToSpend <= 0}
+                                        className="bg-[#181a21] border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15"
                                     >
                                         -
                                     </Button>
-                                    <span className="flex-1 text-center font-bold text-xl">
+                                    <span className="flex-1 text-center font-bold text-xl font-fira-sans text-[#c5a059]">
                                         {hitDiceToSpend}
                                     </span>
                                     <Button
@@ -109,30 +112,33 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
                                         size="icon"
                                         onClick={() => setHitDiceToSpend(prev => Math.min(availableHitDice, prev + 1))}
                                         disabled={hitDiceToSpend >= availableHitDice}
+                                        className="bg-[#181a21] border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15"
                                     >
                                         +
                                     </Button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-amber-400 text-sm text-center p-2 bg-amber-950/30 rounded border border-amber-900/50">
+                            <div className="text-[#e0bc75] text-xs text-center p-2.5 bg-[#181a21] rounded border border-[#c5a059]/30">
                                 You have no Hit Dice remaining, but you can still rest to reset abilities (like Warlock slots).
                             </div>
                         )}
 
-                        <div className="text-xs text-slate-500 mt-2">
+                        <div className="text-[11px] text-[#d1cdb8]/50 mt-1 italic">
                             Note: Warlocks regain spell slots, and Monks regain Ki points on a short rest.
                         </div>
                     </div>
                 )}
 
                 {!result && (
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="text-[#d1cdb8]/70 hover:text-[#d1cdb8] hover:bg-[#c5a059]/10 text-xs">
+                            Cancel
+                        </Button>
                         <Button
                             onClick={handleShortRest}
                             disabled={loading || (availableHitDice > 0 && hitDiceToSpend > availableHitDice)}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs shadow-[0_0_12px_rgba(197,160,89,0.3)] transition-all"
                         >
                             {loading ? "Resting..." : "Rest"}
                         </Button>

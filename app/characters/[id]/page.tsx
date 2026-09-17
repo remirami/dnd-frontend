@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { charactersApi } from "@/lib/api/characters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Navbar from "@/components/layout/Navbar";
+import FantasyCard from "@/components/ui/FantasyCard";
 import { Character } from "@/lib/types/character";
 import { getAbilityModifier, formatModifier } from "@/lib/utils";
 
@@ -24,7 +27,7 @@ import { ShortRestDialog } from "./components/ShortRestDialog";
 import { FeatureSelectionDialog } from "./components/FeatureSelectionDialog";
 import { SkillsAndSaves } from "./components/SkillsAndSaves";
 import { DiceRoller } from "@/components/DiceRoller";
-import { Edit } from "lucide-react";
+import { Edit, ArrowLeft } from "lucide-react";
 
 // 5e SRD XP thresholds
 const XP_THRESHOLDS: Record<number, number> = {
@@ -174,16 +177,33 @@ export default function CharacterDetailsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center text-white">
-                Loading...
+            <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col">
+                <Navbar showActions={true} />
+                <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                    <div className="w-8 h-8 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                    <p className="font-lora text-sm text-[#d1cdb8]/80 italic">
+                        Summoning character dossier...
+                    </p>
+                </div>
             </div>
         );
     }
 
     if (error || !character) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center text-white">
-                {error || "Character not found"}
+            <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col">
+                <Navbar showActions={true} />
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+                    <p className="font-cinzel-decorative text-xl text-[#c5a059] font-bold">
+                        {error || "Character not found"}
+                    </p>
+                    <Button
+                        onClick={() => router.push("/characters")}
+                        className="bg-[#181a21] border border-[#c5a059] text-[#c5a059] hover:bg-[#c5a059]/15 text-xs font-lora"
+                    >
+                        Back to Characters
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -199,32 +219,36 @@ export default function CharacterDetailsPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-white p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
+        <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col">
+            {/* Universal 5E Navbar */}
+            <Navbar showActions={true} />
 
+            {/* Main Content Area */}
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-10 space-y-6">
                 {/* Breadcrumb */}
                 <div className="mb-2">
-                    <Button
-                        variant="ghost"
-                        className="text-slate-400 hover:text-white p-0 h-auto font-normal"
-                        onClick={() => router.push("/characters")}
+                    <Link
+                        href="/characters"
+                        className="inline-flex items-center gap-1.5 text-xs font-lora text-[#c5a059]/80 hover:text-[#c5a059] transition-colors"
                     >
-                        ← Back to Characters
-                    </Button>
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Back to Characters</span>
+                    </Link>
                 </div>
 
                 {/* Header Section */}
-                <div className="flex justify-between items-start gap-8">
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-6 border-b border-[#c5a059]/20 pb-6">
                     <div className="flex-1">
-                        <h1 className="text-4xl font-bold">{character.name}</h1>
-                        <p className="text-xl text-slate-400 mt-2">
+                        <h1 className="font-cinzel-decorative text-3xl sm:text-4xl md:text-5xl font-bold tracking-wide text-[#c5a059] drop-shadow-[0_2px_10px_rgba(197,160,89,0.3)]">
+                            {character.name}
+                        </h1>
+                        <p className="font-lora text-base sm:text-lg text-[#d1cdb8] font-medium mt-1">
                             Level {character.level} {character.race?.name_display || character.race?.name}{" "}
                             {character.class_levels && character.class_levels.length > 0 ? (
                                 <>
                                     {character.class_levels
                                         .map((cl) => {
                                             const displayName = cl.class_name.charAt(0).toUpperCase() + cl.class_name.slice(1);
-                                            // If subclass exists for this class, prepend it
                                             if (cl.subclass) {
                                                 const subName = cl.subclass.charAt(0).toUpperCase() + cl.subclass.slice(1);
                                                 return `${subName} ${displayName} ${cl.level}`;
@@ -236,20 +260,20 @@ export default function CharacterDetailsPage() {
                             ) : (
                                 <>
                                     {character.character_class?.name_display || character.character_class?.name}
-                                    {character.subclass && <span className="text-slate-300"> ({character.subclass})</span>}
+                                    {character.subclass && <span className="text-[#c5a059]/90 italic"> ({character.subclass})</span>}
                                 </>
                             )}
                         </p>
-                        <p className="text-slate-500">
+                        <p className="font-lora text-xs sm:text-sm text-[#d1cdb8]/60 mt-0.5">
                             Background: {character.background?.name || "None"} | Alignment: {character.alignment || "N"}
                         </p>
 
                         {/* XP Progress Bar */}
-                        <div className="mt-4 space-y-1">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-400">Experience Points</span>
+                        <div className="mt-4 space-y-1.5 max-w-md">
+                            <div className="flex justify-between items-center text-xs font-lora">
+                                <span className="text-[#d1cdb8]/70 uppercase tracking-wider text-[11px]">Experience Points</span>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-slate-300">
+                                    <span className="font-fira-sans font-semibold text-[#c5a059]">
                                         {character.experience_points?.toLocaleString() || 0} / {getXPForNextLevel(character.level).toLocaleString()} XP
                                     </span>
                                     <AddExperienceDialog
@@ -258,9 +282,9 @@ export default function CharacterDetailsPage() {
                                     />
                                 </div>
                             </div>
-                            <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700 relative">
+                            <div className="w-full bg-[#12141a] rounded-full h-2.5 overflow-hidden border border-[#c5a059]/30 relative">
                                 <div
-                                    className="bg-gradient-to-r from-blue-600 to-purple-600 h-full transition-all duration-500 ease-out"
+                                    className="bg-gradient-to-r from-[#9b7b39] via-[#c5a059] to-[#e0bc75] h-full shadow-[0_0_8px_rgba(197,160,89,0.4)] transition-all duration-500 ease-out"
                                     style={{ width: `${getXPProgress(character.experience_points || 0, character.level)}%` }}
                                 />
                             </div>
@@ -276,20 +300,20 @@ export default function CharacterDetailsPage() {
                                                 <LevelUpDialog
                                                     character={character}
                                                     onUpdate={() => loadCharacter(characterId)}
-                                                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold animate-pulse shadow-[0_0_15px_rgba(234,179,8,0.5)] transform hover:scale-[1.02] transition-all"
-                                                    label={`✨ Level Up Available! (${character.level} → ${character.level + 1})`}
+                                                    className="w-full bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold animate-pulse shadow-[0_0_15px_rgba(197,160,89,0.5)] transform hover:scale-[1.02] transition-all text-xs"
+                                                    label={`✦ Level Up Available! (${character.level} → ${character.level + 1})`}
                                                 />
                                             </div>
                                         ) : (
                                             character.level < 20 && (
-                                                <p className="text-xs text-slate-500">
+                                                <p className="text-[11px] font-lora text-[#d1cdb8]/50 italic">
                                                     {(nextLevelXP - currentXP).toLocaleString()} XP to level {character.level + 1}
                                                 </p>
                                             )
                                         )}
                                         {character.level >= 20 && (
-                                            <p className="text-xs text-amber-400">
-                                                Maximum Level Reached!
+                                            <p className="text-[11px] font-lora text-[#c5a059] font-semibold">
+                                                Maximum Level Reached
                                             </p>
                                         )}
                                     </>
@@ -299,40 +323,39 @@ export default function CharacterDetailsPage() {
                     </div>
 
                     {/* Prominent Dice Roller */}
-                    <div className="flex flex-col items-center justify-start pt-2">
-                        <DiceRoller className="scale-110" />
+                    <div className="flex flex-col items-center justify-start self-center lg:self-start">
+                        <DiceRoller className="scale-100 sm:scale-105" />
                     </div>
 
-                    <div className="flex gap-3">
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2 items-center justify-start lg:justify-end">
                         <Button
                             onClick={() => router.push("/characters")}
-                            className="bg-slate-100 text-slate-900 hover:bg-white border-0 font-semibold"
+                            className="bg-[#181a21] border border-[#c5a059]/50 text-[#c5a059] hover:bg-[#c5a059]/15 text-xs font-lora font-semibold px-3 py-1.5 h-auto rounded transition-colors shadow-sm"
                         >
                             Back to Characters
                         </Button>
 
-
                         {/* Rest Actions */}
-                        <div className="flex gap-2 bg-slate-800 p-1 rounded-lg border border-slate-700">
+                        <div className="flex items-center bg-[#12141a] p-1 rounded border border-[#c5a059]/30">
                             <ShortRestDialog
                                 character={character}
                                 onUpdate={() => loadCharacter(characterId)}
                             >
-                                <Button size="sm" variant="ghost" className="text-slate-300 hover:text-white hover:bg-slate-700 h-8">
+                                <Button size="sm" variant="ghost" className="text-xs text-[#d1cdb8] hover:text-[#c5a059] hover:bg-[#c5a059]/10 h-7 px-2.5 font-lora transition-colors">
                                     Short Rest
                                 </Button>
                             </ShortRestDialog>
-                            <div className="w-px bg-slate-700 my-1"></div>
+                            <div className="w-px h-4 bg-[#c5a059]/30 my-auto"></div>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-slate-300 hover:text-white hover:bg-slate-700 h-8"
+                                className="text-xs text-[#d1cdb8] hover:text-[#c5a059] hover:bg-[#c5a059]/10 h-7 px-2.5 font-lora transition-colors"
                                 onClick={async () => {
                                     if (confirm("Take a Long Rest? This will restore HP, Hit Dice, and Spell Slots.")) {
                                         try {
                                             await charactersApi.longRest(characterId);
                                             loadCharacter(characterId);
-                                            // Maybe show toast?
                                         } catch (e) {
                                             console.error("Long rest failed", e);
                                             alert("Long rest failed");
@@ -379,7 +402,7 @@ export default function CharacterDetailsPage() {
                         <Button
                             onClick={handleDelete}
                             variant="destructive"
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-rose-950/40 hover:bg-rose-900/60 border border-rose-600/40 text-rose-300 hover:text-rose-100 text-xs font-lora font-semibold px-3 py-1.5 h-auto rounded transition-colors shadow-sm"
                         >
                             Delete Character
                         </Button>
@@ -387,29 +410,29 @@ export default function CharacterDetailsPage() {
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="flex border-b border-slate-700 space-x-4 mb-6">
+                <div className="flex border-b border-[#c5a059]/30 space-x-6 font-cinzel-decorative tracking-wider text-sm sm:text-base">
                     <button
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'overview'
-                            ? 'border-white text-white'
-                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                        className={`pb-3 font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'overview'
+                            ? 'border-[#c5a059] text-[#c5a059]'
+                            : 'border-transparent text-[#d1cdb8]/60 hover:text-[#c5a059]'
                             }`}
                         onClick={() => setActiveTab('overview')}
                     >
                         Overview
                     </button>
                     <button
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'inventory'
-                            ? 'border-white text-white'
-                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                        className={`pb-3 font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'inventory'
+                            ? 'border-[#c5a059] text-[#c5a059]'
+                            : 'border-transparent text-[#d1cdb8]/60 hover:text-[#c5a059]'
                             }`}
                         onClick={() => setActiveTab('inventory')}
                     >
                         Inventory
                     </button>
                     <button
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'spells'
-                            ? 'border-white text-white'
-                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                        className={`pb-3 font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'spells'
+                            ? 'border-[#c5a059] text-[#c5a059]'
+                            : 'border-transparent text-[#d1cdb8]/60 hover:text-[#c5a059]'
                             }`}
                         onClick={() => setActiveTab('spells')}
                     >
@@ -420,115 +443,127 @@ export default function CharacterDetailsPage() {
                 {activeTab === 'overview' && (
                     <>
                         {/* Main Stats Grid */}
-                        <div className="grid grid-cols-4 gap-4">
-                            <Card className="bg-slate-800 border-slate-700 text-white">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-medium text-slate-400">Armor Class</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-3xl font-bold">{stats?.armor_class ?? 10}</div>
-                                </CardContent>
-                            </Card>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            <FantasyCard glowOnHover={false} className="p-4 text-center flex flex-col justify-between">
+                                <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase">
+                                    Armor Class
+                                </div>
+                                <div className="text-3xl sm:text-4xl font-bold font-fira-sans text-[#c5a059] my-2">
+                                    {stats?.armor_class ?? 10}
+                                </div>
+                                <div className="text-[11px] font-lora text-[#d1cdb8]/50">
+                                    Base Defense
+                                </div>
+                            </FantasyCard>
+
                             <HPManagementDialog character={character} onUpdate={() => loadCharacter(characterId)}>
-                                <Card className="bg-slate-800 border-slate-700 text-white cursor-pointer hover:bg-slate-700/50 transition-colors">
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-medium text-slate-400">Hit Points</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-3xl font-bold text-green-500 flex items-center gap-2">
-                                            {stats?.hit_points ?? 0} <span className="text-lg text-slate-500">/</span> {stats?.max_hit_points ?? 0}
+                                <div className="cursor-pointer">
+                                    <FantasyCard glowOnHover={true} className="p-4 text-center flex flex-col justify-between group">
+                                        <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase group-hover:text-[#c5a059] transition-colors">
+                                            Hit Points
+                                        </div>
+                                        <div className="text-3xl sm:text-4xl font-bold font-fira-sans text-emerald-400 my-2 flex items-center justify-center gap-2">
+                                            <span>{stats?.hit_points ?? 0}</span>
+                                            <span className="text-lg text-[#d1cdb8]/40">/</span>
+                                            <span className="text-2xl text-emerald-500/80">{stats?.max_hit_points ?? 0}</span>
                                         </div>
                                         {stats?.temporary_hit_points ? (
-                                            <div className="text-sm font-bold text-purple-400 mt-1">
+                                            <div className="text-xs font-bold font-fira-sans text-amber-300">
                                                 +{stats.temporary_hit_points} Temp HP
                                             </div>
                                         ) : (
-                                            <div className="text-xs text-slate-400 mt-1">
+                                            <div className="text-[11px] font-lora text-[#d1cdb8]/50">
                                                 Max HP: {stats?.max_hit_points ?? 0}
                                             </div>
                                         )}
-                                    </CardContent>
-                                </Card>
+                                    </FantasyCard>
+                                </div>
                             </HPManagementDialog>
-                            <Card className="bg-slate-800 border-slate-700 text-white">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-medium text-slate-400">Initiative</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-3xl font-bold">{formatModifier(stats?.initiative ?? 0)}</div>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-slate-800 border-slate-700 text-white">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-medium text-slate-400">Speed</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-3xl font-bold">{stats?.speed ?? 30} ft.</div>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-slate-800 border-slate-700 text-white col-span-4 md:col-span-1">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-medium text-slate-400">Attack</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-xl font-bold text-blue-400">
-                                        {(() => {
-                                            const pb = Math.ceil(1 + (character.level / 4));
-                                            const strMod = stats?.strength ? getAbilityModifier(stats.strength) : 0;
-                                            const dexMod = stats?.dexterity ? getAbilityModifier(stats.dexterity) : 0;
 
-                                            // Find equipped weapon
-                                            const weapon = character.character_items?.find(i => i.is_equipped && i.equipment_slot === 'main_hand');
+                            <FantasyCard glowOnHover={false} className="p-4 text-center flex flex-col justify-between">
+                                <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase">
+                                    Initiative
+                                </div>
+                                <div className="text-3xl sm:text-4xl font-bold font-fira-sans text-[#c5a059] my-2">
+                                    {formatModifier(stats?.initiative ?? 0)}
+                                </div>
+                                <div className="text-[11px] font-lora text-[#d1cdb8]/50">
+                                    Dexterity Mod
+                                </div>
+                            </FantasyCard>
 
-                                            let mod = strMod;
-                                            let damageDice = "1"; // Unarmed default
+                            <FantasyCard glowOnHover={false} className="p-4 text-center flex flex-col justify-between">
+                                <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase">
+                                    Speed
+                                </div>
+                                <div className="text-3xl sm:text-4xl font-bold font-fira-sans text-[#c5a059] my-2">
+                                    {stats?.speed ?? 30} <span className="text-sm font-normal font-lora text-[#d1cdb8]/70">ft.</span>
+                                </div>
+                                <div className="text-[11px] font-lora text-[#d1cdb8]/50">
+                                    Combat Move
+                                </div>
+                            </FantasyCard>
 
-                                            if (weapon) {
-                                                const props = weapon.item_details.properties_display || [];
-                                                // Check for Finesse or Ranged
-                                                const isFinesse = weapon.item_details.properties?.some((p: any) => p.name === 'Finesse');
+                            <FantasyCard glowOnHover={false} className="p-4 text-center col-span-2 md:col-span-4 lg:col-span-1 flex flex-col justify-between">
+                                <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase">
+                                    Attack
+                                </div>
+                                <div className="my-2">
+                                    {(() => {
+                                        const pb = Math.ceil(1 + (character.level / 4));
+                                        const strMod = stats?.strength ? getAbilityModifier(stats.strength) : 0;
+                                        const dexMod = stats?.dexterity ? getAbilityModifier(stats.dexterity) : 0;
 
-                                                if (weapon.item_details.weapon_type_display?.includes('Ranged')) {
-                                                    mod = dexMod;
-                                                } else if (isFinesse && dexMod > strMod) {
-                                                    mod = dexMod;
-                                                }
-                                                damageDice = weapon.item_details.damage_dice || "1d4";
+                                        const weapon = character.character_items?.find(i => i.is_equipped && i.equipment_slot === 'main_hand');
+                                        let mod = strMod;
+                                        let damageDice = "1";
+
+                                        if (weapon) {
+                                            const isFinesse = weapon.item_details.properties?.some((p: any) => p.name === 'Finesse');
+                                            if (weapon.item_details.weapon_type_display?.includes('Ranged')) {
+                                                mod = dexMod;
+                                            } else if (isFinesse && dexMod > strMod) {
+                                                mod = dexMod;
                                             }
+                                            damageDice = weapon.item_details.damage_dice || "1d4";
+                                        }
 
-                                            const toHit = formatModifier(mod + pb);
-                                            const damageMod = mod >= 0 ? `+${mod}` : `${mod}`;
+                                        const toHit = formatModifier(mod + pb);
+                                        const damageMod = mod >= 0 ? `+${mod}` : `${mod}`;
 
-                                            return (
-                                                <div className="flex flex-col">
-                                                    <span>{toHit} To Hit</span>
-                                                    <span className="text-sm text-slate-300 font-normal">
-                                                        {damageDice} {mod !== 0 && damageMod} Dmg
-                                                    </span>
+                                        return (
+                                            <div className="flex flex-col items-center">
+                                                <div className="text-2xl sm:text-3xl font-bold font-fira-sans text-[#c5a059]">
+                                                    {toHit} <span className="text-xs font-lora font-normal text-[#d1cdb8]/70">To Hit</span>
                                                 </div>
-                                            );
-                                        })()}
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-1">
-                                        {(() => {
-                                            const weapon = character.character_items?.find(i => i.is_equipped && i.equipment_slot === 'main_hand');
-                                            return weapon ? weapon.item_details.name : 'Unarmed Strike';
-                                        })()}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                                <div className="text-xs font-lora text-[#d1cdb8] mt-0.5">
+                                                    {damageDice} {mod !== 0 && damageMod} Dmg
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                                <div className="text-[11px] font-lora text-[#c5a059]/80 truncate">
+                                    {(() => {
+                                        const weapon = character.character_items?.find(i => i.is_equipped && i.equipment_slot === 'main_hand');
+                                        return weapon ? weapon.item_details.name : 'Unarmed Strike';
+                                    })()}
+                                </div>
+                            </FantasyCard>
                         </div>
 
                         {/* Ability Scores */}
                         <div>
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-bold">Ability Scores</h3>
+                                <h3 className="font-cinzel-decorative text-base sm:text-lg font-bold text-[#c5a059] tracking-wider">
+                                    Ability Scores
+                                </h3>
                                 {!isEditingStats ? (
                                     <Button
                                         onClick={handleEditStats}
                                         variant="outline"
                                         size="sm"
-                                        className="border-blue-500 text-blue-400 hover:bg-blue-950 hover:text-blue-300"
+                                        className="bg-[#181a21] border border-[#c5a059]/50 text-[#c5a059] hover:bg-[#c5a059]/15 text-xs font-lora"
                                     >
                                         Edit Stats
                                     </Button>
@@ -537,7 +572,7 @@ export default function CharacterDetailsPage() {
                                         <Button
                                             onClick={handleSaveStats}
                                             size="sm"
-                                            className="bg-green-600 hover:bg-green-700"
+                                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs"
                                         >
                                             Save
                                         </Button>
@@ -545,7 +580,7 @@ export default function CharacterDetailsPage() {
                                             onClick={handleCancelEditStats}
                                             variant="outline"
                                             size="sm"
-                                            className="border-slate-600"
+                                            className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] text-xs font-lora"
                                         >
                                             Cancel
                                         </Button>
@@ -553,13 +588,12 @@ export default function CharacterDetailsPage() {
                                 )}
                             </div>
                             {isEditingStats && (
-                                <div className="mb-3 p-2 bg-blue-900/20 border border-blue-700/30 rounded text-sm text-blue-200">
+                                <div className="mb-3 p-2.5 bg-[#181a21] border border-[#c5a059]/30 rounded text-xs font-lora text-[#d1cdb8]">
                                     💡 <strong>Note:</strong> These are your final ability scores (including racial bonuses and other modifiers). Changes will directly update these values.
                                 </div>
                             )}
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
                                 {abilityScores.map((ability) => {
-                                    // Map abbreviated names to full stat names
                                     const statNameMap: Record<string, keyof typeof editedStats> = {
                                         'str': 'strength',
                                         'dex': 'dexterity',
@@ -573,8 +607,10 @@ export default function CharacterDetailsPage() {
                                     const displayMod = getAbilityModifier(displayScore);
 
                                     return (
-                                        <div key={ability.name} className="bg-slate-800 rounded-lg p-4 text-center border border-slate-700">
-                                            <div className="text-sm font-bold text-slate-400 mb-1">{ability.name}</div>
+                                        <div key={ability.name} className="bg-[#12141a] rounded-sm p-3.5 text-center border border-[#c5a059]/30 shadow-md flex flex-col items-center justify-between">
+                                            <div className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">
+                                                {ability.name}
+                                            </div>
                                             {isEditingStats ? (
                                                 <Input
                                                     type="number"
@@ -585,12 +621,14 @@ export default function CharacterDetailsPage() {
                                                         ...editedStats,
                                                         [statKey]: parseInt(e.target.value) || 10
                                                     })}
-                                                    className="text-2xl font-bold text-center bg-slate-700 border-slate-600 mb-1 h-12"
+                                                    className="text-2xl font-bold text-center bg-[#181a21] border-[#c5a059]/40 text-[#c5a059] mb-1.5 h-12 font-fira-sans"
                                                 />
                                             ) : (
-                                                <div className="text-2xl font-bold mb-1">{displayScore}</div>
+                                                <div className="text-2xl sm:text-3xl font-bold font-fira-sans text-slate-100 mb-1.5">
+                                                    {displayScore}
+                                                </div>
                                             )}
-                                            <div className="text-sm bg-slate-700 rounded px-2 py-1 inline-block">
+                                            <div className="text-xs font-bold font-fira-sans px-2.5 py-0.5 rounded-full bg-[#181a21] border border-[#c5a059]/40 text-[#c5a059] shadow-[0_0_8px_rgba(197,160,89,0.15)]">
                                                 {formatModifier(displayMod)}
                                             </div>
                                         </div>
@@ -606,73 +644,66 @@ export default function CharacterDetailsPage() {
                         {/* Proficiencies & Features Grid (Roleplay & Features) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             {/* Roleplay & Languages */}
-                            <Card className="bg-slate-800 border-slate-700 text-white">
-                                <CardHeader>
-                                    <CardTitle>Roleplay & Languages</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-
+                            <FantasyCard glowOnHover={false} className="p-5 text-slate-100">
+                                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] tracking-wider border-b border-[#c5a059]/20 pb-2 mb-4">
+                                    Roleplay & Languages
+                                </h3>
+                                <div className="space-y-4 font-lora">
                                     {character.description && (
                                         <div>
-                                            <h3 className="text-slate-400 font-semibold mb-2">Visual Description</h3>
-                                            <p className="text-slate-300 text-sm whitespace-pre-wrap break-words">{character.description}</p>
+                                            <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Visual Description</h4>
+                                            <p className="text-[#d1cdb8]/90 text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">{character.description}</p>
                                         </div>
                                     )}
 
                                     <div>
-                                        <h3 className="text-slate-400 font-semibold mb-2">Languages</h3>
+                                        <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1.5">Languages</h4>
                                         <div className="flex flex-wrap gap-2">
                                             {character.proficiencies?.filter(p => p.proficiency_type === 'language').map(p => (
-                                                <span key={p.id} className="px-2 py-1 bg-slate-700 rounded text-sm text-slate-200">
+                                                <span key={p.id} className="px-2.5 py-1 bg-[#181a21] border border-[#c5a059]/30 rounded text-xs text-[#d1cdb8]">
                                                     {p.language?.name || "Unknown Language"}
                                                 </span>
                                             ))}
                                             {(!character.proficiencies?.some(p => p.proficiency_type === 'language')) && (
-                                                <p className="text-slate-500 italic text-sm">Common</p>
+                                                <p className="text-[#d1cdb8]/50 italic text-xs">Common</p>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Bonds */}
                                     {character.bonds && (
                                         <div>
-                                            <h3 className="text-slate-400 font-semibold mb-2">Bonds</h3>
-                                            <p className="text-slate-300 text-sm break-words">{character.bonds}</p>
+                                            <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Bonds</h4>
+                                            <p className="text-[#d1cdb8]/90 text-xs sm:text-sm break-words leading-relaxed">{character.bonds}</p>
                                         </div>
                                     )}
 
-                                    {/* Flaws */}
                                     {character.flaws && (
                                         <div>
-                                            <h3 className="text-slate-400 font-semibold mb-2">Flaws</h3>
-                                            <p className="text-slate-300 text-sm break-words">{character.flaws}</p>
+                                            <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Flaws</h4>
+                                            <p className="text-[#d1cdb8]/90 text-xs sm:text-sm break-words leading-relaxed">{character.flaws}</p>
                                         </div>
                                     )}
 
-                                    {/* Ideals */}
                                     {character.ideals && (
                                         <div>
-                                            <h3 className="text-slate-400 font-semibold mb-2">Ideals</h3>
-                                            <p className="text-slate-300 text-sm break-words">{character.ideals}</p>
+                                            <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Ideals</h4>
+                                            <p className="text-[#d1cdb8]/90 text-xs sm:text-sm break-words leading-relaxed">{character.ideals}</p>
                                         </div>
                                     )}
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </FantasyCard>
 
                             {/* Features & Traits */}
-                            <Card className="bg-slate-800 border-slate-700 text-white">
-                                <CardHeader>
-                                    <CardTitle>Features & Traits</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
+                            <FantasyCard glowOnHover={false} className="p-5 text-slate-100">
+                                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] tracking-wider border-b border-[#c5a059]/20 pb-2 mb-4">
+                                    Features & Traits
+                                </h3>
+                                <div className="space-y-4 font-lora">
                                     {character.features && character.features.length > 0 ? (
                                         <div className="space-y-3">
                                             {(() => {
-                                                // Group features by base name
                                                 const featureGroups: Record<string, typeof character.features> = {};
-
                                                 character.features.forEach(f => {
-                                                    // Normalize name: "Skilled (2)" -> "Skilled"
                                                     const baseName = f.name.replace(/\s\(\d+\)$/, "");
                                                     if (!featureGroups[baseName]) {
                                                         featureGroups[baseName] = [];
@@ -681,40 +712,38 @@ export default function CharacterDetailsPage() {
                                                 });
 
                                                 return Object.entries(featureGroups).map(([baseName, group]) => {
-                                                    // Use the first feature for description/metadata
                                                     const firstFeature = group[0];
                                                     const isStacked = group.length > 1;
 
                                                     return (
-                                                        <div key={baseName} className="border-b border-slate-700 last:border-0 pb-3 last:pb-0">
+                                                        <div key={baseName} className="border-b border-[#c5a059]/15 last:border-0 pb-3 last:pb-0">
                                                             <div className="flex justify-between items-baseline mb-1">
-                                                                <h4 className="font-bold text-slate-100">
-                                                                    {baseName} {isStacked && <span className="text-xs text-slate-400 font-normal ml-2">x{group.length}</span>}
+                                                                <h4 className="font-cinzel-decorative font-bold text-sm text-[#d1cdb8]">
+                                                                    {baseName} {isStacked && <span className="text-xs text-[#c5a059]/70 font-normal ml-2">x{group.length}</span>}
                                                                 </h4>
-                                                                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 uppercase tracking-wider">
+                                                                <span className="text-[10px] px-2 py-0.5 rounded bg-[#181a21] border border-[#c5a059]/30 text-[#c5a059] uppercase tracking-wider">
                                                                     {firstFeature.feature_type === 'racial' ? 'Race' : firstFeature.feature_type}
                                                                 </span>
                                                             </div>
-                                                            <p className="text-sm text-slate-300">{firstFeature.description}</p>
+                                                            <p className="text-xs sm:text-sm text-[#d1cdb8]/80 leading-relaxed">{firstFeature.description}</p>
 
-                                                            {/* Render Choices for each instance in the group */}
                                                             {group.map((f, idx) => (
                                                                 f.options && f.options.length > 0 && (
-                                                                    <div key={f.id} className="mt-2 pl-2 border-l-2 border-slate-700">
-                                                                        {isStacked && <div className="text-xs text-slate-500 mb-1">Selection {idx + 1}</div>}
+                                                                    <div key={f.id} className="mt-2 pl-2 border-l-2 border-[#c5a059]/30">
+                                                                        {isStacked && <div className="text-xs text-[#d1cdb8]/50 mb-1">Selection {idx + 1}</div>}
                                                                         <div className="flex items-center gap-2 flex-wrap mb-2">
                                                                             {f.selection && f.selection.length > 0 && (
                                                                                 f.selection.map((sel: string, i: number) => (
-                                                                                    <span key={i} className="bg-blue-900/50 text-blue-200 border border-blue-800 text-xs px-2 py-1 rounded">
+                                                                                    <span key={i} className="bg-[#181a21] text-[#c5a059] border border-[#c5a059]/40 text-xs px-2 py-0.5 rounded font-lora">
                                                                                         {sel}
                                                                                     </span>
                                                                                 ))
                                                                             )}
                                                                         </div>
                                                                         <Button
-                                                                            variant={(f.selection?.length || 0) < (f.choice_limit || 1) ? "default" : "secondary"}
+                                                                            variant="outline"
                                                                             size="sm"
-                                                                            className={`mt-1 h-7 text-xs ${(f.selection?.length || 0) < (f.choice_limit || 1) ? "bg-blue-600 hover:bg-blue-500" : "bg-slate-700 hover:bg-slate-600 text-slate-200"}`}
+                                                                            className="mt-1 h-7 text-xs bg-[#181a21] border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15"
                                                                             onClick={() => setSelectedFeature(f)}
                                                                         >
                                                                             <Edit className="w-3 h-3 mr-1.5" />
@@ -731,51 +760,49 @@ export default function CharacterDetailsPage() {
                                             })()}
                                         </div>
                                     ) : (
-                                        <p className="text-slate-500 italic">No features or traits recorded.</p>
+                                        <p className="text-[#d1cdb8]/50 italic text-xs">No features or traits recorded.</p>
                                     )}
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </FantasyCard>
                         </div>
 
-                        {/* Additional Details Placeholder */}
-                        <Card className="bg-slate-800 border-slate-700 text-white">
-                            <CardHeader>
-                                <CardTitle>Character Details</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                        {/* Character Details Card */}
+                        <FantasyCard glowOnHover={false} className="p-5 text-slate-100">
+                            <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] tracking-wider border-b border-[#c5a059]/20 pb-2 mb-4">
+                                Character Details
+                            </h3>
+                            <div className="space-y-4 font-lora">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                                     <div>
-                                        <h3 className="text-slate-400 font-semibold">Experience</h3>
-                                        <p>{character.experience_points} XP</p>
+                                        <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Experience</h4>
+                                        <p className="text-sm font-fira-sans text-[#d1cdb8]">{character.experience_points} XP</p>
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-400 font-semibold">Proficiency Bonus</h3>
-                                        <p>+{Math.ceil(1 + (character.level / 4))}</p>
+                                        <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Proficiency Bonus</h4>
+                                        <p className="text-sm font-fira-sans text-[#c5a059] font-bold">+{Math.ceil(1 + (character.level / 4))}</p>
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-400 font-semibold">Race</h3>
-                                        <p>{character.race?.name_display || character.race?.name}</p>
+                                        <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Race</h4>
+                                        <p className="text-sm text-[#d1cdb8]">{character.race?.name_display || character.race?.name}</p>
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-400 font-semibold">Class</h3>
-                                        <p>{character.character_class?.name_display || character.character_class?.name}</p>
+                                        <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Class</h4>
+                                        <p className="text-sm text-[#d1cdb8]">{character.character_class?.name_display || character.character_class?.name}</p>
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-400 font-semibold">Alignment</h3>
-                                        <p>{character.alignment}</p>
+                                        <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">Alignment</h4>
+                                        <p className="text-sm text-[#d1cdb8]">{character.alignment}</p>
                                     </div>
                                 </div>
 
-                                {(character.backstory) && (
-                                    <>
-                                        <div className="pt-4 border-t border-slate-700">
-                                            <h3 className="text-slate-400 font-semibold mb-1">Backstory</h3>
-                                            <p className="text-slate-200 whitespace-pre-wrap break-words">{character.backstory}</p>
-                                        </div>
-                                    </>
+                                {character.backstory && (
+                                    <div className="pt-4 border-t border-[#c5a059]/20">
+                                        <h4 className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1.5">Backstory</h4>
+                                        <p className="text-[#d1cdb8]/90 text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">{character.backstory}</p>
+                                    </div>
                                 )}
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </FantasyCard>
                     </>
                 )}
 
@@ -801,14 +828,12 @@ export default function CharacterDetailsPage() {
                         onOpenChange={(open) => !open && setSelectedFeature(null)}
                         onUpdate={() => loadCharacter(characterId)}
                         excludedOptions={(() => {
-                            // Find all siblings in the same group (same base name) excluding self
                             if (!character.features) return [];
                             const baseName = selectedFeature.name.replace(/\s\(\d+\)$/, "");
                             const siblings = character.features.filter(f =>
                                 f.id !== selectedFeature.id &&
                                 f.name.replace(/\s\(\d+\)$/, "") === baseName
                             );
-                            // Collect selections
                             const excluded: string[] = [];
                             siblings.forEach(s => {
                                 if (s.selection) excluded.push(...s.selection);
@@ -817,7 +842,7 @@ export default function CharacterDetailsPage() {
                         })()}
                     />
                 )}
-            </div>
+            </main>
         </div>
     );
 }

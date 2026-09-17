@@ -150,56 +150,56 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Spells</h2>
+                <h2 className="font-cinzel-decorative text-xl sm:text-2xl font-bold text-[#c5a059]">Spells</h2>
                 {isPreparedCaster && prepStatus && (
-                    <div className="text-sm bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-                        <span className="text-slate-400">Prepared: </span>
-                        <span className={`font-bold ${prepStatus.remaining === 0 ? 'text-green-400' : 'text-blue-400'}`}>
+                    <div className="text-xs font-fira-sans bg-[#181a21] px-3.5 py-1.5 rounded-full border border-[#c5a059]/40 shadow-sm">
+                        <span className="text-[#d1cdb8]/70 font-cinzel-decorative mr-1">Prepared:</span>
+                        <span className={`font-bold ${prepStatus.remaining === 0 ? 'text-green-400' : 'text-[#c5a059]'}`}>
                             {prepStatus.current}
                         </span>
-                        <span className="text-slate-600"> / </span>
-                        <span className="text-slate-400">{prepStatus.limit}</span>
+                        <span className="text-[#c5a059]/40"> / </span>
+                        <span className="text-[#d1cdb8]/70">{prepStatus.limit}</span>
                     </div>
                 )}
             </div>
 
             {/* Add Spell */}
-            <Card className="bg-slate-800 border-slate-700">
-                <CardHeader>
-                    <CardTitle className="text-lg">Learn/Add Spell</CardTitle>
-                    <CardDescription>Search for spells to add to your known spells or spellbook</CardDescription>
+            <Card className="bg-[#12141a] border border-[#c5a059]/30 rounded-sm shadow-md">
+                <CardHeader className="pb-3 border-b border-[#c5a059]/15">
+                    <CardTitle className="font-cinzel-decorative text-base font-bold text-[#c5a059]">Learn / Add Spell</CardTitle>
+                    <CardDescription className="font-lora text-xs text-[#d1cdb8]/70">Search for spells to add to your known spells or spellbook</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-3">
                     <div className="relative">
                         <Input
                             placeholder="Search spells..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-900 border-slate-600 text-white"
+                            className="bg-[#181a21] border-[#c5a059]/40 text-[#d1cdb8] placeholder:text-[#d1cdb8]/40 focus:border-[#c5a059]"
                         />
                         {searchResults.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            <div className="absolute z-10 w-full mt-1 bg-[#12141a] border border-[#c5a059]/50 rounded-sm shadow-2xl max-h-60 overflow-y-auto">
                                 {searchResults.map((spell) => (
                                     <div
                                         key={spell.id}
-                                        className="p-2 hover:bg-slate-800 cursor-pointer flex justify-between items-center"
+                                        className="p-2.5 hover:bg-[#181a21] cursor-pointer flex justify-between items-center border-b border-[#c5a059]/10 last:border-b-0 transition-colors"
                                         onClick={() => handleAddSpell(spell)}
                                     >
                                         <div>
-                                            <div className="font-semibold text-white">{spell.name}</div>
-                                            <div className="text-xs text-slate-400">Level {spell.level} - {spell.school}</div>
+                                            <div className="font-cinzel-decorative font-semibold text-white">{spell.name}</div>
+                                            <div className="text-xs font-lora text-[#c5a059]/70">Level {spell.level} - {spell.school}</div>
                                         </div>
                                         {addingSpellId === spell.id ? (
-                                            <span className="text-xs text-blue-400">Adding...</span>
+                                            <span className="text-xs font-fira-sans text-[#e0bc75]">Adding...</span>
                                         ) : (
-                                            <span className="text-xs text-slate-500">+ Add</span>
+                                            <span className="text-xs font-cinzel-decorative text-[#c5a059] font-bold hover:underline">+ Add</span>
                                         )}
                                     </div>
                                 ))}
                             </div>
                         )}
                         {searchTerm && searchResults.length === 0 && !isSearching && (
-                            <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-600 rounded-md p-2 text-slate-400 text-sm">
+                            <div className="absolute z-10 w-full mt-1 bg-[#12141a] border border-[#c5a059]/40 rounded-sm p-2 text-[#d1cdb8]/70 text-sm font-lora italic">
                                 No spells found.
                             </div>
                         )}
@@ -208,7 +208,7 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
             </Card>
 
             {/* Spells List */}
-            <div className="space-y-4">
+            <div className="space-y-5">
                 {Object.keys(spellsByLevel).sort((a, b) => Number(a) - Number(b)).map((levelStr) => {
                     const level = Number(levelStr);
                     const spells = spellsByLevel[level].sort((a, b) => {
@@ -220,25 +220,19 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                         return a.name.localeCompare(b.name);
                     });
                     return (
-                        <div key={level}>
-                            <div className="flex justify-between items-center mb-2">
-                                <h3 className="text-xl font-bold text-slate-300">
+                        <div key={level} className="space-y-3">
+                            <div className="flex justify-between items-center border-b border-[#c5a059]/20 pb-2">
+                                <h3 className="font-cinzel-decorative text-lg sm:text-xl font-bold text-[#c5a059]">
                                     {level === 0 ? "Cantrips" : `Level ${level}`}
                                 </h3>
 
                                 {level > 0 && character.stats?.spell_slots && character.stats.spell_slots[level.toString()] > 0 && (
-                                    <div className="flex items-center gap-1 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-                                        <span className="text-xs text-slate-400 mr-2 uppercase tracking-wider font-bold">Slots</span>
+                                    <div className="flex items-center gap-1.5 bg-[#181a21] px-3 py-1 rounded-full border border-[#c5a059]/30 shadow-sm">
+                                        <span className="text-[10px] text-[#c5a059]/80 uppercase tracking-widest font-cinzel-decorative font-bold mr-1">Slots</span>
                                         {Array.from({ length: character.stats.spell_slots[level.toString()] }).map((_, i) => {
                                             const maxSlots = character.stats!.spell_slots![level.toString()];
                                             const usedSlots = character.stats!.expended_spell_slots?.[level.toString()] || 0;
                                             const remaining = maxSlots - usedSlots;
-
-                                            // Render slots: Remaining (filled) first? 
-                                            // Actually, usually you use the "first" available slot. 
-                                            // Let's just render checks. 
-                                            // If i < remaining: Available (Filled)
-                                            // If i >= remaining: Used (Empty)
                                             const isAvailable = i < remaining;
 
                                             return (
@@ -256,9 +250,9 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                                             console.error("Failed to toggle slot:", e);
                                                         }
                                                     }}
-                                                    className={`w-4 h-4 rounded-full border transition-all ${isAvailable
-                                                        ? "bg-blue-500 border-blue-400 hover:bg-blue-600 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                                                        : "bg-transparent border-slate-600 hover:border-slate-400"
+                                                    className={`w-3.5 h-3.5 rounded-full border transition-all ${isAvailable
+                                                        ? "bg-[#c5a059] border-[#e0bc75] hover:bg-[#d6b16a] shadow-[0_0_8px_rgba(197,160,89,0.6)]"
+                                                        : "bg-[#0c0d12] border-[#c5a059]/30 hover:border-[#c5a059]/70"
                                                         }`}
                                                     title={isAvailable ? "Click to expend slot" : "Click to restore slot"}
                                                 />
@@ -271,34 +265,48 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                 {spells.map((spell) => (
                                     <Card
                                         key={spell.id}
-                                        className={`transition-colors cursor-pointer border ${spell.is_prepared
-                                            ? "bg-green-950/40 border-green-600/50 hover:bg-green-900/50"
-                                            : "bg-slate-800 border-slate-700 hover:bg-slate-700/50"
+                                        className={`transition-all duration-200 cursor-pointer rounded-sm border ${spell.is_prepared
+                                            ? "bg-[#181a21] border-[#c5a059]/60 hover:border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.15)]"
+                                            : "bg-[#12141a] border-[#c5a059]/25 hover:border-[#c5a059]/50"
                                             }`}
                                         onClick={() => setSelectedSpell(spell)}
                                     >
-                                        <CardContent className="p-4 flex justify-between items-center">
-                                            <div className="flex-1">
-                                                <h4 className="font-bold text-white flex items-center gap-2">
+                                        <CardContent className="p-3.5 flex justify-between items-center">
+                                            <div className="flex-1 pr-4">
+                                                <h4 className="font-cinzel-decorative font-bold text-white flex items-center gap-2">
                                                     {spell.name}
-                                                    {spell.is_ritual && <span className="text-xs bg-slate-700 px-1 rounded">R</span>}
-                                                    {spell.is_prepared && <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded border border-blue-700">Prepared</span>}
+                                                    {spell.is_ritual && (
+                                                        <span className="text-[10px] font-cinzel-decorative bg-[#0c0d12] border border-[#c5a059]/30 text-[#c5a059] px-1.5 py-0.5 rounded-sm">
+                                                            Ritual
+                                                        </span>
+                                                    )}
+                                                    {spell.is_prepared && (
+                                                        <span className="text-[10px] font-cinzel-decorative font-bold bg-[#c5a059] text-[#0c0d12] px-2 py-0.5 rounded-sm uppercase tracking-wider shadow-sm">
+                                                            Prepared
+                                                        </span>
+                                                    )}
                                                 </h4>
-                                                <p className="text-sm text-slate-400">
+                                                <p className="text-xs font-lora text-[#c5a059]/70 mt-0.5">
                                                     {spell.spell_details?.school || spell.school || "?"} • {spell.spell_details?.casting_time || "?"}
                                                 </p>
-                                                <p className="text-xs text-slate-500 mt-2 line-clamp-2">
+                                                <p className="text-xs font-lora text-[#d1cdb8]/70 mt-1.5 line-clamp-2">
                                                     {spell.description || spell.spell_details?.description || "No description available"}
                                                 </p>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 items-center flex-shrink-0">
                                                 {/* Prepare Button */}
                                                 {level > 0 && isPreparedCaster && (
                                                     <Button
                                                         variant={spell.is_prepared ? "outline" : "secondary"}
                                                         size="sm"
-                                                        onClick={() => handlePrepareToggle(spell)}
-                                                        className={spell.is_prepared ? "border-blue-500 text-blue-400" : ""}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handlePrepareToggle(spell);
+                                                        }}
+                                                        className={spell.is_prepared
+                                                            ? "border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15 font-cinzel-decorative text-xs h-8 rounded-sm"
+                                                            : "bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel-decorative font-bold text-xs h-8 rounded-sm shadow-sm"
+                                                        }
                                                     >
                                                         {spell.is_prepared ? "Unprepare" : "Prepare"}
                                                     </Button>
@@ -311,7 +319,7 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                                         e.stopPropagation();
                                                         handleRemoveSpell(spell);
                                                     }}
-                                                    className="bg-red-900 hover:bg-red-800"
+                                                    className="border border-red-900/50 bg-red-950/30 text-red-300 hover:bg-red-900/60 font-cinzel-decorative text-xs h-8 rounded-sm"
                                                 >
                                                     Remove
                                                 </Button>
@@ -324,24 +332,32 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                     );
                 })}
                 {(!character.spells || character.spells.length === 0) && (
-                    <div className="text-center py-8 text-slate-500">
-                        No spells known/prepared.
+                    <div className="text-center py-10 font-cinzel-decorative text-sm text-[#c5a059]/60 border border-dashed border-[#c5a059]/30 rounded-sm bg-[#12141a]">
+                        No spells known or prepared.
                     </div>
                 )}
             </div>
 
             {/* Spell Detail Modal */}
             <Dialog open={!!selectedSpell} onOpenChange={(open) => !open && setSelectedSpell(null)}>
-                <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
+                <DialogContent className="bg-[#12141a] border border-[#c5a059] max-w-2xl rounded-sm shadow-2xl text-[#d1cdb8]">
                     {selectedSpell && (
                         <>
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                            <DialogHeader className="border-b border-[#c5a059]/20 pb-3">
+                                <DialogTitle className="font-cinzel-decorative text-xl sm:text-2xl font-bold text-[#c5a059] flex items-center gap-2">
                                     {selectedSpell.name}
-                                    {selectedSpell.is_ritual && <span className="text-xs bg-slate-700 px-2 py-1 rounded">Ritual</span>}
-                                    {selectedSpell.is_prepared && <span className="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded border border-blue-700">Prepared</span>}
+                                    {selectedSpell.is_ritual && (
+                                        <span className="text-[10px] font-cinzel-decorative bg-[#0c0d12] border border-[#c5a059]/30 text-[#c5a059] px-2 py-0.5 rounded-sm">
+                                            Ritual
+                                        </span>
+                                    )}
+                                    {selectedSpell.is_prepared && (
+                                        <span className="text-[10px] font-cinzel-decorative font-bold bg-[#c5a059] text-[#0c0d12] px-2 py-0.5 rounded-sm uppercase tracking-wider">
+                                            Prepared
+                                        </span>
+                                    )}
                                 </DialogTitle>
-                                <DialogDescription className="text-slate-400">
+                                <DialogDescription className="font-cinzel-decorative text-xs uppercase tracking-wider text-[#c5a059]/70">
                                     Level {selectedSpell.level} {selectedSpell.spell_details?.school || selectedSpell.school || "Spell"}
                                 </DialogDescription>
                             </DialogHeader>
@@ -349,57 +365,57 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                             <div className="space-y-4 mt-4">
                                 {/* Description */}
                                 <div>
-                                    <h4 className="font-semibold text-white mb-2">Description</h4>
-                                    <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                    <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Description</h4>
+                                    <p className="font-lora text-sm text-[#d1cdb8] leading-relaxed whitespace-pre-wrap">
                                         {selectedSpell.description || selectedSpell.spell_details?.description || "No description available."}
                                     </p>
                                 </div>
 
                                 {/* Spell Details Grid */}
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-4 border-t border-[#c5a059]/20 pt-4">
                                     <div>
-                                        <h4 className="font-semibold text-white mb-2">Casting</h4>
-                                        <div className="space-y-1 text-sm">
+                                        <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Casting</h4>
+                                        <div className="space-y-1.5 text-sm font-lora">
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">Casting Time:</span>
-                                                <span className="text-white">{selectedSpell.spell_details?.casting_time || "—"}</span>
+                                                <span className="text-[#d1cdb8]/70">Casting Time:</span>
+                                                <span className="font-fira-sans font-bold text-[#c5a059]">{selectedSpell.spell_details?.casting_time || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">Range:</span>
-                                                <span className="text-white">{selectedSpell.spell_details?.range || "—"}</span>
+                                                <span className="text-[#d1cdb8]/70">Range:</span>
+                                                <span className="font-fira-sans font-bold text-[#c5a059]">{selectedSpell.spell_details?.range || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">Duration:</span>
-                                                <span className="text-white">{selectedSpell.spell_details?.duration || "—"}</span>
+                                                <span className="text-[#d1cdb8]/70">Duration:</span>
+                                                <span className="font-fira-sans font-bold text-[#c5a059]">{selectedSpell.spell_details?.duration || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">Components:</span>
-                                                <span className="text-white">{selectedSpell.spell_details?.components || "—"}</span>
+                                                <span className="text-[#d1cdb8]/70">Components:</span>
+                                                <span className="font-fira-sans font-bold text-[#c5a059]">{selectedSpell.spell_details?.components || "—"}</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h4 className="font-semibold text-white mb-2">Properties</h4>
-                                        <div className="space-y-1 text-sm">
+                                        <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Properties</h4>
+                                        <div className="space-y-1.5 text-sm font-lora">
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">School:</span>
-                                                <span className="text-white">{selectedSpell.spell_details?.school || selectedSpell.school || "—"}</span>
+                                                <span className="text-[#d1cdb8]/70">School:</span>
+                                                <span className="font-lora text-white">{selectedSpell.spell_details?.school || selectedSpell.school || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">Level:</span>
-                                                <span className="text-white">{selectedSpell.level === 0 ? "Cantrip" : `Level ${selectedSpell.level}`}</span>
+                                                <span className="text-[#d1cdb8]/70">Level:</span>
+                                                <span className="font-fira-sans font-bold text-[#c5a059]">{selectedSpell.level === 0 ? "Cantrip" : `Level ${selectedSpell.level}`}</span>
                                             </div>
                                             {selectedSpell.is_ritual && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-slate-400">Ritual:</span>
-                                                    <span className="text-purple-400">Yes</span>
+                                                    <span className="text-[#d1cdb8]/70">Ritual:</span>
+                                                    <span className="font-fira-sans font-bold text-[#e0bc75]">Yes</span>
                                                 </div>
                                             )}
                                             {selectedSpell.spell_details?.concentration && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-slate-400">Concentration:</span>
-                                                    <span className="text-amber-400">Required</span>
+                                                    <span className="text-[#d1cdb8]/70">Concentration:</span>
+                                                    <span className="font-fira-sans font-bold text-[#e0bc75]">Required</span>
                                                 </div>
                                             )}
                                         </div>

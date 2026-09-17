@@ -19,12 +19,12 @@ interface InventoryTabProps {
 const getRarityColors = (rarity: string) => {
     const rarityLower = rarity?.toLowerCase() || 'common';
     const colors: Record<string, string> = {
-        'common': 'text-slate-400 border-slate-600 bg-slate-900/50',
-        'uncommon': 'text-green-400 border-green-600 bg-green-950/30',
-        'rare': 'text-blue-400 border-blue-600 bg-blue-950/30',
-        'very rare': 'text-purple-400 border-purple-600 bg-purple-950/30',
-        'legendary': 'text-amber-400 border-amber-600 bg-amber-950/30',
-        'artifact': 'text-red-400 border-red-600 bg-red-950/30',
+        'common': 'text-[#d1cdb8] border-[#c5a059]/30 bg-[#181a21]',
+        'uncommon': 'text-green-400 border-green-600/50 bg-green-950/30',
+        'rare': 'text-blue-400 border-blue-600/50 bg-blue-950/30',
+        'very rare': 'text-purple-400 border-purple-600/50 bg-purple-950/30',
+        'legendary': 'text-[#e0bc75] border-[#c5a059] bg-[#c5a059]/10 shadow-[0_0_8px_rgba(197,160,89,0.2)]',
+        'artifact': 'text-red-400 border-red-600/50 bg-red-950/30',
     };
     return colors[rarityLower] || colors['common'];
 };
@@ -170,29 +170,29 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
     // Filter Buttons Config
     const filters = [
         { id: 'all', label: 'All Items', icon: null },
-        { id: 'weapons', label: 'Weapons', icon: <Sword size={14} className="mr-1" /> },
-        { id: 'armor', label: 'Armor', icon: <Shield size={14} className="mr-1" /> },
-        { id: 'accessories', label: 'Accessories', icon: <Sparkles size={14} className="mr-1" /> },
-        { id: 'consumables', label: 'Consumables', icon: <FlaskConical size={14} className="mr-1" /> },
-        { id: 'other', label: 'Other', icon: <Backpack size={14} className="mr-1" /> },
+        { id: 'weapons', label: 'Weapons', icon: <Sword size={14} className="mr-1 text-[#c5a059]" /> },
+        { id: 'armor', label: 'Armor', icon: <Shield size={14} className="mr-1 text-[#c5a059]" /> },
+        { id: 'accessories', label: 'Accessories', icon: <Sparkles size={14} className="mr-1 text-[#c5a059]" /> },
+        { id: 'consumables', label: 'Consumables', icon: <FlaskConical size={14} className="mr-1 text-[#c5a059]" /> },
+        { id: 'other', label: 'Other', icon: <Backpack size={14} className="mr-1 text-[#c5a059]" /> },
     ];
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-2xl font-bold">Inventory</h2>
+                <h2 className="font-cinzel-decorative text-xl sm:text-2xl font-bold text-[#c5a059]">Inventory</h2>
                 <div className="flex gap-4 items-center w-full md:w-auto justify-between md:justify-end">
                     {/* Attunement Slots */}
-                    <div className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${
+                    <div className={`flex items-center gap-1.5 text-xs font-fira-sans font-medium px-3 py-1.5 rounded-full border ${
                         attunedCount >= 3
-                            ? 'border-amber-500/60 bg-amber-950/40 text-amber-400'
-                            : 'border-slate-700 bg-slate-800/60 text-slate-400'
+                            ? 'border-[#c5a059] bg-[#181a21] text-[#c5a059] shadow-[0_0_10px_rgba(197,160,89,0.3)]'
+                            : 'border-[#c5a059]/30 bg-[#181a21] text-[#d1cdb8]'
                     }`}>
-                        <Zap size={13} className={attunedCount >= 3 ? 'text-amber-400' : 'text-slate-500'} />
-                        Attunement: {attunedCount}/3
+                        <Zap size={13} className={attunedCount >= 3 ? 'text-[#c5a059]' : 'text-[#c5a059]/60'} />
+                        Attunement: <span className="font-bold text-[#c5a059]">{attunedCount}</span>/3
                     </div>
-                    <div className="text-slate-400">
-                        Weight: <span className={totalWeight > 150 ? "text-red-500" : "text-white"}>{totalWeight.toFixed(1)} lb</span>
+                    <div className="text-xs font-lora text-[#d1cdb8]/70">
+                        Weight: <span className={`font-fira-sans font-bold ${totalWeight > 150 ? "text-red-400" : "text-[#c5a059]"}`}>{totalWeight.toFixed(1)} lb</span>
                     </div>
                 </div>
             </div>
@@ -213,9 +213,9 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                             variant={activeFilter === filter.id ? "secondary" : "ghost"}
                             size="sm"
                             onClick={() => setActiveFilter(filter.id)}
-                            className={`h-8 rounded-full ${activeFilter === filter.id
-                                ? "bg-slate-700 text-white font-medium"
-                                : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                            className={`h-8 rounded-sm font-cinzel-decorative text-xs tracking-wider transition-all ${activeFilter === filter.id
+                                ? "bg-[#c5a059] text-[#0c0d12] font-bold shadow-md hover:bg-[#d6b16a]"
+                                : "bg-[#181a21] border border-[#c5a059]/30 text-[#d1cdb8] hover:text-[#c5a059] hover:border-[#c5a059]/60 hover:bg-[#181a21]/80"}`}
                         >
                             {filter.icon}
                             {filter.label}
@@ -224,42 +224,42 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                 </div>
 
                 {/* Add Item Section */}
-                <Card className="bg-slate-800 border-slate-700">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Add Item</CardTitle>
-                        <CardDescription>Search for items to add to your inventory</CardDescription>
+                <Card className="bg-[#12141a] border border-[#c5a059]/30 rounded-sm shadow-md">
+                    <CardHeader className="pb-3 border-b border-[#c5a059]/15">
+                        <CardTitle className="font-cinzel-decorative text-base font-bold text-[#c5a059]">Add Item</CardTitle>
+                        <CardDescription className="font-lora text-xs text-[#d1cdb8]/70">Search for items to add to your inventory</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-3">
                         <div className="relative">
                             <Input
                                 placeholder="Search items..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-slate-900 border-slate-600 text-white"
+                                className="bg-[#181a21] border-[#c5a059]/40 text-[#d1cdb8] placeholder:text-[#d1cdb8]/40 focus:border-[#c5a059]"
                             />
                             {searchResults.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <div className="absolute z-10 w-full mt-1 bg-[#12141a] border border-[#c5a059]/50 rounded-sm shadow-2xl max-h-60 overflow-y-auto">
                                     {searchResults.map((item) => (
                                         <div
                                             key={item.id}
-                                            className="p-2 hover:bg-slate-800 cursor-pointer flex justify-between items-center"
+                                            className="p-2.5 hover:bg-[#181a21] cursor-pointer flex justify-between items-center border-b border-[#c5a059]/10 last:border-b-0 transition-colors"
                                             onClick={() => handleAddItem(item)}
                                         >
                                             <div>
-                                                <div className="font-semibold text-white">{item.name}</div>
-                                                <div className="text-xs text-slate-400">{item.category?.name} - {item.rarity_display}</div>
+                                                <div className="font-cinzel-decorative font-semibold text-white">{item.name}</div>
+                                                <div className="text-xs font-lora text-[#c5a059]/70">{item.category?.name} - {item.rarity_display}</div>
                                             </div>
                                             {addingItemId === item.id ? (
-                                                <span className="text-xs text-blue-400">Adding...</span>
+                                                <span className="text-xs font-fira-sans text-[#e0bc75]">Adding...</span>
                                             ) : (
-                                                <span className="text-xs text-slate-500">+ Add</span>
+                                                <span className="text-xs font-cinzel-decorative text-[#c5a059] font-bold hover:underline">+ Add</span>
                                             )}
                                         </div>
                                     ))}
                                 </div>
                             )}
                             {searchTerm && searchResults.length === 0 && !isSearching && (
-                                <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-600 rounded-md p-2 text-slate-400 text-sm">
+                                <div className="absolute z-10 w-full mt-1 bg-[#12141a] border border-[#c5a059]/40 rounded-sm p-2 text-[#d1cdb8]/70 text-sm font-lora italic">
                                     No items found.
                                 </div>
                             )}
@@ -321,67 +321,67 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
 
                                 return (
                                     <div key={title} className="space-y-3">
-                                        <h3 className="text-lg font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-2">
+                                        <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] flex items-center gap-2 border-b border-[#c5a059]/20 pb-2">
                                             {icon} {title}
-                                            <span className="text-xs font-normal text-slate-500 ml-auto">{items.length} items</span>
+                                            <span className="font-fira-sans text-xs font-normal text-[#c5a059]/60 ml-auto">{items.length} items</span>
                                         </h3>
                                         <div className="grid gap-3">
                                             {sortedItems.map((item) => (
-                                                <Card key={item.id} className="bg-slate-800 border-slate-700 cursor-pointer hover:border-slate-600 transition-colors" onClick={() => setSelectedItem(item)}>
+                                                <Card key={item.id} className="bg-[#12141a] border border-[#c5a059]/25 hover:border-[#c5a059]/60 cursor-pointer transition-all duration-200 rounded-sm hover:shadow-[0_0_12px_rgba(197,160,89,0.15)]" onClick={() => setSelectedItem(item)}>
                                                     <CardContent className="p-3 flex justify-between items-center">
                                                         <div className="flex items-center gap-4">
-                                                            <div className="p-2 bg-slate-900 rounded-lg border border-slate-700 text-slate-400">
+                                                            <div className="p-2 bg-[#0c0d12] rounded-sm border border-[#c5a059]/30 text-[#c5a059]">
                                                                 <Package size={20} />
                                                             </div>
                                                             <div>
-                                                                <div className="font-bold text-white flex items-center gap-2">
+                                                                <div className="font-cinzel-decorative font-bold text-white flex items-center gap-2">
                                                                     {item.item_details.name}
-                                                                    {item.quantity > 1 && <Badge variant="secondary" className="px-1.5 h-5 text-[10px]">x{item.quantity}</Badge>}
-                                                                    <Badge variant="outline" className={`px-2 py-0 h-5 text-[10px] uppercase tracking-wide ${getRarityColors(item.item_details.rarity)}`}>
+                                                                    {item.quantity > 1 && <Badge variant="secondary" className="px-1.5 h-5 text-[10px] bg-[#181a21] border border-[#c5a059]/30 text-[#c5a059] font-fira-sans">x{item.quantity}</Badge>}
+                                                                    <Badge variant="outline" className={`px-2 py-0 h-5 text-[10px] font-cinzel-decorative uppercase tracking-wider ${getRarityColors(item.item_details.rarity)}`}>
                                                                         {item.item_details.rarity}
                                                                     </Badge>
                                                                     {item.is_equipped && (
-                                                                        <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-0 h-5 text-[10px] uppercase tracking-wide">
+                                                                        <Badge className="bg-[#c5a059] text-[#0c0d12] hover:bg-[#d6b16a] px-2 py-0 h-5 text-[10px] font-cinzel-decorative font-bold uppercase tracking-wider shadow-sm">
                                                                             {item.equipment_slot?.replace(/_/g, ' ')}
                                                                         </Badge>
                                                                     )}
                                                                     {item.is_attuned && (
-                                                                        <Badge className="bg-amber-600/80 hover:bg-amber-600 text-white px-2 py-0 h-5 text-[10px] uppercase tracking-wide">
+                                                                        <Badge className="bg-[#181a21] border border-[#c5a059] text-[#c5a059] px-2 py-0 h-5 text-[10px] font-fira-sans font-semibold uppercase tracking-wider">
                                                                             ⚡ Attuned
                                                                         </Badge>
                                                                     )}
                                                                     {item.item_details.requires_attunement && !item.is_attuned && (
-                                                                        <Badge variant="outline" className="border-amber-700/50 text-amber-600/80 px-2 py-0 h-5 text-[10px] uppercase tracking-wide">
+                                                                        <Badge variant="outline" className="border-[#c5a059]/30 text-[#c5a059]/70 px-2 py-0 h-5 text-[10px] font-lora italic uppercase tracking-wider">
                                                                             Attunement
                                                                         </Badge>
                                                                     )}
                                                                 </div>
-                                                                <p className="text-xs text-slate-400 mt-1">
-                                                                    {item.item_details.category?.name} • {item.item_details.weight} lb
+                                                                <p className="text-xs font-lora text-[#d1cdb8]/70 mt-1">
+                                                                    {item.item_details.category?.name} • <span className="font-fira-sans text-[#c5a059]">{item.item_details.weight} lb</span>
                                                                 </p>
 
                                                                 {/* Item Stats Badges */}
                                                                 <div className="flex flex-wrap gap-2 mt-2">
                                                                     {/* Weapon Stats */}
                                                                     {item.item_details.damage_dice && (
-                                                                        <Badge variant="outline" className="border-red-900/50 bg-red-950/20 text-red-200 text-[10px] h-5">
+                                                                        <Badge variant="outline" className="border-red-900/50 bg-red-950/20 text-red-200 text-[10px] h-5 font-fira-sans">
                                                                             {item.item_details.damage_dice} {item.item_details.damage_type}
                                                                         </Badge>
                                                                     )}
                                                                     {item.item_details.two_handed_damage_dice && (
-                                                                        <Badge variant="outline" className="border-slate-700 bg-slate-800/50 text-slate-300 text-[10px] h-5">
+                                                                        <Badge variant="outline" className="border-[#c5a059]/30 bg-[#0c0d12] text-[#d1cdb8] text-[10px] h-5 font-fira-sans">
                                                                             Versatile ({item.item_details.two_handed_damage_dice})
                                                                         </Badge>
                                                                     )}
 
                                                                     {/* Armor Stats */}
                                                                     {item.item_details.base_ac !== undefined && (
-                                                                        <Badge variant="outline" className="border-blue-900/50 bg-blue-950/20 text-blue-200 text-[10px] h-5">
+                                                                        <Badge variant="outline" className="border-[#c5a059]/40 bg-[#0c0d12] text-[#c5a059] text-[10px] h-5 font-fira-sans">
                                                                             AC {item.item_details.base_ac}
                                                                         </Badge>
                                                                     )}
                                                                     {item.item_details.armor_type_display === 'Shield' && (
-                                                                        <Badge variant="outline" className="border-blue-900/50 bg-blue-950/20 text-blue-200 text-[10px] h-5">
+                                                                        <Badge variant="outline" className="border-[#c5a059]/40 bg-[#0c0d12] text-[#c5a059] text-[10px] h-5 font-fira-sans">
                                                                             +2 AC
                                                                         </Badge>
                                                                     )}
@@ -396,16 +396,16 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={(e) => { e.stopPropagation(); handleUnattune(item); }}
-                                                                        className="border-amber-700 text-amber-400 hover:bg-amber-950 h-8 text-xs"
+                                                                        className="border-[#c5a059] text-[#c5a059] hover:bg-[#c5a059]/15 h-8 text-xs font-cinzel-decorative rounded-sm"
                                                                     >
-                                                                        ⚡ Unatune
+                                                                        ⚡ Unattune
                                                                     </Button>
                                                                 ) : (
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={(e) => { e.stopPropagation(); handleAttune(item); }}
-                                                                        className="border-slate-600 text-slate-300 hover:border-amber-600 hover:text-amber-400 h-8 text-xs"
+                                                                        className="border-[#c5a059]/40 text-[#d1cdb8] hover:border-[#c5a059] hover:text-[#c5a059] hover:bg-[#181a21] h-8 text-xs font-cinzel-decorative rounded-sm"
                                                                     >
                                                                         Attune
                                                                     </Button>
@@ -420,7 +420,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                             e.stopPropagation();
                                                                             handleUnequip(item);
                                                                         }}
-                                                                        className="border-amber-900 text-amber-500 hover:bg-amber-950 hover:text-amber-400 h-8"
+                                                                        className="border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15 h-8 text-xs font-cinzel-decorative rounded-sm"
                                                                     >
                                                                         Unequip
                                                                     </Button>
@@ -439,7 +439,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                                 e.stopPropagation();
                                                                                 handleEquipWithSlot(item, 'off_hand');
                                                                             }}
-                                                                            className="bg-green-900/40 hover:bg-green-900/70 text-green-300 border border-green-800/50 h-8 text-xs"
+                                                                            className="bg-[#181a21] border border-[#c5a059] hover:bg-[#c5a059]/20 text-[#c5a059] h-8 text-xs font-cinzel-decorative rounded-sm"
                                                                         >
                                                                             🗡 Off Hand
                                                                         </Button>
@@ -453,7 +453,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                         e.stopPropagation();
                                                                         handleEquip(item);
                                                                     }}
-                                                                    className="bg-slate-700 hover:bg-slate-600 text-slate-200 h-8"
+                                                                    className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel-decorative font-bold h-8 text-xs rounded-sm shadow-sm"
                                                                 >
                                                                     Equip
                                                                 </Button>
@@ -462,7 +462,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                 variant="destructive"
                                                                 size="sm"
                                                                 onClick={(e) => { e.stopPropagation(); handleRemove(item); }}
-                                                                className="bg-red-900/50 hover:bg-red-900 text-red-200 h-8"
+                                                                className="border border-red-900/50 bg-red-950/30 text-red-300 hover:bg-red-900/60 font-cinzel-decorative text-xs h-8 rounded-sm"
                                                             >
                                                                 Remove
                                                             </Button>
@@ -482,73 +482,73 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
 
                             return (
                                 <>
-                                    {shouldShow('weapons') && renderSection("Weapons", weapons, <Sword size={18} className="text-red-400" />)}
-                                    {shouldShow('armor') && renderSection("Armor & Shields", armor, <Shield size={18} className="text-blue-400" />)}
-                                    {shouldShow('accessories') && renderSection("Accessories", accessories, <Sparkles size={18} className="text-yellow-400" />)}
-                                    {shouldShow('consumables') && renderSection("Consumables", consumables, <FlaskConical size={18} className="text-purple-400" />)}
-                                    {shouldShow('other') && renderSection("General Items", other, <Backpack size={18} className="text-emerald-400" />)}
+                                    {shouldShow('weapons') && renderSection("Weapons", weapons, <Sword size={18} className="text-[#c5a059]" />)}
+                                    {shouldShow('armor') && renderSection("Armor & Shields", armor, <Shield size={18} className="text-[#c5a059]" />)}
+                                    {shouldShow('accessories') && renderSection("Accessories", accessories, <Sparkles size={18} className="text-[#c5a059]" />)}
+                                    {shouldShow('consumables') && renderSection("Consumables", consumables, <FlaskConical size={18} className="text-[#c5a059]" />)}
+                                    {shouldShow('other') && renderSection("General Items", other, <Backpack size={18} className="text-[#c5a059]" />)}
                                 </>
                             );
                         })()}
                     </>
                 ) : (
-                    <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-800 rounded-lg bg-slate-900/50">
-                        <Backpack className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p>Inventory is empty.</p>
-                        <p className="text-sm">Search for items above to add them.</p>
+                    <div className="text-center py-12 text-[#c5a059]/60 border-2 border-dashed border-[#c5a059]/30 rounded-sm bg-[#12141a]">
+                        <Backpack className="h-12 w-12 mx-auto mb-3 opacity-30 text-[#c5a059]" />
+                        <p className="font-cinzel-decorative text-base text-[#c5a059]">Inventory is empty.</p>
+                        <p className="font-lora text-xs text-[#d1cdb8]/60 mt-1">Search for items above to add them.</p>
                     </div>
                 )}
             </div>
 
             {/* Item Detail Modal */}
             <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-                <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
+                <DialogContent className="bg-[#12141a] border border-[#c5a059] max-w-2xl rounded-sm shadow-2xl text-[#d1cdb8]">
                     {selectedItem && (
                         <>
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                            <DialogHeader className="border-b border-[#c5a059]/20 pb-3">
+                                <DialogTitle className="font-cinzel-decorative text-xl sm:text-2xl font-bold text-[#c5a059] flex items-center gap-2">
                                     {selectedItem.item_details.name}
-                                    <Badge variant="outline" className={`px-2 py-1 text-xs uppercase tracking-wide ${getRarityColors(selectedItem.item_details.rarity)}`}>
+                                    <Badge variant="outline" className={`px-2 py-0.5 text-xs font-cinzel-decorative uppercase tracking-wider ${getRarityColors(selectedItem.item_details.rarity)}`}>
                                         {selectedItem.item_details.rarity}
                                     </Badge>
                                     {selectedItem.is_equipped && (
-                                        <Badge className="bg-blue-600 text-white">
+                                        <Badge className="bg-[#c5a059] text-[#0c0d12] font-cinzel-decorative font-bold text-xs uppercase tracking-wider">
                                             Equipped: {selectedItem.equipment_slot?.replace(/_/g, ' ')}
                                         </Badge>
                                     )}
                                     {selectedItem.is_attuned && (
-                                        <Badge className="bg-amber-600 text-white">⚡ Attuned</Badge>
+                                        <Badge className="bg-[#181a21] border border-[#c5a059] text-[#c5a059] font-fira-sans font-semibold text-xs uppercase tracking-wider">⚡ Attuned</Badge>
                                     )}
                                 </DialogTitle>
-                                <DialogDescription className="text-slate-400">
+                                <DialogDescription className="font-cinzel-decorative text-xs uppercase tracking-wider text-[#c5a059]/70">
                                     {selectedItem.item_details.category?.name}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="space-y-4 mt-4">
                                 <div>
-                                    <h4 className="font-semibold text-white mb-2">Description</h4>
-                                    <p className="text-slate-300 text-sm leading-relaxed">
+                                    <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Description</h4>
+                                    <p className="font-lora text-[#d1cdb8] text-sm leading-relaxed">
                                         {selectedItem.item_details.description || "No description available."}
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-4 border-t border-[#c5a059]/20 pt-4">
                                     <div>
-                                        <h4 className="font-semibold text-white mb-2">Properties</h4>
-                                        <div className="space-y-1 text-sm">
+                                        <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Properties</h4>
+                                        <div className="space-y-1.5 text-sm font-lora">
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">Weight:</span>
-                                                <span className="text-white">{selectedItem.item_details.weight} lb</span>
+                                                <span className="text-[#d1cdb8]/70">Weight:</span>
+                                                <span className="font-fira-sans font-bold text-[#c5a059]">{selectedItem.item_details.weight} lb</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-slate-400">Value:</span>
-                                                <span className="text-white">{selectedItem.item_details.cost || "—"}</span>
+                                                <span className="text-[#d1cdb8]/70">Value:</span>
+                                                <span className="font-fira-sans font-bold text-[#c5a059]">{selectedItem.item_details.cost || "—"}</span>
                                             </div>
                                             {selectedItem.item_details.requires_attunement && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-slate-400">Attunement:</span>
-                                                    <span className="text-amber-400">Required</span>
+                                                    <span className="text-[#d1cdb8]/70">Attunement:</span>
+                                                    <span className="font-fira-sans font-bold text-[#e0bc75]">Required</span>
                                                 </div>
                                             )}
                                         </div>
@@ -556,18 +556,18 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
 
                                     {(selectedItem.item_details.damage_dice || selectedItem.item_details.base_ac !== undefined) && (
                                         <div>
-                                            <h4 className="font-semibold text-white mb-2">Combat Stats</h4>
-                                            <div className="space-y-1 text-sm">
+                                            <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Combat Stats</h4>
+                                            <div className="space-y-1.5 text-sm font-lora">
                                                 {selectedItem.item_details.damage_dice && (
                                                     <>
                                                         <div className="flex justify-between">
-                                                            <span className="text-slate-400">Damage:</span>
-                                                            <span className="text-red-400">{selectedItem.item_details.damage_dice} {selectedItem.item_details.damage_type}</span>
+                                                            <span className="text-[#d1cdb8]/70">Damage:</span>
+                                                            <span className="font-fira-sans font-bold text-red-300">{selectedItem.item_details.damage_dice} {selectedItem.item_details.damage_type}</span>
                                                         </div>
                                                         {selectedItem.item_details.two_handed_damage_dice && (
                                                             <div className="flex justify-between">
-                                                                <span className="text-slate-400">Two-Handed:</span>
-                                                                <span className="text-red-400">{selectedItem.item_details.two_handed_damage_dice}</span>
+                                                                <span className="text-[#d1cdb8]/70">Two-Handed:</span>
+                                                                <span className="font-fira-sans font-bold text-red-300">{selectedItem.item_details.two_handed_damage_dice}</span>
                                                             </div>
                                                         )}
                                                     </>
@@ -575,13 +575,13 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                 {selectedItem.item_details.base_ac !== undefined && (
                                                     <>
                                                         <div className="flex justify-between">
-                                                            <span className="text-slate-400">Armor Class:</span>
-                                                            <span className="text-blue-400">AC {selectedItem.item_details.base_ac}</span>
+                                                            <span className="text-[#d1cdb8]/70">Armor Class:</span>
+                                                            <span className="font-fira-sans font-bold text-[#c5a059]">AC {selectedItem.item_details.base_ac}</span>
                                                         </div>
                                                         {selectedItem.item_details.armor_type_display && (
                                                             <div className="flex justify-between">
-                                                                <span className="text-slate-400">Type:</span>
-                                                                <span className="text-white">{selectedItem.item_details.armor_type_display}</span>
+                                                                <span className="text-[#d1cdb8]/70">Type:</span>
+                                                                <span className="font-lora text-white">{selectedItem.item_details.armor_type_display}</span>
                                                             </div>
                                                         )}
                                                     </>
@@ -591,14 +591,14 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                     )}
                                 </div>
 
-                                <div className="flex gap-2 flex-wrap pt-4 border-t border-slate-700">
+                                <div className="flex gap-2 flex-wrap pt-4 border-t border-[#c5a059]/20">
                                     {/* Attunement button in modal */}
                                     {selectedItem.item_details.requires_attunement && (
                                         selectedItem.is_attuned ? (
                                             <Button
                                                 variant="outline"
                                                 onClick={() => { handleUnattune(selectedItem); setSelectedItem(null); }}
-                                                className="border-amber-700 text-amber-400 hover:bg-amber-950"
+                                                className="border-[#c5a059] text-[#c5a059] hover:bg-[#c5a059]/15 font-cinzel-decorative rounded-sm"
                                             >
                                                 ⚡ Remove Attunement
                                             </Button>
@@ -606,7 +606,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                             <Button
                                                 variant="outline"
                                                 onClick={() => { handleAttune(selectedItem); setSelectedItem(null); }}
-                                                className="border-slate-600 text-slate-300 hover:border-amber-600 hover:text-amber-400"
+                                                className="border-[#c5a059]/40 text-[#d1cdb8] hover:border-[#c5a059] hover:text-[#c5a059] hover:bg-[#181a21] font-cinzel-decorative rounded-sm"
                                             >
                                                 Attune
                                             </Button>
@@ -621,7 +621,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                     handleUnequip(selectedItem);
                                                     setSelectedItem(null);
                                                 }}
-                                                className="border-amber-900 text-amber-500 hover:bg-amber-950"
+                                                className="border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15 font-cinzel-decorative rounded-sm"
                                             >
                                                 Unequip
                                             </Button>
@@ -638,7 +638,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                         handleEquipWithSlot(selectedItem, 'off_hand');
                                                         setSelectedItem(null);
                                                     }}
-                                                    className="bg-green-900/40 hover:bg-green-900/70 text-green-300 border border-green-800/50"
+                                                    className="bg-[#181a21] border border-[#c5a059] hover:bg-[#c5a059]/20 text-[#c5a059] font-cinzel-decorative rounded-sm"
                                                 >
                                                     🗡 Equip Off-Hand
                                                 </Button>
@@ -651,7 +651,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                 handleEquip(selectedItem);
                                                 setSelectedItem(null);
                                             }}
-                                            className="bg-slate-700 hover:bg-slate-600"
+                                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel-decorative font-bold rounded-sm shadow-sm"
                                         >
                                             Equip
                                         </Button>
@@ -663,7 +663,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                             handleRemove(selectedItem);
                                             setSelectedItem(null);
                                         }}
-                                        className="bg-red-900/50 hover:bg-red-900"
+                                        className="border border-red-900/50 bg-red-950/30 text-red-300 hover:bg-red-900/60 font-cinzel-decorative rounded-sm"
                                     >
                                         Remove
                                     </Button>
@@ -675,17 +675,17 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
             </Dialog>
             {/* Slot Picker Dialog — shown for one-handed weapons when main_hand is occupied */}
             <Dialog open={!!slotPickerItem} onOpenChange={(open) => !open && setSlotPickerItem(null)}>
-                <DialogContent className="bg-slate-900 border-slate-700 max-w-sm">
+                <DialogContent className="bg-[#12141a] border border-[#c5a059] max-w-sm rounded-sm shadow-2xl text-[#d1cdb8]">
                     {slotPickerItem && (
                         <>
-                            <DialogHeader>
-                                <DialogTitle className="text-white flex items-center gap-2">
-                                    <Swords size={18} className="text-blue-400" />
+                            <DialogHeader className="border-b border-[#c5a059]/20 pb-3">
+                                <DialogTitle className="font-cinzel-decorative text-lg font-bold text-[#c5a059] flex items-center gap-2">
+                                    <Swords size={18} className="text-[#c5a059]" />
                                     Choose Weapon Slot
                                 </DialogTitle>
-                                <DialogDescription className="text-slate-400">
+                                <DialogDescription className="font-lora text-xs text-[#d1cdb8]/70">
                                     Where do you want to equip{" "}
-                                    <span className="text-white font-medium">{slotPickerItem.item_details.name}</span>?
+                                    <span className="font-cinzel-decorative text-white font-medium">{slotPickerItem.item_details.name}</span>?
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -697,13 +697,13 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                         setSlotPickerItem(null);
                                         handleEquipWithSlot(item, 'main_hand');
                                     }}
-                                    className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-700
-                                        bg-slate-800/60 hover:border-blue-500/60 hover:bg-slate-800
+                                    className="flex flex-col items-center gap-2 p-4 rounded-sm border-2 border-[#c5a059]/30
+                                        bg-[#181a21] hover:border-[#c5a059] hover:bg-[#181a21]/80 hover:shadow-[0_0_12px_rgba(197,160,89,0.2)]
                                         transition-all duration-200 group cursor-pointer"
                                 >
-                                    <span className="text-3xl group-hover:scale-110 transition-transform">⚔</span>
-                                    <span className="text-sm font-semibold text-white">Main Hand</span>
-                                    <span className="text-[10px] text-slate-500 text-center leading-relaxed">
+                                    <span className="text-3xl text-[#c5a059] group-hover:scale-110 transition-transform">⚔</span>
+                                    <span className="text-sm font-cinzel-decorative font-bold text-white group-hover:text-[#c5a059]">Main Hand</span>
+                                    <span className="text-[10px] font-lora text-[#d1cdb8]/60 text-center leading-relaxed">
                                         Replaces current main-hand weapon
                                     </span>
                                 </button>
@@ -715,20 +715,20 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                         setSlotPickerItem(null);
                                         handleEquipWithSlot(item, 'off_hand');
                                     }}
-                                    className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-700
-                                        bg-slate-800/60 hover:border-green-500/60 hover:bg-slate-800
+                                    className="flex flex-col items-center gap-2 p-4 rounded-sm border-2 border-[#c5a059]/30
+                                        bg-[#181a21] hover:border-[#c5a059] hover:bg-[#181a21]/80 hover:shadow-[0_0_12px_rgba(197,160,89,0.2)]
                                         transition-all duration-200 group cursor-pointer"
                                 >
-                                    <span className="text-3xl group-hover:scale-110 transition-transform">🗡</span>
-                                    <span className="text-sm font-semibold text-white">Off Hand</span>
-                                    <span className="text-[10px] text-slate-500 text-center leading-relaxed">
+                                    <span className="text-3xl text-[#c5a059] group-hover:scale-110 transition-transform">🗡</span>
+                                    <span className="text-sm font-cinzel-decorative font-bold text-white group-hover:text-[#c5a059]">Off Hand</span>
+                                    <span className="text-[10px] font-lora text-[#d1cdb8]/60 text-center leading-relaxed">
                                         Dual wield — equip alongside main hand
                                     </span>
                                 </button>
                             </div>
 
                             {slotPickerItem.item_details.light && (
-                                <p className="text-[10px] text-amber-400/70 text-center mt-1">
+                                <p className="text-[10px] text-[#e0bc75] font-lora text-center mt-1 italic">
                                     ✦ Light weapon — ideal for Two-Weapon Fighting
                                 </p>
                             )}

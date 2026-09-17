@@ -66,44 +66,46 @@ export function HPManagementDialog({ character, onUpdate, children }: HPManageme
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {children || (
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="bg-[#181a21] border border-[#c5a059]/50 text-[#c5a059] hover:bg-[#c5a059]/15 text-xs font-lora">
                         Manage HP
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-[425px]">
+            <DialogContent className="bg-[#12141a] border border-[#c5a059] text-slate-100 sm:max-w-[425px] shadow-[0_0_25px_rgba(0,0,0,0.8)]">
                 <DialogHeader>
-                    <DialogTitle>Manage Hit Points</DialogTitle>
-                    <DialogDescription className="text-slate-400">
-                        Current: <span className="text-white font-bold">{currentHP}</span> / {maxHP}
-                        {tempHP > 0 && <span className="text-purple-400 font-bold ml-2">(+{tempHP} Temp)</span>}
+                    <DialogTitle className="font-cinzel-decorative text-lg text-[#c5a059] font-bold tracking-wide">
+                        Manage Hit Points
+                    </DialogTitle>
+                    <DialogDescription className="font-lora text-xs text-[#d1cdb8]/70">
+                        Current: <span className="text-emerald-400 font-bold font-fira-sans">{currentHP}</span> / <span className="font-fira-sans">{maxHP}</span>
+                        {tempHP > 0 && <span className="text-amber-300 font-bold font-fira-sans ml-2">(+{tempHP} Temp)</span>}
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs defaultValue="heal" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 bg-slate-800">
-                        <TabsTrigger value="heal" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Heal</TabsTrigger>
-                        <TabsTrigger value="damage" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">Damage</TabsTrigger>
-                        <TabsTrigger value="temp" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Temp HP</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3 bg-[#181a21] border border-[#c5a059]/30 p-1">
+                        <TabsTrigger value="heal" className="text-xs font-lora data-[state=active]:bg-emerald-700 data-[state=active]:text-white">Heal</TabsTrigger>
+                        <TabsTrigger value="damage" className="text-xs font-lora data-[state=active]:bg-rose-900 data-[state=active]:text-white">Damage</TabsTrigger>
+                        <TabsTrigger value="temp" className="text-xs font-lora data-[state=active]:bg-[#c5a059] data-[state=active]:text-[#0c0d12] data-[state=active]:font-bold">Temp HP</TabsTrigger>
                     </TabsList>
 
-                    <div className="py-4 space-y-4">
+                    <div className="py-4 space-y-4 font-lora">
                         <div className="space-y-2">
-                            <Label htmlFor="amount">Amount</Label>
+                            <Label htmlFor="amount" className="text-xs text-[#d1cdb8]">Amount</Label>
                             <Input
                                 id="amount"
                                 type="number"
                                 placeholder="0"
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
-                                className="bg-slate-800 border-slate-700 text-white text-lg font-bold text-center"
+                                className="bg-[#181a21] border-[#c5a059]/40 text-slate-100 text-lg font-bold text-center font-fira-sans"
                                 autoFocus
                                 onKeyDown={(e) => e.key === "Enter" && handleAction()}
                             />
                         </div>
 
                         {message && (
-                            <div className={`text-sm text-center p-2 rounded ${message.includes("Failed") ? "bg-red-900/50 text-red-200" : "bg-slate-800 text-green-400"
+                            <div className={`text-xs text-center p-2 rounded ${message.includes("Failed") ? "bg-rose-950/60 text-rose-200 border border-rose-800" : "bg-[#181a21] text-[#c5a059] border border-[#c5a059]/30"
                                 }`}>
                                 {message}
                             </div>
@@ -114,9 +116,9 @@ export function HPManagementDialog({ character, onUpdate, children }: HPManageme
                         <Button
                             onClick={handleAction}
                             disabled={loading || !amount || parseInt(amount) <= 0}
-                            className={`w-full ${activeTab === 'heal' ? 'bg-green-600 hover:bg-green-700' :
-                                    activeTab === 'damage' ? 'bg-red-600 hover:bg-red-700' :
-                                        'bg-purple-600 hover:bg-purple-700'
+                            className={`w-full text-xs font-bold transition-all shadow-md ${activeTab === 'heal' ? 'bg-emerald-700 hover:bg-emerald-600 text-white' :
+                                    activeTab === 'damage' ? 'bg-rose-900 hover:bg-rose-800 text-rose-100' :
+                                        'bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12]'
                                 }`}
                         >
                             {loading ? "Updating..." :
