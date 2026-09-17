@@ -4,10 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { Users, Swords, Skull, User as UserIcon, LogOut, ExternalLink } from "lucide-react";
+import { User as UserIcon, LogOut, ExternalLink } from "lucide-react";
 import FantasyCard from "@/components/ui/FantasyCard";
 import ParchmentScroll from "@/components/ui/ParchmentScroll";
 import FancyHeaderLogo from "@/components/ui/FancyHeaderLogo";
+import { CharactersPillarIcon, CampaignPillarIcon, GauntletPillarIcon } from "@/components/ui/PillarIcons";
 import { CURRENT_VERSION, CHANGELOG_DATA } from "@/lib/data/changelog";
 
 interface PillarItem {
@@ -55,7 +56,7 @@ export default function Home() {
     {
       id: "characters",
       title: "CHARACTERS",
-      icon: <Users className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059] stroke-[1.5]" />,
+      icon: <CharactersPillarIcon className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059]" />,
       href: "/characters",
       tooltipHeader: "✦ MANAGE HEROES ✦",
       tooltipText: "View your adventurers, their gear, and attributes.",
@@ -63,7 +64,7 @@ export default function Home() {
     {
       id: "campaign",
       title: "CAMPAIGN",
-      icon: <Swords className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059] stroke-[1.5]" />,
+      icon: <CampaignPillarIcon className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059]" />,
       href: "/combat",
       tooltipHeader: "✦ ENTER THE ARENA ✦",
       tooltipText:
@@ -72,7 +73,7 @@ export default function Home() {
     {
       id: "gauntlet",
       title: "GAUNTLET",
-      icon: <Skull className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059] stroke-[1.5]" />,
+      icon: <GauntletPillarIcon className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059]" />,
       href: "/combat",
       tooltipHeader: "✦ FACE THE CHALLENGE ✦",
       tooltipText:

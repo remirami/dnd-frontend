@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { Sparkles, Swords, Users, Skull, ScrollText } from "lucide-react";
+import { Sparkles, ScrollText } from "lucide-react";
+import { CharactersPillarIcon, CampaignPillarIcon, GauntletPillarIcon } from "@/components/ui/PillarIcons";
 
 interface ParchmentScrollProps {
   className?: string;
@@ -79,21 +80,21 @@ export default function ParchmentScroll({ className = "" }: ParchmentScrollProps
           {/* Quick Feature Pillars */}
           <div className="grid grid-cols-1 gap-2 pt-1 border-t border-[#c5a059]/20 text-[11px] text-[#d1cdb8]/90">
             <div className="flex items-start gap-2.5">
-              <Users className="w-3.5 h-3.5 text-[#c5a059] shrink-0 mt-0.5" />
+              <CharactersPillarIcon className="w-4 h-4 text-[#c5a059] shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold text-[#c5a059]">Hero Management:</span> Create characters, roll stats, inspect hit points, armor class, and manage party rosters.
               </div>
             </div>
 
             <div className="flex items-start gap-2.5">
-              <Swords className="w-3.5 h-3.5 text-[#c5a059] shrink-0 mt-0.5" />
+              <CampaignPillarIcon className="w-4 h-4 text-[#c5a059] shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold text-[#c5a059]">Tactical Combat Simulator:</span> Run turn-based encounters with initiative tracking, dice rolls, and monster statblocks.
               </div>
             </div>
 
             <div className="flex items-start gap-2.5">
-              <Skull className="w-3.5 h-3.5 text-[#c5a059] shrink-0 mt-0.5" />
+              <GauntletPillarIcon className="w-4 h-4 text-[#c5a059] shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold text-[#c5a059]">The Gauntlet:</span> Pit your party against escalating waves of deadly beasts to test survival endurance.
               </div>
