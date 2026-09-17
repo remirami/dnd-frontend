@@ -141,52 +141,57 @@ export default function ReviewStep({ formData, onBack }: ReviewStepProps) {
     const selectedEquipmentCount = Object.keys(formData.equipment_selections).length;
 
     if (initialLoading) {
-        return <div className="text-white text-center py-8">Loading review details...</div>;
+        return (
+            <div className="flex flex-col items-center justify-center py-12 space-y-3 font-lora">
+                <div className="w-7 h-7 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-[#d1cdb8]/70 italic">Gathering character chronicle...</p>
+            </div>
+        );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 font-lora">
             {/* Basic Info Summary */}
-            <Card className="bg-slate-800 border-slate-700 p-4">
-                <h3 className="text-lg font-semibold text-white mb-3">Basic Information</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4">
+                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-3">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                        <span className="text-slate-400">Name:</span>
-                        <span className="text-white ml-2 font-medium">{formData.name}</span>
+                        <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">Name</span>
+                        <span className="text-slate-100 font-bold text-sm">{formData.name}</span>
                     </div>
                     <div>
-                        <span className="text-slate-400">{formData.ruleset_version === '2024' ? 'Species' : 'Race'}:</span>
-                        <span className="text-white ml-2 font-medium">{selectedRace?.name || "Unknown"}</span>
+                        <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">{formData.ruleset_version === '2024' ? 'Species' : 'Race'}</span>
+                        <span className="text-[#c5a059] font-medium">{selectedRace?.name || "Unknown"}</span>
                     </div>
                     <div>
-                        <span className="text-slate-400">Class:</span>
-                        <span className="text-white ml-2 font-medium">{selectedClass?.name || "Unknown"}</span>
+                        <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">Class</span>
+                        <span className="text-[#c5a059] font-medium">{selectedClass?.name || "Unknown"}</span>
                     </div>
                     <div>
-                        <span className="text-slate-400">Alignment:</span>
-                        <span className="text-white ml-2">{formData.alignment}</span>
+                        <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">Alignment</span>
+                        <span className="text-slate-200">{formData.alignment}</span>
                     </div>
                     {selectedBackground && (
-                        <div className="col-span-2">
-                            <span className="text-slate-400">Background:</span>
-                            <span className="text-white ml-2">{selectedBackground.name}</span>
+                        <div className="col-span-2 pt-1 border-t border-[#c5a059]/15">
+                            <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">Background</span>
+                            <span className="text-slate-200">{selectedBackground.name}</span>
                         </div>
                     )}
                     {formData.language_ids && formData.language_ids.length > 0 && (
                         <div className="col-span-2 mt-1">
-                            <span className="text-slate-400">Extra Languages:</span>
-                            <span className="text-white ml-2 text-xs bg-slate-700 px-2 py-0.5 rounded">
+                            <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold mr-2">Extra Languages:</span>
+                            <span className="text-[#c5a059] text-xs bg-[#c5a059]/10 border border-[#c5a059]/30 px-2 py-0.5 rounded">
                                 {formData.language_ids.length} Selected
                             </span>
                         </div>
                     )}
                 </div>
-            </Card>
+            </div>
 
             {/* Ability Scores */}
-            <Card className="bg-slate-800 border-slate-700 p-4">
-                <h3 className="text-lg font-semibold text-white mb-3">Ability Scores</h3>
-                <div className="grid grid-cols-3 gap-3">
+            <div className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4">
+                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-3">Ability Scores</h3>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
                     {[
                         { name: "STR", value: formData.strength },
                         { name: "DEX", value: formData.dexterity },
@@ -195,101 +200,102 @@ export default function ReviewStep({ formData, onBack }: ReviewStepProps) {
                         { name: "WIS", value: formData.wisdom },
                         { name: "CHA", value: formData.charisma },
                     ].map((stat) => (
-                        <div key={stat.name} className="flex items-center justify-between bg-slate-900 p-2 rounded">
-                            <span className="text-slate-400 text-sm">{stat.name}</span>
-                            <span className="text-white font-bold">{stat.value}</span>
+                        <div key={stat.name} className="flex flex-col items-center justify-center bg-[#0c0d12] border border-[#c5a059]/20 p-2.5 rounded">
+                            <span className="text-[#d1cdb8]/50 text-[10px] uppercase font-semibold">{stat.name}</span>
+                            <span className="text-[#c5a059] font-bold font-fira-sans text-lg">{stat.value}</span>
                         </div>
                     ))}
                 </div>
-            </Card>
+            </div>
 
             {/* Equipment Summary */}
-            <Card className="bg-slate-800 border-slate-700 p-4">
-                <h3 className="text-lg font-semibold text-white mb-3">Equipment</h3>
+            <div className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4">
+                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-3">Equipment</h3>
                 {selectedEquipmentCount > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                         {Object.entries(formData.equipment_selections).map(([choiceNum, selection]) => (
-                            <div key={choiceNum} className="text-sm">
-                                <span className="text-slate-400">Choice {choiceNum}:</span>
-                                <span className="text-white ml-2">{selection}</span>
+                            <div key={choiceNum} className="text-xs">
+                                <span className="text-[#d1cdb8]/60">Choice {choiceNum}:</span>
+                                <span className="text-[#d1cdb8] ml-2 font-medium">{selection}</span>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <p className="text-slate-400 text-sm">No equipment selected</p>
+                    <p className="text-[#d1cdb8]/50 text-xs italic">No equipment selected</p>
                 )}
-            </Card>
+            </div>
 
             {/* Spells Summary */}
             {(formData.cantrip_ids.length > 0 || formData.spell_ids.length > 0) && (
-                <Card className="bg-slate-800 border-slate-700 p-4">
-                    <h3 className="text-lg font-semibold text-white mb-3">Spells</h3>
+                <div className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4">
+                    <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-3">Spells</h3>
                     {formData.cantrip_ids.length > 0 && (
-                        <div className="mb-3">
-                            <h4 className="text-sm font-medium text-slate-400 mb-1">Cantrips:</h4>
-                            <p className="text-white text-sm">{formData.cantrip_ids.length} cantrips selected</p>
+                        <div className="mb-2">
+                            <span className="text-[10px] uppercase font-semibold text-[#d1cdb8]/60 tracking-wider">Cantrips:</span>
+                            <p className="text-[#22c55e] text-xs font-semibold mt-0.5">{formData.cantrip_ids.length} cantrips selected</p>
                         </div>
                     )}
                     {formData.spell_ids.length > 0 && (
                         <div>
-                            <h4 className="text-sm font-medium text-slate-400 mb-1">1st Level Spells:</h4>
-                            <p className="text-white text-sm">{formData.spell_ids.length} spells selected</p>
+                            <span className="text-[10px] uppercase font-semibold text-[#d1cdb8]/60 tracking-wider">1st Level Spells:</span>
+                            <p className="text-[#22c55e] text-xs font-semibold mt-0.5">{formData.spell_ids.length} spells selected</p>
                         </div>
                     )}
-                </Card>
+                </div>
             )}
 
             {/* Personality (if filled) */}
             {(formData.bonds || formData.flaws || formData.ideals) && (
-                <Card className="bg-slate-800 border-slate-700 p-4">
-                    <h3 className="text-lg font-semibold text-white mb-3">Personality</h3>
-                    <div className="space-y-2 text-sm">
+                <div className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4">
+                    <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-3">Personality</h3>
+                    <div className="space-y-2 text-xs">
                         {formData.bonds && (
                             <div>
-                                <span className="text-slate-400 font-medium">Bonds:</span>
-                                <p className="text-white mt-1">{formData.bonds}</p>
+                                <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">Bonds</span>
+                                <p className="text-[#d1cdb8] mt-0.5 leading-relaxed">{formData.bonds}</p>
                             </div>
                         )}
                         {formData.flaws && (
                             <div>
-                                <span className="text-slate-400 font-medium">Flaws:</span>
-                                <p className="text-white mt-1">{formData.flaws}</p>
+                                <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">Flaws</span>
+                                <p className="text-[#d1cdb8] mt-0.5 leading-relaxed">{formData.flaws}</p>
                             </div>
                         )}
                         {formData.ideals && (
                             <div>
-                                <span className="text-slate-400 font-medium">Ideals:</span>
-                                <p className="text-white mt-1">{formData.ideals}</p>
+                                <span className="text-[#d1cdb8]/60 uppercase tracking-wider text-[10px] font-semibold block">Ideals</span>
+                                <p className="text-[#d1cdb8] mt-0.5 leading-relaxed">{formData.ideals}</p>
                             </div>
                         )}
                     </div>
-                </Card>
+                </div>
             )}
 
             {/* Error Display */}
             {error && (
-                <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-3 rounded-md text-sm">
+                <div className="bg-rose-950/60 border border-rose-500/40 text-rose-300 p-3 rounded text-xs">
                     {error}
                 </div>
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-4 border-t border-slate-700">
-                <Button
+            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+                <button
+                    type="button"
                     onClick={onBack}
-                    variant="outline"
                     disabled={loading}
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer disabled:opacity-50"
                 >
                     ← Back
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="px-7 py-2.5 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_20px_rgba(197,160,89,0.4)] cursor-pointer disabled:opacity-50 font-lora"
                 >
                     {loading ? "Creating Character..." : "Create Character 🎲"}
-                </Button>
+                </button>
             </div>
         </div>
     );

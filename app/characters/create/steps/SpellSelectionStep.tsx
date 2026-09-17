@@ -177,32 +177,49 @@ export default function SpellSelectionStep({
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-white">Loading spell options...</div>
+            <div className="flex flex-col items-center justify-center py-12 space-y-3 font-lora">
+                <div className="w-7 h-7 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-[#d1cdb8]/70 italic">Divining spellbooks...</p>
             </div>
         );
     }
 
     if (error && !spellData) {
         return (
-            <div className="space-y-4">
-                <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-md">
+            <div className="space-y-4 font-lora">
+                <div className="bg-rose-950/60 border border-rose-500/40 text-rose-300 p-4 rounded text-sm">
                     {error}
                 </div>
-                <Button onClick={onBack} variant="outline">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer"
+                >
                     ← Back
-                </Button>
+                </button>
             </div>
         );
     }
 
     if (!spellData) {
         return (
-            <div className="space-y-4">
-                <p className="text-slate-400">This class does not gain spells at level 1.</p>
-                <div className="flex justify-between">
-                    <Button onClick={onBack} variant="outline">← Back</Button>
-                    <Button onClick={onNext}>Next →</Button>
+            <div className="space-y-4 font-lora">
+                <p className="text-[#d1cdb8]/70 text-sm">This class does not gain spells at level 1.</p>
+                <div className="flex justify-between pt-4 border-t border-[#c5a059]/20">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 text-xs rounded transition-all cursor-pointer font-semibold"
+                    >
+                        ← Back
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onNext}
+                        className="px-6 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] cursor-pointer"
+                    >
+                        Next →
+                    </button>
                 </div>
             </div>
         );
@@ -211,19 +228,31 @@ export default function SpellSelectionStep({
     // Check if this is a non-caster class (response contains message or missing rules)
     if ((spellData as any).message || !spellData.spells_info) {
         return (
-            <div className="space-y-4">
-                <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 text-center">
-                    <h3 className="text-xl font-semibold text-white mb-2">No Spells Required</h3>
-                    <p className="text-slate-400 mb-4">
+            <div className="space-y-4 font-lora">
+                <div className="bg-[#12141a] p-6 rounded border border-[#c5a059]/25 text-center">
+                    <h3 className="font-cinzel-decorative text-lg font-bold text-[#c5a059] mb-2">No Spells Required</h3>
+                    <p className="text-xs text-[#d1cdb8]/80 mb-2">
                         {(spellData as any).message || `${spellData.class_name || 'This class'} does not select spells at level 1.`}
                     </p>
-                    <p className="text-sm text-slate-500">
-                        (If you gain spells from your Race, they are currently handled automatically)
+                    <p className="text-[11px] text-[#d1cdb8]/50 italic">
+                        (If you gain spells from your Race/Species, they are automatically granted)
                     </p>
                 </div>
-                <div className="flex justify-between pt-4">
-                    <Button onClick={onBack} variant="outline">← Back</Button>
-                    <Button onClick={onNext} className="bg-blue-600 hover:bg-blue-700">Next →</Button>
+                <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer"
+                    >
+                        ← Back
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onNext}
+                        className="px-6 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] cursor-pointer font-lora"
+                    >
+                        Next →
+                    </button>
                 </div>
             </div>
         );
@@ -249,48 +278,49 @@ export default function SpellSelectionStep({
     const toggleSelection = activeTab === "cantrips" ? toggleCantripSelection : toggleSpellSelection;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 font-lora">
             {/* Instructions */}
-            <Card className="bg-slate-800 border-slate-700 p-4">
-                <h3 className="text-lg font-semibold text-white mb-2">
+            <div className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4">
+                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-1">
                     Spell Selection - {spellData.class_name}
                 </h3>
-                <p className="text-slate-300 text-sm mb-3">{spellData.description}</p>
+                <p className="text-[#d1cdb8]/80 text-xs mb-3 leading-relaxed">{spellData.description}</p>
 
                 {/* Progress */}
-                <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex flex-wrap gap-4 text-xs font-semibold">
                     {cantripsToSelect > 0 && (
-                        <div className={`flex items-center gap-2 ${cantripsComplete ? 'text-green-400' : 'text-yellow-400'}`}>
-                            <span className="font-semibold">Cantrips:</span>
-                            <span>{cantripsSelected} / {cantripsToSelect}</span>
+                        <div className={`flex items-center gap-1.5 ${cantripsComplete ? 'text-[#22c55e]' : 'text-[#c5a059]'}`}>
+                            <span>Cantrips:</span>
+                            <span className="font-fira-sans">{cantripsSelected} / {cantripsToSelect}</span>
                             {cantripsComplete && <span>✓</span>}
                         </div>
                     )}
                     {spellsToSelect > 0 && (
-                        <div className={`flex items-center gap-2 ${spellsComplete ? 'text-green-400' : 'text-yellow-400'}`}>
-                            <span className="font-semibold">Spells:</span>
-                            <span>{spellsSelected} / {spellsToSelect}</span>
+                        <div className={`flex items-center gap-1.5 ${spellsComplete ? 'text-[#22c55e]' : 'text-[#c5a059]'}`}>
+                            <span>Spells:</span>
+                            <span className="font-fira-sans">{spellsSelected} / {spellsToSelect}</span>
                             {spellsComplete && <span>✓</span>}
                         </div>
                     )}
                     {spellData.spells_info?.can_prepare_all && (
-                        <div className="flex items-center gap-2 text-slate-400">
-                            <span className="font-semibold">1st-Level Spells:</span>
-                            <span className="text-slate-300">All available (prepared daily)</span>
+                        <div className="flex items-center gap-1.5 text-[#d1cdb8]/60">
+                            <span>1st-Level Spells:</span>
+                            <span className="text-[#d1cdb8]/80">All available (prepared daily)</span>
                         </div>
                     )}
                 </div>
-            </Card>
+            </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 border-b border-slate-700">
+            <div className="flex gap-2 border-b border-[#c5a059]/20">
                 {cantripsToSelect > 0 && (
                     <button
                         onClick={() => setActiveTab("cantrips")}
-                        className={`px-4 py-2 font-medium transition-colors ${activeTab === "cantrips"
-                            ? "text-white border-b-2 border-blue-500"
-                            : "text-slate-400 hover:text-slate-300"
-                            }`}
+                        className={`px-4 py-2 font-medium text-xs transition-colors cursor-pointer ${
+                            activeTab === "cantrips"
+                                ? "text-[#c5a059] border-b-2 border-[#c5a059] font-bold"
+                                : "text-[#d1cdb8]/60 hover:text-[#d1cdb8]"
+                        }`}
                     >
                         Cantrips ({cantripsSelected}/{cantripsToSelect})
                     </button>
@@ -298,10 +328,11 @@ export default function SpellSelectionStep({
                 {spellsToSelect > 0 && (
                     <button
                         onClick={() => setActiveTab("spells")}
-                        className={`px-4 py-2 font-medium transition-colors ${activeTab === "spells"
-                            ? "text-white border-b-2 border-blue-500"
-                            : "text-slate-400 hover:text-slate-300"
-                            }`}
+                        className={`px-4 py-2 font-medium text-xs transition-colors cursor-pointer ${
+                            activeTab === "spells"
+                                ? "text-[#c5a059] border-b-2 border-[#c5a059] font-bold"
+                                : "text-[#d1cdb8]/60 hover:text-[#d1cdb8]"
+                        }`}
                     >
                         1st Level Spells ({spellsSelected}/{spellsToSelect})
                     </button>
@@ -309,19 +340,19 @@ export default function SpellSelectionStep({
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2.5 items-center">
                 <Input
                     type="text"
                     placeholder="Search spells..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="max-w-xs bg-slate-800 border-slate-700 text-white"
+                    className="max-w-xs bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 placeholder:text-slate-600 focus:border-[#c5a059] text-xs h-9 font-lora"
                 />
 
                 <select
                     value={schoolFilter}
                     onChange={(e) => setSchoolFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm"
+                    className="px-3 py-2 bg-[#0c0d12] border border-[#c5a059]/30 rounded text-[#d1cdb8] text-xs font-lora focus:border-[#c5a059] h-9"
                 >
                     <option value="all">All Schools</option>
                     <option value="abjuration">Abjuration</option>
@@ -335,11 +366,13 @@ export default function SpellSelectionStep({
                 </select>
 
                 <button
+                    type="button"
                     onClick={() => setShowConcentrationOnly(!showConcentrationOnly)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${showConcentrationOnly
-                        ? "bg-purple-600 text-white"
-                        : "bg-slate-800 text-slate-300 border border-slate-700"
-                        }`}
+                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer ${
+                        showConcentrationOnly
+                            ? "bg-purple-800 text-purple-100 border border-purple-400"
+                            : "bg-[#0c0d12] text-[#d1cdb8]/70 border border-[#c5a059]/30 hover:bg-[#c5a059]/10"
+                    }`}
                 >
                     ⚗️ Concentration Only
                 </button>
@@ -348,19 +381,20 @@ export default function SpellSelectionStep({
                 <button
                     type="button"
                     onClick={() => setShowRecommendedOnly(!showRecommendedOnly)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${showRecommendedOnly
-                        ? "bg-amber-600 text-white"
-                        : "bg-amber-900/30 text-amber-200 border border-amber-500/50 hover:bg-amber-900/50"
-                        }`}
+                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer ${
+                        showRecommendedOnly
+                            ? "bg-[#c5a059] text-[#0c0d12] font-bold shadow-[0_0_10px_rgba(197,160,89,0.3)]"
+                            : "bg-[#0c0d12] text-[#c5a059] border border-[#c5a059]/40 hover:bg-[#c5a059]/10"
+                    }`}
                 >
-                    ⭐ {showRecommendedOnly ? "Showing Recommended Only" : "Filter Recommended"}
+                    ⭐ {showRecommendedOnly ? "Recommended Only" : "Filter Recommended"}
                 </button>
             </div>
 
             {/* Selected Spells Summary (Persistent across filters) */}
             {(activeTab === "cantrips" ? selectedCantrips.length > 0 : selectedSpells.length > 0) && (
-                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-                    <div className="text-xs font-semibold text-slate-400 mb-2 flex justify-between items-center">
+                <div className="bg-[#12141a] border border-[#c5a059]/20 rounded p-3">
+                    <div className="text-xs font-semibold text-[#c5a059] uppercase tracking-wider mb-2 flex justify-between items-center">
                         <span>Selected {activeTab === "cantrips" ? "Cantrips" : "Spells"} ({activeTab === "cantrips" ? selectedCantrips.length : selectedSpells.length}/{activeTab === "cantrips" ? cantripsToSelect : spellsToSelect})</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -370,7 +404,7 @@ export default function SpellSelectionStep({
                             return (
                                 <div
                                     key={id}
-                                    className="bg-green-900/30 border border-green-500/50 rounded px-2 py-1 text-sm text-green-100 flex items-center gap-2"
+                                    className="bg-[#22c55e]/15 border border-[#22c55e]/50 rounded px-2.5 py-1 text-xs text-[#22c55e] flex items-center gap-1.5"
                                 >
                                     <span>{spell.name}</span>
                                     <button
@@ -378,7 +412,7 @@ export default function SpellSelectionStep({
                                             e.stopPropagation();
                                             toggleSelection(id);
                                         }}
-                                        className="hover:bg-green-800/50 rounded-full p-0.5 transition-colors"
+                                        className="hover:bg-[#22c55e]/30 rounded-full p-0.5 transition-colors cursor-pointer"
                                     >
                                         ✕
                                     </button>
@@ -390,53 +424,54 @@ export default function SpellSelectionStep({
             )}
 
             {/* Spell Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[500px] overflow-y-auto pr-1">
                 {filteredSpells.map((spell) => {
                     const isSelected = selectedInTab.includes(spell.id);
                     const isExpanded = expandedSpell === spell.id;
 
                     return (
-                        <Card
+                        <div
                             key={spell.id}
-                            className={`p-4 cursor-pointer transition-all ${isSelected
-                                ? "bg-blue-900/40 border-blue-500"
-                                : "bg-slate-800 border-slate-700 hover:border-slate-600"
-                                }`}
+                            className={`p-3.5 rounded cursor-pointer transition-all border ${
+                                isSelected
+                                    ? "bg-[#c5a059]/15 border-[#c5a059] ring-1 ring-[#c5a059]/50 shadow-[0_0_12px_rgba(197,160,89,0.2)]"
+                                    : "bg-[#12141a] border-[#c5a059]/20 hover:border-[#c5a059]/40 hover:bg-[#c5a059]/5"
+                            }`}
                             onClick={() => toggleSelection(spell.id)}
                         >
-                            <div className="flex items-start justify-between MB-2">
+                            <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="font-semibold text-white">{spell.name}</h4>
+                                        <h4 className={`font-cinzel-decorative font-semibold text-sm transition-colors ${
+                                            isSelected ? "text-[#c5a059]" : "text-[#d1cdb8]"
+                                        }`}>{spell.name}</h4>
                                         {spell.recommended && (
-                                            <span className="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded border border-amber-500/50 flex items-center gap-0.5">
-                                                ⭐ Recommended
+                                            <span className="bg-[#c5a059]/20 text-[#c5a059] text-[9px] px-1 py-0.2 rounded border border-[#c5a059]/40 flex items-center gap-0.5">
+                                                ⭐
                                             </span>
                                         )}
-                                        {isSelected && <span className="text-green-400">✓</span>}
+                                        {isSelected && <span className="text-[#22c55e] text-xs font-bold">✓</span>}
                                     </div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className={`text-xs px-2 py-0.5 rounded ${SCHOOL_COLORS[spell.school]} text-white`}>
+                                    <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                                        <span className={`px-1.5 py-0.5 rounded ${SCHOOL_COLORS[spell.school] || "bg-[#181a21]"} text-white font-medium`}>
                                             {spell.school.charAt(0).toUpperCase() + spell.school.slice(1)}
                                         </span>
                                         {spell.concentration && (
-                                            <span className="text-xs text-purple-400">⚗️ Concentration</span>
+                                            <span className="text-purple-300 bg-purple-950/50 px-1 py-0.5 rounded border border-purple-500/30">⚗️ Conc</span>
                                         )}
                                         {spell.ritual && (
-                                            <span className="text-xs text-cyan-400">🎯 Ritual</span>
+                                            <span className="text-cyan-300 bg-cyan-950/50 px-1 py-0.5 rounded border border-cyan-500/30">🎯 Ritual</span>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="text-xs text-slate-400 space-y-1 mb-2">
-                                <div>⏱️ {spell.casting_time}</div>
-                                <div>📍 {spell.range}</div>
-                                <div>⏳ {spell.duration}</div>
-                                <div>🔤 {spell.components}</div>
+                            <div className="text-[11px] text-[#d1cdb8]/60 space-y-0.5 mb-2 font-fira-sans">
+                                <div>⏱️ {spell.casting_time} · 📍 {spell.range}</div>
+                                <div>⏳ {spell.duration} · 🔤 {spell.components}</div>
                             </div>
 
-                            <p className="text-sm text-slate-300 line-clamp-3">
+                            <p className="text-xs text-[#d1cdb8]/80 line-clamp-3 leading-relaxed">
                                 {spell.description}
                             </p>
 
@@ -445,56 +480,57 @@ export default function SpellSelectionStep({
                                     e.stopPropagation();
                                     setExpandedSpell(isExpanded ? null : spell.id);
                                 }}
-                                className="text-xs text-blue-400 mt-2 hover:text-blue-300"
+                                className="text-[11px] text-[#c5a059] mt-2 hover:underline cursor-pointer block"
                             >
                                 {isExpanded ? "Show Less" : "Show More"}
                             </button>
 
                             {isExpanded && (
-                                <div className="mt-3 pt-3 border-t border-slate-700 text-sm text-slate-300">
-                                    <p className="whitespace-pre-wrap">{spell.description}</p>
+                                <div className="mt-3 pt-3 border-t border-[#c5a059]/20 text-xs text-[#d1cdb8]/80 space-y-2">
+                                    <p className="whitespace-pre-wrap leading-relaxed">{spell.description}</p>
                                     {spell.higher_level && (
-                                        <div className="mt-2">
-                                            <span className="font-semibold text-white">At Higher Levels: </span>
+                                        <div className="pt-2 border-t border-[#c5a059]/10">
+                                            <span className="font-semibold text-[#c5a059]">At Higher Levels: </span>
                                             <span>{spell.higher_level}</span>
                                         </div>
                                     )}
                                 </div>
                             )}
-                        </Card>
+                        </div>
                     );
                 })}
             </div>
 
             {filteredSpells.length === 0 && (
-                <div className="text-center py-8 text-slate-400">
+                <div className="text-center py-8 text-[#d1cdb8]/60 text-xs italic">
                     No spells match your filters.
                 </div>
             )}
 
             {/* Error Message */}
             {error && (
-                <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-3 rounded-md text-sm">
+                <div className="bg-rose-950/60 border border-rose-500/40 text-rose-300 p-3 rounded text-xs">
                     {error}
                 </div>
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-4 border-t border-slate-700">
-                <Button
+            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+                <button
+                    type="button"
                     onClick={onBack}
-                    variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer"
                 >
                     ← Back
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
                     onClick={handleNext}
                     disabled={!allComplete}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500"
+                    className="px-6 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-lora"
                 >
                     {allComplete ? "Next →" : `Select ${cantripsToSelect - cantripsSelected + spellsToSelect - spellsSelected} More`}
-                </Button>
+                </button>
             </div>
         </div>
     );

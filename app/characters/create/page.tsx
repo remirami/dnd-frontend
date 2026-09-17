@@ -22,7 +22,14 @@ export default function CreateCharacterPage() {
     }
 
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading Wizard...</div>}>
+        <Suspense
+            fallback={
+                <div className="min-h-screen bg-[#0c0d12] flex flex-col items-center justify-center space-y-4">
+                    <div className="w-8 h-8 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                    <p className="font-lora text-sm text-[#d1cdb8]/70 italic">Preparing Character Creation Forge...</p>
+                </div>
+            }
+        >
             <CharacterCreationWizard />
         </Suspense>
     );

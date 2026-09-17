@@ -98,7 +98,7 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
 
         return (
             <div className="space-y-2">
-                <Label className="text-white">{name}</Label>
+                <Label className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">{name}</Label>
                 <div className="flex items-center gap-2">
                     <Input
                         type="number"
@@ -106,7 +106,7 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
                         max={method === "point_buy" ? "15" : "20"}
                         value={value}
                         onChange={(e) => onChange(parseInt(e.target.value) || 8)}
-                        className="flex-1 bg-slate-900 border-slate-700 text-white"
+                        className="flex-1 bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 font-fira-sans font-bold text-center text-sm h-10"
                     />
 
                     {/* ASI Selector for 2024 */}
@@ -115,10 +115,10 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
                             value={bonus.toString()}
                             onValueChange={(v) => handleASIChange(name, parseInt(v))}
                         >
-                            <SelectTrigger className={`w-20 ${bonus > 0 ? "bg-purple-900/50 border-purple-500" : "bg-slate-800 border-slate-700"} text-xs h-10`}>
+                            <SelectTrigger className={`w-20 ${bonus > 0 ? "bg-[#c5a059]/20 border-[#c5a059] text-[#e0bc75]" : "bg-[#12141a] border-[#c5a059]/30 text-[#d1cdb8]"} text-xs h-10`}>
                                 <SelectValue placeholder="+0" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
                                 <SelectItem value="0">+0</SelectItem>
                                 <SelectItem value="1">+1</SelectItem>
                                 <SelectItem value="2">+2</SelectItem>
@@ -126,11 +126,11 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
                         </Select>
                     )}
 
-                    <div className="w-16 text-center text-sm font-bold bg-slate-700 text-white rounded p-2 border border-slate-600">
+                    <div className="w-16 text-center text-sm font-bold bg-[#12141a] text-[#c5a059] rounded p-2 border border-[#c5a059]/30 font-fira-sans shadow-inner">
                         {formatModifier(getAbilityModifier(total))}
                     </div>
                 </div>
-                {is2024 && bonus > 0 && <div className="text-xs text-purple-400 text-right">Total: {total}</div>}
+                {is2024 && bonus > 0 && <div className="text-xs text-[#c5a059] font-fira-sans text-right">Total: {total}</div>}
             </div>
         );
     };
@@ -142,9 +142,9 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
         <div className="space-y-6">
             {/* 2024 ASI Instructions */}
             {is2024 && selectedBackground && (
-                <div className="bg-purple-900/20 border border-purple-500/50 p-3 rounded-md mb-4">
-                    <h4 className="text-purple-300 font-bold text-sm mb-1">Background Bonuses</h4>
-                    <p className="text-slate-300 text-xs">
+                <div className="bg-[#12141a] border border-[#c5a059]/30 p-3 rounded mb-4 font-lora">
+                    <h4 className="text-[#c5a059] font-bold text-xs uppercase tracking-wider mb-1">Background Bonuses</h4>
+                    <p className="text-[#d1cdb8]/80 text-xs">
                         Your background grants ability score increases. Distribute them below (e.g., one +2 and one +1, or three +1s).
                     </p>
                 </div>
@@ -152,12 +152,12 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
 
             {/* Method Selection */}
             <div className="flex justify-between items-center">
-                <Label className="text-white">Generation Method</Label>
+                <Label className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">Generation Method</Label>
                 <Select value={method} onValueChange={setMethod}>
-                    <SelectTrigger className="w-[200px] bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="w-[200px] bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 font-lora text-xs h-9">
                         <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
                         <SelectItem value="manual">Manual / Standard Array</SelectItem>
                         <SelectItem value="point_buy">Point Buy</SelectItem>
                         <SelectItem value="rolling">Roll (4d6 drop lowest)</SelectItem>
@@ -166,21 +166,25 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
             </div>
 
             {method === "point_buy" && (
-                <div className="bg-slate-700/30 p-3 rounded-md border border-slate-600 text-sm flex justify-between items-center">
-                    <span className="text-slate-300">Use 27 points to buy scores (8-15). Cost varies.</span>
-                    <span className={`font-bold ${pointBuyRemaining < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                <div className="bg-[#12141a] p-3 rounded border border-[#c5a059]/25 text-xs font-lora flex justify-between items-center">
+                    <span className="text-[#d1cdb8]/80">Use 27 points to buy scores (8-15). Cost varies.</span>
+                    <span className={`font-bold font-fira-sans ${pointBuyRemaining < 0 ? 'text-rose-400' : 'text-[#22c55e]'}`}>
                         Points: {pointBuyRemaining}/27
                     </span>
                 </div>
             )}
 
             {method === "rolling" && (
-                <div className="bg-slate-700/30 p-3 rounded-md border border-slate-600">
+                <div className="bg-[#12141a] p-3 rounded border border-[#c5a059]/25 font-lora">
                     <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-300">Roll 4d6, drop lowest for each score</span>
-                        <Button type="button" size="sm" onClick={handleRoll} variant="secondary">
+                        <span className="text-xs text-[#d1cdb8]/80">Roll 4d6, drop lowest for each score</span>
+                        <button
+                            type="button"
+                            onClick={handleRoll}
+                            className="px-3 py-1.5 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_10px_rgba(197,160,89,0.3)] cursor-pointer"
+                        >
                             Roll Dice 🎲
-                        </Button>
+                        </button>
                     </div>
                 </div>
             )}
@@ -196,13 +200,13 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
             </div>
 
             {/* HP Method */}
-            <div className="space-y-2 pt-4 border-t border-slate-700">
-                <Label className="text-white">HP Calculation Method</Label>
+            <div className="space-y-2 pt-4 border-t border-[#c5a059]/20">
+                <Label className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">HP Calculation Method</Label>
                 <Select value={formData.hp_method} onValueChange={(value) => updateFormData({ hp_method: value })}>
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 font-lora text-sm h-10">
                         <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
                         {HP_METHODS.map((method) => (
                             <SelectItem key={method.value} value={method.value}>
                                 {method.label}
@@ -210,34 +214,35 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
                         ))}
                     </SelectContent>
                 </Select>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-[#d1cdb8]/60 font-lora italic">
                     {HP_METHODS.find(m => m.value === formData.hp_method)?.description}
                 </p>
             </div>
 
             {/* Validation Warning for Point Buy */}
             {method === "point_buy" && pointBuyRemaining < 0 && (
-                <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-3 rounded-md text-sm">
+                <div className="bg-rose-950/60 border border-rose-500/40 text-rose-300 p-3 rounded text-xs font-lora">
                     ⚠️ You've exceeded your point budget! Reduce some ability scores.
                 </div>
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-4 border-t border-slate-700">
-                <Button
+            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+                <button
+                    type="button"
                     onClick={onBack}
-                    variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer"
                 >
                     ← Back
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
                     onClick={onNext}
                     disabled={!canProceed}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="px-6 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-lora"
                 >
                     Next: Equipment →
-                </Button>
+                </button>
             </div>
         </div>
     );

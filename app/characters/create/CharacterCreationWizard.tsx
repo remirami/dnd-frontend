@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
+import Navbar from "@/components/layout/Navbar";
+import FantasyCard from "@/components/ui/FantasyCard";
+import { Sparkles } from "lucide-react";
 
 // Import step components (we'll create these)
 import BasicInfoStep from "./steps/BasicInfoStep";
@@ -248,100 +249,119 @@ export default function CharacterCreationWizard() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 py-8">
-            <div className="container mx-auto px-4 max-w-4xl">
-                {/* Breadcrumb */}
-                <div className="mb -4 flex gap-2 text-sm">
-                    <Button
-                        variant="ghost"
-                        className="text-slate-400 hover:text-white p-0 h-auto font-normal"
-                        onClick={() => router.push("/")}
-                    >
-                        Home
-                    </Button>
-                    <span className="text-slate-600">/</span>
-                    <Button
-                        variant="ghost"
-                        className="text-slate-400 hover:text-white p-0 h-auto font-normal"
-                        onClick={() => router.push("/characters")}
-                    >
-                        Characters
-                    </Button>
-                    <span className="text-slate-600">/</span>
-                    <span className="text-white">Create</span>
+        <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col">
+            {/* Universal 5E Navbar with Quick Random action */}
+            <Navbar showActions={true} onQuickRandom={handleRandomizeAll} />
+
+            {/* Main Content Area */}
+            <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 space-y-6">
+                {/* Breadcrumbs */}
+                <div className="flex items-center gap-2 text-xs font-lora text-[#d1cdb8]/60">
+                    <Link href="/" className="hover:text-[#c5a059] transition-colors">Home</Link>
+                    <span className="text-[#c5a059]/40">/</span>
+                    <Link href="/characters" className="hover:text-[#c5a059] transition-colors">Characters</Link>
+                    <span className="text-[#c5a059]/40">/</span>
+                    <span className="text-[#c5a059] font-medium">Create</span>
                 </div>
 
-                <Card className="bg-slate-800 border-slate-700">
-                    <CardHeader>
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                            <div>
-                                <CardTitle className="text-3xl text-white">Create Character</CardTitle>
-                                <CardDescription className="text-slate-400">
-                                    Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].name}
-                                </CardDescription>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    type="button"
-                                    onClick={handleRandomizeAll}
-                                    disabled={isRandomizing}
-                                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs sm:text-sm px-3 sm:px-4 shadow-md transition-all active:scale-95"
-                                >
-                                    {isRandomizing ? "🎲 Rolling..." : "🎲 Randomize Character"}
-                                </Button>
-                                <div className="text-right hidden sm:block">
-                                    <div className="text-sm text-slate-400 mb-1">Progress</div>
-                                    <div className="text-2xl font-bold text-green-400">{Math.round(progress)}%</div>
-                                </div>
-                            </div>
-                        </div>
-                        <Progress value={progress} className="h-2" />
+                {/* Page Header */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 className="font-cinzel-decorative text-2xl md:text-3xl font-bold tracking-wide text-[#c5a059] drop-shadow-[0_2px_12px_rgba(197,160,89,0.3)]">
+                            CREATE CHARACTER
+                        </h1>
+                        <p className="font-lora text-xs sm:text-sm text-[#d1cdb8]/70 mt-1">
+                            Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].name} — {STEPS[currentStep - 1].description}
+                        </p>
+                    </div>
 
-                        {/* Step Indicators */}
-                        <div className="flex justify-between mt-6">
-                            {STEPS.map((step) => {
-                                const isClickable = !!(formData.name && formData.race_id && formData.character_class_id) || step.number <= currentStep;
-                                return (
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={handleRandomizeAll}
+                            disabled={isRandomizing}
+                            className="px-4 py-2 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] hover:text-[#e0bc75] font-lora font-semibold text-xs sm:text-sm rounded border border-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:shadow-[0_0_20px_rgba(197,160,89,0.35)] transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                            <Sparkles className="w-4 h-4 text-[#c5a059]" />
+                            <span>{isRandomizing ? "Rolling..." : "Randomize Character"}</span>
+                        </button>
+                        <div className="text-right pl-3 border-l border-[#c5a059]/20 hidden sm:block">
+                            <div className="text-[10px] uppercase font-lora text-[#d1cdb8]/60 tracking-wider">Progress</div>
+                            <div className="text-xl font-bold font-fira-sans text-[#c5a059]">{Math.round(progress)}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filigree Divider */}
+                <div className="flex items-center gap-3 opacity-60">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[#c5a059]/40" />
+                    <span className="text-[10px] text-[#c5a059]">✦</span>
+                    <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[#c5a059]/40" />
+                </div>
+
+                {/* Wizard Container Card */}
+                <FantasyCard className="p-6 md:p-8 font-lora">
+                    {/* Progress Bar */}
+                    <div className="w-full bg-[#12141a] h-2 rounded-full overflow-hidden border border-[#c5a059]/20 mb-6">
+                        <div
+                            className="bg-gradient-to-r from-[#9b7b39] via-[#c5a059] to-[#e0bc75] h-full transition-all duration-300 shadow-[0_0_10px_rgba(197,160,89,0.5)]"
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+
+                    {/* Step Indicators */}
+                    <div className="flex justify-between mb-8 gap-1">
+                        {STEPS.map((step) => {
+                            const isClickable = !!(formData.name && formData.race_id && formData.character_class_id) || step.number <= currentStep;
+                            const isCompleted = step.number < currentStep;
+                            const isCurrent = step.number === currentStep;
+
+                            return (
+                                <div
+                                    key={step.number}
+                                    onClick={() => {
+                                        if (isClickable) {
+                                            if (step.number === 2 && !shouldShowSubclassStep(formData)) return;
+                                            setCurrentStep(step.number);
+                                        }
+                                    }}
+                                    className={`flex flex-col items-center flex-1 transition-all ${
+                                        isClickable ? "cursor-pointer group" : "cursor-not-allowed opacity-40"
+                                    }`}
+                                >
                                     <div
-                                        key={step.number}
-                                        onClick={() => {
-                                            if (isClickable) {
-                                                if (step.number === 2 && !shouldShowSubclassStep(formData)) return;
-                                                setCurrentStep(step.number);
-                                            }
-                                        }}
-                                        className={`flex flex-col items-center flex-1 transition-all ${
-                                            isClickable ? "cursor-pointer hover:opacity-90" : "cursor-default"
-                                        } ${
-                                            step.number < currentStep
-                                                ? "text-green-400"
-                                                : step.number === currentStep
-                                                    ? "text-white"
-                                                    : "text-slate-500"
+                                        className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs mb-2 transition-all font-fira-sans ${
+                                            isCurrent
+                                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_15px_rgba(197,160,89,0.5)] border border-[#e0bc75] scale-110"
+                                                : isCompleted
+                                                    ? "bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/60 group-hover:bg-[#22c55e]/25"
+                                                    : "bg-[#12141a] text-[#d1cdb8]/40 border border-[#c5a059]/20 group-hover:border-[#c5a059]/50"
                                         }`}
                                     >
-                                        <div
-                                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mb-2 transition-colors ${
-                                                step.number < currentStep
-                                                    ? "bg-green-600"
-                                                    : step.number === currentStep
-                                                        ? "bg-blue-600"
-                                                        : "bg-slate-700"
-                                            }`}
-                                        >
-                                            {step.number < currentStep ? "✓" : step.number}
-                                        </div>
-                                        <div className="text-xs text-center hidden sm:block">{step.name}</div>
+                                        {isCompleted ? "✓" : step.number}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="text-white">
+                                    <div
+                                        className={`text-[11px] text-center hidden sm:block font-lora tracking-wide transition-colors ${
+                                            isCurrent
+                                                ? "font-bold text-[#c5a059]"
+                                                : isCompleted
+                                                    ? "text-[#d1cdb8]/80"
+                                                    : "text-[#d1cdb8]/40"
+                                        }`}
+                                    >
+                                        {step.name}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Step Content */}
+                    <div className="pt-2 text-slate-100">
                         {renderStep()}
-                    </CardContent>
-                </Card>
-            </div>
+                    </div>
+                </FantasyCard>
+            </main>
         </div>
     );
 }

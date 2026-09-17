@@ -77,24 +77,32 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
         <div className="space-y-6">
             {/* Ruleset Toggle */}
             <div className="space-y-2">
-                <Label className="text-white">Ruleset Version</Label>
-                <div className="flex space-x-4">
-                    <Button
-                        variant={formData.ruleset_version === '2014' ? 'default' : 'secondary'}
+                <Label className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">Ruleset Version</Label>
+                <div className="flex space-x-3">
+                    <button
+                        type="button"
                         onClick={() => updateFormData({ ruleset_version: '2014', race_id: null, background_id: null, character_class_id: null })}
-                        className={formData.ruleset_version === '2014' ? "bg-blue-600" : "bg-slate-700 text-slate-300"}
+                        className={`px-4 py-2 text-xs font-lora font-bold rounded transition-all cursor-pointer ${
+                            formData.ruleset_version === '2014'
+                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.35)] border border-[#e0bc75]"
+                                : "bg-[#12141a] text-[#d1cdb8]/70 border border-[#c5a059]/25 hover:bg-[#c5a059]/10 hover:text-[#d1cdb8]"
+                        }`}
                     >
                         2014 (Legacy)
-                    </Button>
-                    <Button
-                        variant={formData.ruleset_version === '2024' ? 'default' : 'secondary'}
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => updateFormData({ ruleset_version: '2024', race_id: null, background_id: null, character_class_id: null })}
-                        className={formData.ruleset_version === '2024' ? "bg-purple-600" : "bg-slate-700 text-slate-300"}
+                        className={`px-4 py-2 text-xs font-lora font-bold rounded transition-all cursor-pointer ${
+                            formData.ruleset_version === '2024'
+                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.35)] border border-[#e0bc75]"
+                                : "bg-[#12141a] text-[#d1cdb8]/70 border border-[#c5a059]/25 hover:bg-[#c5a059]/10 hover:text-[#d1cdb8]"
+                        }`}
                     >
                         2024 (Standard)
-                    </Button>
+                    </button>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-[#d1cdb8]/60 font-lora italic">
                     {is2024
                         ? "Using 2024 SRD 5.2 rules. Species do not provide Ability Score Increases; Backgrounds do."
                         : "Using 2014 SRD 5.1 rules. Races provide Ability Score Increases."}
@@ -103,19 +111,19 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
 
             {/* Character Name */}
             <div className="space-y-2">
-                <Label htmlFor="name" className="text-white">Character Name *</Label>
+                <Label htmlFor="name" className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">Character Name *</Label>
                 <Input
                     id="name"
                     placeholder="Enter character name"
                     value={formData.name}
                     onChange={(e) => updateFormData({ name: e.target.value })}
-                    className="bg-slate-900 border-slate-700 text-white"
+                    className="bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 placeholder:text-slate-600 focus:border-[#c5a059] focus:ring-[#c5a059]/20 font-lora text-sm h-10"
                 />
             </div>
 
             {/* Race / Species */}
             <div className="space-y-2">
-                <Label htmlFor="race" className="text-white">{raceLabel} *</Label>
+                <Label htmlFor="race" className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">{raceLabel} *</Label>
                 <Select
                     value={formData.race_id?.toString() || ""}
                     onValueChange={(value) => {
@@ -125,10 +133,10 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
                         });
                     }}
                 >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 focus:border-[#c5a059] font-lora text-sm h-10">
                         <SelectValue placeholder={`Select a ${raceLabel.toLowerCase()}`} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
                         {races.map((r) => (
                             <SelectItem key={r.id} value={r.id.toString()}>
                                 {r.name_display || r.name}
@@ -137,29 +145,29 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
                     </SelectContent>
                 </Select>
                 {selectedRace && (
-                    <div className="mt-2 p-3 bg-slate-900/50 rounded-md border border-slate-800 text-sm">
-                        <p className="text-slate-300 italic">{selectedRace.description}</p>
+                    <div className="mt-2 p-3.5 bg-[#12141a] rounded border border-[#c5a059]/25 text-sm font-lora">
+                        <p className="text-[#d1cdb8]/90 italic">{selectedRace.description}</p>
 
                         {/* Only show Racial ASI for 2014 */}
                         {!is2024 && selectedRace.ability_score_increases && (
-                            <div className="mt-2">
-                                <span className="font-semibold text-slate-200">ASI: </span>
-                                <span className="text-slate-400">{selectedRace.ability_score_increases}</span>
+                            <div className="mt-2 text-xs">
+                                <span className="font-semibold text-[#c5a059]">ASI: </span>
+                                <span className="text-[#d1cdb8]/70">{selectedRace.ability_score_increases}</span>
                             </div>
                         )}
 
                         {/* Extra Language Selection (Legacy) */}
                         {needsExtraLanguage && (
-                            <div className="mt-3 pt-3 border-t border-slate-800">
-                                <Label className="text-yellow-400 mb-2 block">Extra Language (Racial Trait)</Label>
+                            <div className="mt-3 pt-3 border-t border-[#c5a059]/20">
+                                <Label className="text-[#c5a059] text-xs uppercase tracking-wider font-semibold mb-2 block">Extra Language (Racial Trait)</Label>
                                 <Select
                                     value={formData.language_ids && formData.language_ids.length > 0 ? formData.language_ids[0].toString() : ""}
                                     onValueChange={(value) => updateFormData({ language_ids: [parseInt(value)] })}
                                 >
-                                    <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
+                                    <SelectTrigger className="bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 font-lora text-xs h-9">
                                         <SelectValue placeholder="Select a language" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
                                         {languages
                                             .filter(l => l.name !== 'Common')
                                             .map((l) => (
@@ -177,7 +185,7 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
 
             {/* Class */}
             <div className="space-y-2">
-                <Label htmlFor="class" className="text-white">Class *</Label>
+                <Label htmlFor="class" className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">Class *</Label>
                 <Select
                     value={formData.character_class_id?.toString() || ""}
                     onValueChange={(value) => {
@@ -189,10 +197,10 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
                         });
                     }}
                 >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 focus:border-[#c5a059] font-lora text-sm h-10">
                         <SelectValue placeholder="Select a class" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
                         {classes.map((c) => (
                             <SelectItem key={c.id} value={c.id.toString()}>
                                 {c.name_display || c.name}
@@ -201,11 +209,11 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
                     </SelectContent>
                 </Select>
                 {selectedClass && (
-                    <div className="mt-2 p-3 bg-slate-900/50 rounded-md border border-slate-800 text-sm">
-                        <p className="text-slate-300 italic">{selectedClass.description}</p>
-                        <div className="mt-2">
-                            <span className="font-semibold text-slate-200">Hit Dice: </span>
-                            <span className="text-slate-400">{selectedClass.hit_dice}</span>
+                    <div className="mt-2 p-3.5 bg-[#12141a] rounded border border-[#c5a059]/25 text-sm font-lora">
+                        <p className="text-[#d1cdb8]/90 italic">{selectedClass.description}</p>
+                        <div className="mt-2 text-xs">
+                            <span className="font-semibold text-[#c5a059]">Hit Dice: </span>
+                            <span className="text-[#d1cdb8]/70">{selectedClass.hit_dice}</span>
                         </div>
                     </div>
                 )}
@@ -213,15 +221,15 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
 
             {/* Background */}
             <div className="space-y-2">
-                <Label htmlFor="background" className="text-white">Background (Optional)</Label>
+                <Label htmlFor="background" className="text-xs font-semibold text-[#d1cdb8]/80 uppercase tracking-wider">Background (Optional)</Label>
                 <Select
                     value={formData.background_id?.toString() || ""}
                     onValueChange={(value) => updateFormData({ background_id: parseInt(value) })}
                 >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                    <SelectTrigger className="bg-[#0c0d12] border-[#c5a059]/30 text-slate-100 focus:border-[#c5a059] font-lora text-sm h-10">
                         <SelectValue placeholder="Select a background" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
                         <SelectItem value="none">None</SelectItem>
                         {backgrounds.map((bg) => (
                             <SelectItem key={bg.id} value={bg.id.toString()}>
@@ -231,35 +239,35 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
                     </SelectContent>
                 </Select>
                 {selectedBackground && (
-                    <div className="mt-2 p-3 bg-slate-900/50 rounded-md border border-slate-800 text-sm">
-                        <p className="text-slate-300 italic">{selectedBackground.description}</p>
+                    <div className="mt-2 p-3.5 bg-[#12141a] rounded border border-[#c5a059]/25 text-sm font-lora">
+                        <p className="text-[#d1cdb8]/90 italic">{selectedBackground.description}</p>
 
                         {/* 2024 Rules: Origin Feat */}
                         {is2024 && selectedBackground.ability_score_options?.feat && (
-                            <div className="mt-2 text-purple-200">
-                                <span className="font-semibold text-purple-400">Origin Feat: </span>
+                            <div className="mt-2 text-[#d1cdb8] text-xs">
+                                <span className="font-semibold text-[#c5a059]">Origin Feat: </span>
                                 {selectedBackground.ability_score_options.feat}
                             </div>
                         )}
 
                         {selectedBackground.feature_name && (
-                            <div className="mt-2">
-                                <span className="font-semibold text-slate-200">Feature: {selectedBackground.feature_name}</span>
-                                <p className="text-xs text-slate-400 mt-1">{selectedBackground.feature_description}</p>
+                            <div className="mt-2 text-xs">
+                                <span className="font-semibold text-[#c5a059]">Feature: {selectedBackground.feature_name}</span>
+                                <p className="text-xs text-[#d1cdb8]/70 mt-1">{selectedBackground.feature_description}</p>
                             </div>
                         )}
 
                         {selectedBackground.skill_proficiencies && (
-                            <div className="mt-2">
-                                <span className="font-semibold text-slate-200">Skills: </span>
-                                <span className="text-slate-400">{selectedBackground.skill_proficiencies}</span>
+                            <div className="mt-2 text-xs">
+                                <span className="font-semibold text-[#c5a059]">Skills: </span>
+                                <span className="text-[#d1cdb8]/70">{selectedBackground.skill_proficiencies}</span>
                             </div>
                         )}
 
                         {/* 2024 Background ASI Info */}
                         {is2024 && selectedBackground.ability_score_options && (
-                            <div className="mt-2 text-purple-300">
-                                <span className="font-semibold">Attributes: </span>
+                            <div className="mt-2 text-[#d1cdb8] text-xs">
+                                <span className="font-semibold text-[#c5a059]">Attributes: </span>
                                 Boosts available for {selectedBackground.ability_score_options.stats?.join(", ")}.
                                 (You will select details in Step 3)
                             </div>
@@ -269,14 +277,16 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
             </div>
 
             {/* Navigation */}
-            <div className="flex justify-end pt-4 border-t border-slate-700">
-                <Button
+            <div className="flex justify-end pt-5 border-t border-[#c5a059]/20 mt-6">
+                <button
+                    type="button"
                     onClick={onNext}
                     disabled={!canProceed}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="px-6 py-2.5 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 font-lora"
                 >
-                    Next: Personality →
-                </Button>
+                    <span>Next: Personality</span>
+                    <span>→</span>
+                </button>
             </div>
         </div>
     );

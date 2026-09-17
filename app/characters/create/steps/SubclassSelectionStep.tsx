@@ -59,50 +59,69 @@ export default function SubclassSelectionStep({ formData, updateFormData, onNext
     return (
         <div className="space-y-6">
             <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Choose Your Path</h2>
-                <p className="text-slate-400">Select a subclass to specialize your character.</p>
+                <h2 className="font-cinzel-decorative text-xl font-bold text-[#c5a059]">Choose Your Path</h2>
+                <p className="font-lora text-xs text-[#d1cdb8]/70 mt-1">Select a subclass to specialize your character.</p>
             </div>
 
             {loading ? (
-                <div className="text-white text-center">Loading options...</div>
+                <div className="flex flex-col items-center justify-center py-8 space-y-2">
+                    <div className="w-6 h-6 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                    <p className="font-lora text-xs text-[#d1cdb8]/70 italic">Consulting the archives...</p>
+                </div>
             ) : error ? (
-                <div className="text-red-400 text-center">{error}</div>
+                <div className="text-rose-400 text-center font-lora text-sm">{error}</div>
             ) : subclasses.length === 0 ? (
-                <div className="text-yellow-400 text-center">
+                <div className="text-[#c5a059] text-center font-lora text-sm p-4 bg-[#12141a] rounded border border-[#c5a059]/20">
                     No subclasses available for this class at Level 1 in this ruleset.
                     <div className="mt-4">
-                        <Button onClick={onNext}>Continue</Button>
+                        <button
+                            type="button"
+                            onClick={onNext}
+                            className="px-4 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_12px_rgba(197,160,89,0.3)] cursor-pointer"
+                        >
+                            Continue
+                        </button>
                     </div>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {subclasses.map((sc) => (
-                        <Card
+                        <div
                             key={sc.id}
-                            className={`p-4 cursor-pointer transition-all border ${currentSelection === sc.id
-                                    ? "bg-blue-900/40 border-blue-500 ring-2 ring-blue-500/50"
-                                    : "bg-slate-800 border-slate-700 hover:border-slate-500"
-                                }`}
+                            className={`p-4 rounded cursor-pointer transition-all border ${
+                                currentSelection === sc.id
+                                    ? "bg-[#c5a059]/15 border-[#c5a059] ring-1 ring-[#c5a059]/50 shadow-[0_0_15px_rgba(197,160,89,0.25)]"
+                                    : "bg-[#12141a] border-[#c5a059]/20 hover:border-[#c5a059]/50 hover:bg-[#c5a059]/5"
+                            }`}
                             onClick={() => handleSelect(sc.id)}
                         >
-                            <h3 className="text-lg font-semibold text-white mb-2">{sc.name}</h3>
-                            <p className="text-sm text-slate-300">{sc.description}</p>
-                        </Card>
+                            <h3 className={`text-base font-semibold mb-2 font-cinzel-decorative transition-colors ${
+                                currentSelection === sc.id ? "text-[#c5a059]" : "text-[#d1cdb8]"
+                            }`}>
+                                {sc.name}
+                            </h3>
+                            <p className="text-xs text-[#d1cdb8]/75 font-lora leading-relaxed">{sc.description}</p>
+                        </div>
                     ))}
                 </div>
             )}
 
-            <div className="flex justify-between pt-4 border-t border-slate-700 mt-6">
-                <Button onClick={onBack} variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer"
+                >
                     ← Back
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
                     onClick={onNext}
                     disabled={!currentSelection && subclasses.length > 0}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="px-6 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-lora"
                 >
                     Next →
-                </Button>
+                </button>
             </div>
         </div>
     );

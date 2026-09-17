@@ -141,23 +141,24 @@ export default function EquipmentSelectionStep({ formData, updateFormData, onNex
     if (error || !equipmentData) {
         return (
             <div className="space-y-6">
-                <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-md">
+                <div className="bg-rose-950/60 border border-rose-500/40 text-rose-300 p-4 rounded font-lora text-sm">
                     {error || "No equipment data available for this class"}
                 </div>
-                <div className="flex justify-between pt-4 border-t border-slate-700">
-                    <Button
+                <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+                    <button
+                        type="button"
                         onClick={onBack}
-                        variant="outline"
-                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                        className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer"
                     >
                         ← Back
-                    </Button>
-                    <Button
+                    </button>
+                    <button
+                        type="button"
                         onClick={onNext}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="px-5 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_12px_rgba(197,160,89,0.3)] cursor-pointer font-lora"
                     >
                         Skip Equipment →
-                    </Button>
+                    </button>
                 </div>
             </div>
         );
@@ -166,15 +167,15 @@ export default function EquipmentSelectionStep({ formData, updateFormData, onNex
     return (
         <div className="space-y-6">
             {/* Class Info */}
-            <div className="bg-slate-700/30 p-4 rounded-md border border-slate-600">
-                <h3 className="text-lg font-semibold text-white mb-2">{equipmentData.class_name} Starting Equipment</h3>
-                <p className="text-sm text-slate-300">
-                    Starting Gold: {equipmentData.starting_gold.min}-{equipmentData.starting_gold.max} gp
+            <div className="bg-[#12141a] p-4 rounded border border-[#c5a059]/25 font-lora">
+                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-1">{equipmentData.class_name} Starting Equipment</h3>
+                <p className="text-xs text-[#d1cdb8]/80">
+                    Starting Gold: <span className="text-[#c5a059] font-bold font-fira-sans">{equipmentData.starting_gold.min}-{equipmentData.starting_gold.max} gp</span>
                 </p>
                 {equipmentData.default_items.length > 0 && (
-                    <div className="mt-2">
-                        <p className="text-sm font-semibold text-slate-200">Automatically Included:</p>
-                        <ul className="list-disc list-inside text-sm text-slate-400">
+                    <div className="mt-2.5 pt-2.5 border-t border-[#c5a059]/15">
+                        <p className="text-xs font-semibold text-[#d1cdb8] uppercase tracking-wider mb-1">Automatically Included:</p>
+                        <ul className="list-disc list-inside text-xs text-[#d1cdb8]/70 space-y-0.5">
                             {equipmentData.default_items.map((item, idx) => (
                                 <li key={idx}>{item.name} {item.quantity > 1 && `(×${item.quantity})`}</li>
                             ))}
@@ -185,8 +186,8 @@ export default function EquipmentSelectionStep({ formData, updateFormData, onNex
 
             {/* Equipment Choices */}
             {equipmentData.choices.map((choice) => (
-                <Card key={choice.choice_number} className="bg-slate-800 border-slate-700 p-4">
-                    <Label className="text-white font-semibold mb-3 block">
+                <div key={choice.choice_number} className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4 font-lora">
+                    <Label className="text-xs font-semibold text-[#c5a059] uppercase tracking-wider mb-3 block">
                         Choice {choice.choice_number}: {choice.description}
                     </Label>
                     <RadioGroup
@@ -196,23 +197,24 @@ export default function EquipmentSelectionStep({ formData, updateFormData, onNex
                         {choice.options.map((option, idx) => (
                             <div
                                 key={idx}
-                                className={`flex flex-col p-3 rounded-md border transition-colors ${formData.equipment_selections[choice.choice_number.toString()] === option.label
-                                    ? "border-blue-500 bg-blue-900/20"
-                                    : "border-slate-600 hover:border-slate-500"
-                                    }`}
+                                className={`flex flex-col p-3 rounded border transition-all ${
+                                    formData.equipment_selections[choice.choice_number.toString()] === option.label
+                                        ? "border-[#c5a059] bg-[#c5a059]/10 shadow-[0_0_12px_rgba(197,160,89,0.15)]"
+                                        : "border-[#c5a059]/15 bg-[#0c0d12]/40 hover:border-[#c5a059]/35"
+                                }`}
                             >
                                 <div className="flex items-start space-x-3">
-                                    <RadioGroupItem value={option.label} id={`choice-${choice.choice_number}-${idx}`} className="mt-1" />
+                                    <RadioGroupItem value={option.label} id={`choice-${choice.choice_number}-${idx}`} className="mt-1 text-[#c5a059] border-[#c5a059]/50" />
                                     <div className="flex-1">
                                         <label
                                             htmlFor={`choice-${choice.choice_number}-${idx}`}
-                                            className="text-white cursor-pointer font-medium block"
+                                            className="text-xs text-[#d1cdb8] font-semibold cursor-pointer block"
                                         >
                                             {option.label}
                                         </label>
 
                                         {option.items && (
-                                            <ul className="text-sm text-slate-400 mt-1 ml-4 list-disc">
+                                            <ul className="text-xs text-[#d1cdb8]/70 mt-1 ml-4 list-disc">
                                                 {option.items.map((item, itemIdx) => (
                                                     <li key={itemIdx}>
                                                         {item.name} {item.quantity > 1 && `(×${item.quantity})`}
@@ -223,16 +225,16 @@ export default function EquipmentSelectionStep({ formData, updateFormData, onNex
 
                                         {option.pack && (
                                             <div className="mt-1">
-                                                <p className="text-sm text-green-400 font-medium">📦 {option.pack}</p>
+                                                <p className="text-xs text-[#c5a059] font-medium">📦 {option.pack}</p>
 
                                                 {/* Show pack contents if available */}
                                                 {equipmentData.pack_definitions && equipmentData.pack_definitions[option.pack] && (
-                                                    <div className="mt-1 ml-2 text-xs text-slate-400 bg-slate-900/30 p-2 rounded border border-slate-700/50">
-                                                        <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Contains:</span>
-                                                        <ul className="grid grid-cols-2 gap-x-2 mt-1">
+                                                    <div className="mt-1.5 text-xs text-[#d1cdb8]/70 bg-[#0c0d12] p-2.5 rounded border border-[#c5a059]/20">
+                                                        <span className="font-semibold text-[#d1cdb8]/50 uppercase tracking-wider text-[10px]">Contains:</span>
+                                                        <ul className="grid grid-cols-2 gap-x-2 mt-1 text-[11px]">
                                                             {equipmentData.pack_definitions[option.pack].items.map((packItem, pIdx) => (
                                                                 <li key={pIdx}>
-                                                                    {packItem.name} {packItem.quantity > 1 && <span className="text-slate-500">x{packItem.quantity}</span>}
+                                                                    {packItem.name} {packItem.quantity > 1 && <span className="text-[#c5a059]">×{packItem.quantity}</span>}
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -245,14 +247,14 @@ export default function EquipmentSelectionStep({ formData, updateFormData, onNex
 
                                 {/* Sub-choice Dropdowns */}
                                 {option.additional_choice && formData.equipment_selections[choice.choice_number.toString()] === option.label && (
-                                    <div className="mt-3 ml-8 space-y-2">
+                                    <div className="mt-3 ml-7 space-y-2">
                                         {Array.from({ length: option.additional_choice.count || 1 }).map((_, subIdx) => (
-                                            <div key={subIdx} className="bg-slate-900/50 p-2 rounded border border-slate-700">
-                                                <Label className="text-xs font-semibold text-blue-400 mb-1 block uppercase tracking-wider">
+                                            <div key={subIdx} className="bg-[#0c0d12] p-2.5 rounded border border-[#c5a059]/25">
+                                                <Label className="text-[10px] font-semibold text-[#c5a059] mb-1 block uppercase tracking-wider">
                                                     {option.additional_choice?.prompt || "Make a selection"} {option.additional_choice!.count && option.additional_choice!.count > 1 ? `#${subIdx + 1}` : ''}
                                                 </Label>
                                                 <select
-                                                    className="w-full bg-slate-800 border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full bg-[#12141a] border border-[#c5a059]/30 rounded px-2.5 py-1.5 text-xs text-[#d1cdb8] focus:border-[#c5a059] focus:outline-none font-lora"
                                                     value={formData.equipment_selections[`${choice.choice_number}_sub_${subIdx}`] || ""}
                                                     onChange={(e) => handleSubSelection(choice.choice_number, subIdx, e.target.value)}
                                                 >
@@ -268,32 +270,33 @@ export default function EquipmentSelectionStep({ formData, updateFormData, onNex
                             </div>
                         ))}
                     </RadioGroup>
-                </Card>
+                </div>
             ))}
 
             {/* Validation Warning */}
             {!allChoicesSelected && (
-                <div className="bg-yellow-900/20 border border-yellow-500/50 text-yellow-200 p-3 rounded-md text-sm">
+                <div className="bg-amber-950/40 border border-amber-500/40 text-amber-300 p-3 rounded text-xs font-lora">
                     ⚠️ Please make all equipment selections before proceeding
                 </div>
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-4 border-t border-slate-700">
-                <Button
+            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+                <button
+                    type="button"
                     onClick={onBack}
-                    variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    className="px-4 py-2 border border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10 font-lora font-semibold text-xs rounded transition-all cursor-pointer"
                 >
                     ← Back
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
                     onClick={onNext}
                     disabled={!allChoicesSelected}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="px-6 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-lora"
                 >
                     Next: Review →
-                </Button>
+                </button>
             </div>
         </div>
     );
