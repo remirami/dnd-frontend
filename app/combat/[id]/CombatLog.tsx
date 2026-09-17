@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CombatAction, CombatParticipant } from '@/lib/types/combat';
-import { X, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { X, ArrowUpRight, ArrowDownLeft, Swords } from 'lucide-react';
 
 interface CombatLogProps {
     actions: CombatAction[];
@@ -71,52 +69,76 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
 
         if (action.action_type === 'attack') {
             return (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                     <div className="flex justify-between items-start gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-slate-200">
-                                {action.actor_name} <span className="text-slate-500 text-sm font-normal">attacks</span> {action.target_name}
+                            {/* Actor / Target names */}
+                            <span className="font-lora text-sm font-semibold text-[#d1cdb8]">
+                                <span className="text-[#c5a059] font-bold">{action.actor_name}</span>
+                                <span className="text-[#d1cdb8]/50 text-xs font-normal mx-1.5">attacks</span>
+                                <span className="font-bold">{action.target_name}</span>
                             </span>
+                            {/* Action direction badge (when filtered) */}
                             {selectedParticipant && (
                                 actorMatch ? (
-                                    <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
-                                        <ArrowUpRight className="w-2.5 h-2.5" /> Action Taken
+                                    <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-sm font-semibold font-lora bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/30 uppercase tracking-wider">
+                                        <ArrowUpRight className="w-2.5 h-2.5" /> Took Action
                                     </span>
                                 ) : targetMatch ? (
-                                    <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-rose-950/80 text-rose-400 border border-rose-800/60">
+                                    <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-sm font-semibold font-lora bg-[#a63a3a]/15 text-[#e57373] border border-[#a63a3a]/30 uppercase tracking-wider">
                                         <ArrowDownLeft className="w-2.5 h-2.5" /> Received
                                     </span>
                                 ) : null
                             )}
                         </div>
 
+                        {/* Round + Outcome badges */}
                         <div className="flex items-center gap-1.5 shrink-0">
-                            <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700/80 py-0 px-1.5 font-normal">
+                            <span className="text-[10px] font-fira-sans text-[#c5a059]/60 border border-[#c5a059]/20 px-1.5 py-0.5 rounded-sm bg-[#c5a059]/5 whitespace-nowrap">
                                 Round {action.round_number}
-                            </Badge>
+                            </span>
                             {action.critical ? (
-                                <Badge variant="destructive" className="bg-yellow-600 hover:bg-yellow-700 text-black font-bold text-xs py-0">CRITICAL!</Badge>
+                                <span className="text-[10px] font-bold font-fira-sans px-2 py-0.5 rounded-sm bg-[#c5a059] text-[#0c0d12] shadow-[0_0_8px_rgba(197,160,89,0.5)]">
+                                    CRITICAL!
+                                </span>
                             ) : action.hit ? (
-                                <Badge variant="default" className="bg-green-700 hover:bg-green-800 text-xs py-0">HIT</Badge>
+                                <span className="text-[10px] font-bold font-fira-sans px-2 py-0.5 rounded-sm bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/40">
+                                    HIT
+                                </span>
                             ) : (
-                                <Badge variant="secondary" className="bg-slate-700 text-slate-300 text-xs py-0">MISS</Badge>
+                                <span className="text-[10px] font-fira-sans px-2 py-0.5 rounded-sm bg-[#181a21] text-[#d1cdb8]/40 border border-[#d1cdb8]/15">
+                                    MISS
+                                </span>
                             )}
                         </div>
                     </div>
 
-                    <div className="text-sm text-slate-400 flex items-center gap-2">
-                        <span>{action.attack_name}</span>
-                        <span className="text-slate-600">•</span>
-                        <span>Roll: <span className={action.critical ? "text-yellow-500 font-bold" : "text-white"}>{action.attack_total}</span></span>
+                    {/* Attack details row */}
+                    <div className="text-xs font-fira-sans text-[#d1cdb8]/55 flex items-center gap-2 flex-wrap">
+                        {action.attack_name && <span className="text-[#d1cdb8]/80">{action.attack_name}</span>}
+                        <span className="text-[#c5a059]/30">•</span>
+                        <span>
+                            Roll:{" "}
+                            <span className={action.critical ? "text-[#c5a059] font-bold" : "text-[#d1cdb8]"}>
+                                {action.attack_total}
+                            </span>
+                        </span>
                         {action.description && (
-                            <span className="text-xs text-slate-600">({action.description.split('|')[0].trim()})</span>
+                            <span className="text-[#d1cdb8]/35 italic">
+                                ({action.description.split('|')[0].trim()})
+                            </span>
                         )}
                     </div>
 
+                    {/* Damage line */}
                     {action.hit && action.damage_amount !== undefined && (
-                        <div className="text-rose-400 font-semibold text-sm mt-0.5">
+                        <div className="font-fira-sans font-bold text-sm text-[#a63a3a]">
                             {action.damage_amount} damage
-                            {action.damage_type && <span className="text-slate-500 text-xs font-normal ml-1">({action.damage_type})</span>}
+                            {action.damage_type && (
+                                <span className="text-[#d1cdb8]/40 text-xs font-normal ml-1.5">
+                                    ({action.damage_type})
+                                </span>
+                            )}
                         </div>
                     )}
                 </div>
@@ -127,29 +149,35 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
         return (
             <div className="flex justify-between items-start gap-2">
                 <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-slate-200">{action.actor_name}</span>
-                        <span className="text-slate-400 text-sm">used {action.action_type_display || action.action_type}</span>
+                    <div className="flex items-center gap-2 flex-wrap font-lora text-sm">
+                        <span className="text-[#c5a059] font-bold">{action.actor_name}</span>
+                        <span className="text-[#d1cdb8]/50 text-xs">used {action.action_type_display || action.action_type}</span>
                         {action.target_name && (
-                            <span className="text-slate-400 text-sm">on <span className="text-slate-200 font-medium">{action.target_name}</span></span>
+                            <span className="text-[#d1cdb8]/50 text-xs">
+                                on <span className="text-[#d1cdb8] font-medium">{action.target_name}</span>
+                            </span>
                         )}
                         {selectedParticipant && (
                             actorMatch ? (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
-                                    <ArrowUpRight className="w-2.5 h-2.5" /> Action Taken
+                                <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-sm font-semibold bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/30 uppercase tracking-wider">
+                                    <ArrowUpRight className="w-2.5 h-2.5" /> Took Action
                                 </span>
                             ) : targetMatch ? (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-rose-950/80 text-rose-400 border border-rose-800/60">
+                                <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-sm font-semibold bg-[#a63a3a]/15 text-[#e57373] border border-[#a63a3a]/30 uppercase tracking-wider">
                                     <ArrowDownLeft className="w-2.5 h-2.5" /> Received
                                 </span>
                             ) : null
                         )}
                     </div>
-                    {action.description && <div className="text-sm text-slate-400 mt-1">{action.description}</div>}
+                    {action.description && (
+                        <div className="text-xs text-[#d1cdb8]/50 font-fira-sans mt-0.5 italic">
+                            {action.description}
+                        </div>
+                    )}
                 </div>
-                <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700/80 py-0 px-1.5 font-normal shrink-0">
+                <span className="text-[10px] font-fira-sans text-[#c5a059]/60 border border-[#c5a059]/20 px-1.5 py-0.5 rounded-sm bg-[#c5a059]/5 whitespace-nowrap shrink-0">
                     Round {action.round_number}
-                </Badge>
+                </span>
             </div>
         );
     };
@@ -157,47 +185,51 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
     const maxRound = actions.length > 0 ? Math.max(...actions.map(a => a.round_number || 1)) : 1;
 
     return (
-        <Card className="bg-slate-900/40 border-0 h-full flex flex-col min-h-0 overflow-hidden shadow-none">
-            <CardHeader className="p-3 sm:p-4 pb-3 border-b border-slate-800/80 space-y-2 shrink-0 bg-slate-900/60">
+        <div className="h-full flex flex-col min-h-0 bg-[#0c0d12]">
+            {/* Log Header */}
+            <div className="shrink-0 px-5 py-3 border-b border-[#c5a059]/20 bg-[#0e1017]">
                 <div className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-2">
-                    <CardTitle className="text-slate-200 text-base sm:text-lg flex items-center gap-2 min-w-0">
-                        <span className="whitespace-nowrap font-bold">Combat Log</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Swords className="w-4 h-4 text-[#c5a059]/70 shrink-0" />
+                        <span className="font-cinzel-decorative text-sm font-bold text-[#c5a059] whitespace-nowrap tracking-wide">
+                            Combat Log
+                        </span>
                         {selectedParticipant && (
-                            <Badge variant="secondary" className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-normal truncate max-w-[180px]">
+                            <span className="font-lora text-xs text-[#d1cdb8] bg-[#c5a059]/15 border border-[#c5a059]/30 px-2 py-0.5 rounded truncate max-w-[180px]">
                                 {selectedParticipant.name}
-                            </Badge>
+                            </span>
                         )}
-                    </CardTitle>
+                    </div>
                     <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         {selectedParticipant && onClearFilter && (
                             <button
                                 type="button"
                                 onClick={onClearFilter}
-                                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded transition-colors whitespace-nowrap"
+                                className="text-xs text-[#d1cdb8]/60 hover:text-[#c5a059] flex items-center gap-1 bg-[#181a21] hover:bg-[#c5a059]/10 border border-[#c5a059]/20 hover:border-[#c5a059]/40 px-2.5 py-1 rounded transition-colors whitespace-nowrap font-lora cursor-pointer"
                             >
                                 <X className="w-3 h-3" />
                                 <span>Clear Filter</span>
                             </button>
                         )}
-                        <Badge variant="outline" className="text-slate-400 border-slate-700 font-normal text-xs whitespace-nowrap">
+                        <span className="text-[10px] font-fira-sans text-[#c5a059]/60 border border-[#c5a059]/20 px-2 py-0.5 rounded-sm bg-[#c5a059]/5 whitespace-nowrap">
                             {filteredActions.length} action{filteredActions.length === 1 ? '' : 's'}
-                        </Badge>
-                        <Badge variant="outline" className="text-slate-500 border-slate-800 font-normal text-xs whitespace-nowrap">
+                        </span>
+                        <span className="text-[10px] font-fira-sans text-[#d1cdb8]/40 border border-[#d1cdb8]/10 px-2 py-0.5 rounded-sm whitespace-nowrap">
                             Max Round {maxRound}
-                        </Badge>
+                        </span>
                     </div>
                 </div>
 
                 {/* Sub-filter tabs when a participant is selected */}
                 {selectedParticipant && (
-                    <div className="flex items-center gap-1.5 pt-1 overflow-x-auto pb-1">
+                    <div className="flex items-center gap-1.5 pt-2.5 overflow-x-auto pb-0.5">
                         <button
                             type="button"
                             onClick={() => setSubFilter('all')}
-                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
+                            className={`px-3 py-1 rounded text-xs font-medium font-lora transition-colors whitespace-nowrap border ${
                                 subFilter === 'all'
-                                    ? 'bg-slate-700 text-white shadow-sm'
-                                    : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                    ? 'bg-[#c5a059] text-[#0c0d12] border-[#c5a059] shadow-[0_0_8px_rgba(197,160,89,0.3)]'
+                                    : 'bg-[#181a21] text-[#d1cdb8]/60 border-[#c5a059]/25 hover:text-[#c5a059] hover:border-[#c5a059]/50'
                             }`}
                         >
                             All ({participantActions.length})
@@ -205,10 +237,10 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                         <button
                             type="button"
                             onClick={() => setSubFilter('outgoing')}
-                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+                            className={`px-3 py-1 rounded text-xs font-medium font-lora transition-colors flex items-center gap-1 whitespace-nowrap border ${
                                 subFilter === 'outgoing'
-                                    ? 'bg-emerald-900/60 border border-emerald-600/60 text-emerald-200 shadow-sm'
-                                    : 'bg-slate-800/60 text-slate-400 hover:text-emerald-300 hover:bg-slate-800'
+                                    ? 'bg-[#22c55e]/15 border-[#22c55e]/50 text-[#22c55e]'
+                                    : 'bg-[#181a21] text-[#d1cdb8]/60 border-[#c5a059]/25 hover:text-[#22c55e] hover:border-[#22c55e]/30'
                             }`}
                         >
                             <ArrowUpRight className="w-3 h-3" />
@@ -217,10 +249,10 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                         <button
                             type="button"
                             onClick={() => setSubFilter('incoming')}
-                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 whitespace-nowrap ${
+                            className={`px-3 py-1 rounded text-xs font-medium font-lora transition-colors flex items-center gap-1 whitespace-nowrap border ${
                                 subFilter === 'incoming'
-                                    ? 'bg-rose-900/60 border border-rose-600/60 text-rose-200 shadow-sm'
-                                    : 'bg-slate-800/60 text-slate-400 hover:text-rose-300 hover:bg-slate-800'
+                                    ? 'bg-[#a63a3a]/15 border-[#a63a3a]/50 text-[#e57373]'
+                                    : 'bg-[#181a21] text-[#d1cdb8]/60 border-[#c5a059]/25 hover:text-[#e57373] hover:border-[#a63a3a]/30'
                             }`}
                         >
                             <ArrowDownLeft className="w-3 h-3" />
@@ -228,34 +260,42 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                         </button>
                     </div>
                 )}
-            </CardHeader>
-            <CardContent className="flex-1 p-0 overflow-hidden relative min-h-0">
-                <div
-                    ref={scrollRef}
-                    className="absolute inset-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3.5"
-                >
-                    {filteredActions.length === 0 ? (
-                        <div className="text-center text-slate-500 italic mt-12 px-4 space-y-2">
-                            <div className="text-base font-medium text-slate-400">
-                                {selectedParticipant
-                                    ? `No ${subFilter === 'outgoing' ? 'actions taken' : subFilter === 'incoming' ? 'incoming actions' : 'actions'} recorded for ${selectedParticipant.name}`
-                                    : "No actions recorded yet..."}
-                            </div>
-                            {selectedParticipant && (
-                                <p className="text-xs text-slate-500">
-                                    Try switching sub-filters or click "Clear Filter" to view all actions.
-                                </p>
-                            )}
+            </div>
+
+            {/* Scrollable Action List */}
+            <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5 space-y-0 min-h-0"
+            >
+                {filteredActions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center px-4 py-16 space-y-3">
+                        <Swords className="w-10 h-10 text-[#c5a059]/20" />
+                        <div className="font-lora text-sm font-medium text-[#d1cdb8]/50">
+                            {selectedParticipant
+                                ? `No ${subFilter === 'outgoing' ? 'actions taken' : subFilter === 'incoming' ? 'incoming actions' : 'actions'} recorded for ${selectedParticipant.name}`
+                                : 'No actions recorded yet...'}
                         </div>
-                    ) : (
-                        filteredActions.map((action) => (
-                            <div key={action.id} className="pb-3 border-b border-slate-800/60 last:border-0 last:pb-0">
-                                {formatAction(action)}
-                            </div>
-                        ))
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+                        {selectedParticipant && (
+                            <p className="text-xs text-[#d1cdb8]/30 font-lora italic">
+                                Try switching sub-filters or click "Clear Filter" to view all actions.
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    filteredActions.map((action, idx) => (
+                        <div
+                            key={action.id}
+                            className={`py-3.5 ${
+                                idx < filteredActions.length - 1
+                                    ? 'border-b border-[#c5a059]/10'
+                                    : ''
+                            }`}
+                        >
+                            {formatAction(action)}
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
     );
 }

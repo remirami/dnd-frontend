@@ -245,7 +245,7 @@ export default function CombatListPage() {
             <div className="flex items-center gap-2 mb-4">
               <History className="w-4 h-4 text-[#c5a059]" />
               <h2 className="font-cinzel-decorative text-xl font-bold text-[#c5a059] tracking-wide">
-                Completed Chronicles
+                Completed Battles
               </h2>
             </div>
 
@@ -321,7 +321,7 @@ export default function CombatListPage() {
           </FantasyCard>
         )}
 
-        {/* Combat Detail Modal */}
+        {/* Battle Detail Modal */}
         <Dialog
           open={startOpen}
           onOpenChange={(open) => {
@@ -329,25 +329,72 @@ export default function CombatListPage() {
             if (!open) setSelectedParticipantId(null);
           }}
         >
-          <DialogContent className="bg-[#181a21] border border-[#c5a059] text-slate-100 w-[96vw] max-w-[96vw] sm:max-w-none md:max-w-5xl lg:max-w-6xl xl:max-w-7xl h-[88vh] max-h-[920px] flex flex-col p-4 sm:p-6 overflow-hidden shadow-2xl">
-            <DialogHeader className="shrink-0 pb-2 border-b border-[#c5a059]/20">
-              <DialogTitle className="font-cinzel-decorative text-xl sm:text-2xl font-bold text-[#c5a059] tracking-wide">
-                Encounter #{selectedSession?.id} After-Action Report
+          <DialogContent className="bg-[#0e1017] border border-[#c5a059]/60 text-slate-100 w-[96vw] max-w-[96vw] sm:max-w-none md:max-w-5xl lg:max-w-6xl xl:max-w-7xl h-[90vh] max-h-[940px] flex flex-col p-0 overflow-hidden shadow-[0_0_80px_rgba(197,160,89,0.15)]">
+            {/* Golden Header */}
+            <div className="shrink-0 px-6 py-5 border-b border-[#c5a059]/30 bg-[radial-gradient(ellipse_at_top,#1a1d29_0%,#0e1017_100%)]">
+              <DialogTitle className="font-cinzel-decorative text-xl sm:text-2xl font-bold text-[#c5a059] tracking-wide drop-shadow-[0_1px_6px_rgba(197,160,89,0.4)]">
+                Encounter #{selectedSession?.id} — After-Action Report
               </DialogTitle>
-              <DialogDescription className="font-lora text-[#d1cdb8]/80 text-xs sm:text-sm">
+              <DialogDescription className="font-lora text-[#d1cdb8]/70 text-xs sm:text-sm mt-1">
                 Concluded on{" "}
                 {selectedSession?.ended_at
                   ? new Date(selectedSession.ended_at).toLocaleString()
                   : "N/A"}{" "}
-                • {selectedSession?.current_round} Rounds Completed
+                • {selectedSession?.current_round} Round{selectedSession?.current_round === 1 ? "" : "s"} Completed
               </DialogDescription>
-            </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto mt-4 pr-1">
+              {/* Participant Filter Chips */}
+              {!detailLoading && selectedSession?.participants && selectedSession.participants.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-[10px] uppercase tracking-widest text-[#c5a059]/60 font-semibold mb-2 font-lora">
+                    Filter by Combatant
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {/* "All" chip */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedParticipantId(null)}
+                      className={`px-3 py-1 rounded text-xs font-medium font-lora transition-all border ${
+                        selectedParticipantId === null
+                          ? "bg-[#c5a059] text-[#0c0d12] border-[#c5a059] shadow-[0_0_10px_rgba(197,160,89,0.4)]"
+                          : "bg-[#181a21] text-[#d1cdb8]/70 border-[#c5a059]/30 hover:border-[#c5a059]/60 hover:text-[#c5a059]"
+                      }`}
+                    >
+                      All Actions
+                    </button>
+                    {/* Per-participant chips */}
+                    {selectedSession.participants.map((p) => {
+                      const isHero = p.participant_type === "character";
+                      const isSelected = selectedParticipantId === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setSelectedParticipantId(isSelected ? null : p.id)}
+                          className={`px-3 py-1 rounded text-xs font-medium font-lora transition-all border flex items-center gap-1.5 ${
+                            isSelected
+                              ? isHero
+                                ? "bg-[#22c55e]/20 text-[#22c55e] border-[#22c55e]/60 shadow-[0_0_8px_rgba(34,197,94,0.2)]"
+                                : "bg-[#a63a3a]/20 text-[#e57373] border-[#a63a3a]/60 shadow-[0_0_8px_rgba(166,58,58,0.2)]"
+                              : "bg-[#181a21] text-[#d1cdb8]/70 border-[#c5a059]/25 hover:border-[#c5a059]/50 hover:text-[#d1cdb8]"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isHero ? "bg-[#22c55e]" : "bg-[#e57373]"}`} />
+                          {p.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Log Body */}
+            <div className="flex-1 overflow-hidden min-h-0">
               {detailLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 space-y-3">
-                  <div className="w-8 h-8 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
-                  <p className="font-lora text-xs text-[#d1cdb8]/80 italic">
+                <div className="flex flex-col items-center justify-center h-full space-y-4">
+                  <div className="w-9 h-9 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                  <p className="font-lora text-sm text-[#d1cdb8]/70 italic">
                     Deciphering battle logs...
                   </p>
                 </div>
