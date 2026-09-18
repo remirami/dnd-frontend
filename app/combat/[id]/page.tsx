@@ -26,6 +26,9 @@ import type { GauntletRun } from "@/lib/types/gauntlet";
 export default function CombatPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const sessionId = Number(params.id);
+    const gauntletRunId = searchParams?.get('gauntletRunId') ? Number(searchParams.get('gauntletRunId')) : null;
     const { isAuthenticated } = useAuthStore();
     const [session, setSession] = useState<CombatSession | null>(null);
     const [loading, setLoading] = useState(true);
@@ -45,12 +48,37 @@ export default function CombatPage() {
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
     const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
+    const [gauntletRun, setGauntletRun] = useState<GauntletRun | null>(null);
+    const [isRespiteOpen, setIsRespiteOpen] = useState(false);
+    const [gauntletModalType, setGauntletModalType] = useState<'victory' | 'defeat' | null>(null);
     const logRef = useRef<HTMLDivElement>(null);
     const sessionRef = useRef<CombatSession | null>(null);
+    const isAiRunningRef = useRef(false);
 
     useEffect(() => {
         sessionRef.current = session;
     }, [session]);
+
+    // In Gauntlet, automatically trigger autonomous enemy turns when it is an enemy's turn
+    useEffect(() => {
+        if (!session || !gauntletRunId || isAiRunningRef.current) return;
+        if (session.status === 'ended' || combatOutcome) return;
+
+        const current = getCurrentParticipant();
+        if (current && current.participant_type === 'enemy' && current.current_hp > 0 && current.is_active) {
+            isAiRunningRef.current = true;
+            setAiProcessing(true);
+            const timer = setTimeout(async () => {
+                try {
+                    await stepByStepEnemyTurns();
+                } finally {
+                    setAiProcessing(false);
+                    isAiRunningRef.current = false;
+                }
+            }, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [session?.current_turn_index, session?.current_round, session?.id, gauntletRunId, combatOutcome]);
 
     const formatAiActionSummary = (aiActions: any[]) => {
         if (!aiActions || aiActions.length === 0) return null;
@@ -70,13 +98,6 @@ export default function CombatPage() {
         const hasHit = aiActions.some((a: any) => a.hit || a.type === 'special_action');
         return { message: messages.join(' • '), isHit: hasHit };
     };
-
-    const sessionId = Number(params.id);
-    const searchParams = useSearchParams();
-    const gauntletRunId = searchParams?.get('gauntletRunId') ? Number(searchParams.get('gauntletRunId')) : null;
-    const [gauntletRun, setGauntletRun] = useState<GauntletRun | null>(null);
-    const [isRespiteOpen, setIsRespiteOpen] = useState(false);
-    const [gauntletModalType, setGauntletModalType] = useState<'victory' | 'defeat' | null>(null);
 
     useEffect(() => {
         if (gauntletRunId) {
@@ -246,21 +267,19 @@ export default function CombatPage() {
      * flashing the HP bar of any participant that took damage.
      */
     const stepByStepEnemyTurns = async () => {
-        const DELAY_MS = 900; // pause between each enemy turn
+        const DELAY_MS = 800; // pause between each enemy turn
         const FLASH_MS = 600; // how long the red flash lasts
 
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
         // Keep resolving as long as the current participant is an enemy
-        let safetyLimit = 20; // prevent infinite loops
+        let safetyLimit = 25; // prevent infinite loops
         while (safetyLimit-- > 0) {
-            // Peek at current session state to decide if we should continue
-            let currentSession: CombatSession | null = null;
-            setSession(prev => { currentSession = prev; return prev; });
-            await sleep(0);
+            const currentSession = sessionRef.current;
+            if (!currentSession) break;
 
-            const active = (currentSession as CombatSession | null)?.current_participant;
-            if (!active || active.participant_type !== 'enemy') break;
+            const active = currentSession.current_participant || (currentSession.participants || []).find(p => p.is_active);
+            if (!active || active.participant_type !== 'enemy' || active.current_hp <= 0) break;
 
             try {
                 const res = await combatApi.aiTurn(sessionId);
@@ -297,7 +316,7 @@ export default function CombatPage() {
 
                 // Check if the next participant is still an enemy; if not, stop
                 const next = updatedSession.current_participant;
-                if (!next || next.participant_type !== 'enemy') break;
+                if (!next || next.participant_type !== 'enemy' || next.current_hp <= 0) break;
 
                 await sleep(DELAY_MS);
             } catch (err: any) {
@@ -802,34 +821,43 @@ export default function CombatPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             {isEnemyTurn && (
-                                <>
-                                    <Button
-                                        onClick={handleAiTurn}
-                                        disabled={aiProcessing}
-                                        className="bg-red-950/50 hover:bg-red-900/70 border border-red-500/50 text-red-200 font-lora text-xs font-semibold h-10 px-4 rounded shadow-[0_0_12px_rgba(239,68,68,0.2)]"
-                                    >
-                                        {aiProcessing ? (
-                                            <span className="flex items-center gap-2">
-                                                <span className="w-3.5 h-3.5 border-2 border-red-300/30 border-t-red-300 rounded-full animate-spin" />
-                                                Processing...
-                                            </span>
-                                        ) : '🤖 AI Turn'}
-                                    </Button>
-                                    <Button
-                                        onClick={handleAutoEnemyTurns}
-                                        disabled={aiProcessing}
-                                        className="bg-[#181a21] hover:bg-red-950/40 border border-red-500/40 text-red-300 font-lora text-xs font-semibold h-10 px-4 rounded"
-                                    >
-                                        ⚡ Auto All Enemies
-                                    </Button>
-                                </>
+                                gauntletRunId ? (
+                                    <div className="flex items-center gap-2 px-3.5 py-2 rounded bg-red-950/60 border border-red-500/50 text-red-300 font-cinzel text-xs font-semibold shadow-[0_0_15px_rgba(239,68,68,0.25)] animate-pulse">
+                                        <span className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                        <span>Autonomous AI Turn...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Button
+                                            onClick={handleAiTurn}
+                                            disabled={aiProcessing}
+                                            className="bg-red-950/50 hover:bg-red-900/70 border border-red-500/50 text-red-200 font-lora text-xs font-semibold h-10 px-4 rounded shadow-[0_0_12px_rgba(239,68,68,0.2)]"
+                                        >
+                                            {aiProcessing ? (
+                                                <span className="flex items-center gap-2">
+                                                    <span className="w-3.5 h-3.5 border-2 border-red-300/30 border-t-red-300 rounded-full animate-spin" />
+                                                    Processing...
+                                                </span>
+                                            ) : '🤖 AI Turn'}
+                                        </Button>
+                                        <Button
+                                            onClick={handleAutoEnemyTurns}
+                                            disabled={aiProcessing}
+                                            className="bg-[#181a21] hover:bg-red-950/40 border border-red-500/40 text-red-300 font-lora text-xs font-semibold h-10 px-4 rounded"
+                                        >
+                                            ⚡ Auto All Enemies
+                                        </Button>
+                                    </>
+                                )
                             )}
-                            <Button
-                                onClick={handleNextTurn}
-                                className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs uppercase tracking-wider h-10 px-6 rounded shadow-[0_0_20px_rgba(197,160,89,0.35)] hover:shadow-[0_0_25px_rgba(197,160,89,0.5)] transition-all cursor-pointer"
-                            >
-                                End Turn →
-                            </Button>
+                            {(!isEnemyTurn || !gauntletRunId) && (
+                                <Button
+                                    onClick={handleNextTurn}
+                                    className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs uppercase tracking-wider h-10 px-6 rounded shadow-[0_0_20px_rgba(197,160,89,0.35)] hover:shadow-[0_0_25px_rgba(197,160,89,0.5)] transition-all cursor-pointer"
+                                >
+                                    End Turn →
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -981,21 +1009,23 @@ export default function CombatPage() {
                                             : 'text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a21]/50'
                                             }`}
                                     >
-                                        ⚔️ Attack
+                                        ⚔️ {gauntletRunId ? 'Tactical Actions' : 'Attack'}
                                     </button>
-                                    <button
-                                        onClick={() => setActiveTab('damage')}
-                                        className={`flex-1 px-4 py-3 text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${activeTab === 'damage'
-                                            ? 'text-[#c5a059] border-b-2 border-[#c5a059] bg-[#181a21]'
-                                            : 'text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a21]/50'
-                                            }`}
-                                    >
-                                        💊 Damage & Healing
-                                    </button>
+                                    {!gauntletRunId && (
+                                        <button
+                                            onClick={() => setActiveTab('damage')}
+                                            className={`flex-1 px-4 py-3 text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${activeTab === 'damage'
+                                                ? 'text-[#c5a059] border-b-2 border-[#c5a059] bg-[#181a21]'
+                                                : 'text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a21]/50'
+                                                }`}
+                                        >
+                                            💊 Damage & Healing (Test Mode)
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="p-5 font-lora">
-                                    {activeTab === 'attack' ? (
+                                    {(activeTab === 'attack' || gauntletRunId) ? (
                                         <div className="space-y-5">
                                             {/* Incapacitation Warning Banner */}
                                             {currentIsIncapacitated && (
@@ -1014,22 +1044,43 @@ export default function CombatPage() {
 
                                             {/* Actor indicator */}
                                             {currentParticipant && (
-                                                <div className={`px-3.5 py-2.5 rounded border text-sm flex items-center gap-2 font-lora ${isEnemyTurn
+                                                <div className={`px-3.5 py-2.5 rounded border text-sm flex items-center justify-between font-lora ${isEnemyTurn
                                                     ? 'bg-[#241315] border-red-800/40 text-red-300'
                                                     : 'bg-[#181a21] border-[#c5a059]/30 text-[#c5a059]'
                                                     }`}>
-                                                    <span className={`w-2 h-2 rounded-full ${isEnemyTurn ? 'bg-red-400' : 'bg-[#c5a059]'}`} />
-                                                    <span>Attacker: <strong className="font-bold">{currentParticipant.name}</strong></span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`w-2 h-2 rounded-full ${isEnemyTurn ? 'bg-red-400' : 'bg-[#c5a059]'}`} />
+                                                        <span>Attacker: <strong className="font-bold">{currentParticipant.name}</strong></span>
+                                                    </div>
+                                                    {isEnemyTurn && gauntletRunId && (
+                                                        <span className="text-[11px] px-2 py-0.5 rounded bg-red-950 border border-red-700/60 text-red-300 font-cinzel font-semibold tracking-wider">
+                                                            ⚔️ Autonomous AI
+                                                        </span>
+                                                    )}
                                                 </div>
                                             )}
 
-                                            {/* Target Selection */}
-                                            <TargetSelector />
+                                            {/* Target Selection: Only for player turn or practice mode */}
+                                            {(!isEnemyTurn || !gauntletRunId) && <TargetSelector />}
 
                                             {/* Attack Options */}
                                             {isEnemyTurn ? (
-                                                /* Enemy Actions & Attacks */
-                                                currentParticipant?.enemy_actions && currentParticipant.enemy_actions.length > 0 ? (
+                                                gauntletRunId ? (
+                                                    /* Autonomous Enemy Turn Display in Gauntlet */
+                                                    <div className="p-8 rounded-lg bg-[#0c0d12]/80 border-2 border-red-900/40 text-center space-y-3 animate-in fade-in duration-200">
+                                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-950/60 border border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                                                            <span className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                                        </div>
+                                                        <h4 className="font-cinzel text-base font-bold text-red-200">
+                                                            {currentParticipant?.name} is Acting Autonomously...
+                                                        </h4>
+                                                        <p className="text-xs text-slate-400 font-lora italic max-w-sm mx-auto">
+                                                            The enemy AI is evaluating tactical role, target vulnerabilities, and attacks independently.
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    /* Practice Mode: Allow manual enemy attack testing */
+                                                    currentParticipant?.enemy_actions && currentParticipant.enemy_actions.length > 0 ? (
                                                     <div>
                                                         <div className="flex items-center justify-between mb-3">
                                                             <Label className="text-[#c5a059] font-cinzel-decorative text-xs font-bold uppercase tracking-wider block">
@@ -1120,7 +1171,7 @@ export default function CombatPage() {
                                                 ) : (
                                                     <p className="text-[#d1cdb8]/50 text-sm text-center py-4 italic">No enemy attack data available</p>
                                                 )
-                                            ) : (
+                                            )) : (
                                                 /* Player Character Attacks — Weapons + Spells */
                                                 <div className="space-y-5">
                                                     {/* === WEAPONS === */}

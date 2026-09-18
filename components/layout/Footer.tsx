@@ -1,4 +1,16 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
 export default function Footer() {
+  const pathname = usePathname();
+
+  // The combat arena, campaign manager, and gauntlet lobby are full-screen interactive game interfaces.
+  // Hide the footer here so it does not distract or block controls and logs.
+  if (pathname?.startsWith("/combat") || pathname?.startsWith("/gauntlet")) {
+    return null;
+  }
+
   return (
     <footer className="w-full bg-[#0c0d12] border-t border-slate-900/40 py-8 px-4 text-center font-lora">
       <div className="max-w-4xl mx-auto space-y-1 text-[11px] text-[#404552] leading-relaxed">
