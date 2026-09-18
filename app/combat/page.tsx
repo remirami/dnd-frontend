@@ -49,10 +49,14 @@ export default function CombatListPage() {
   const loadSessions = async () => {
     try {
       const response = await combatApi.getAll();
-      const data = Array.isArray(response.data)
+      const data: CombatSession[] = Array.isArray(response.data)
         ? response.data
         : (response.data as any).results || [];
-      setSessions(data);
+      // Clean up / filter out any ghost preparing sessions with 0 participants
+      const validSessions = data.filter(
+        (s) => !(s.status === "preparing" && (!s.participants || s.participants.length === 0))
+      );
+      setSessions(validSessions);
     } catch (error) {
       console.error("Failed to load combat sessions:", error);
       setSessions([]);
@@ -62,7 +66,8 @@ export default function CombatListPage() {
   };
 
   const activeSessions = sessions.filter(
-    (s) => s.is_active || s.status === "active" || s.status === "preparing"
+    (s) => (s.is_active || s.status === "active" || s.status === "preparing") &&
+           !(s.status === "preparing" && (!s.participants || s.participants.length === 0))
   );
   const completedSessions = sessions.filter((s) => s.status === "ended");
   const activeLimitReached = activeSessions.length >= 2;
@@ -252,7 +257,13 @@ export default function CombatListPage() {
               {activeSessions.map((session) => (
                 <div
                   key={session.id}
-                  onClick={() => router.push(`/combat/${session.id}`)}
+                  onClick={() => {
+                    if (session.status === "preparing") {
+                      router.push(`/combat/${session.id}/setup`);
+                    } else {
+                      router.push(`/combat/${session.id}`);
+                    }
+                  }}
                   className="cursor-pointer group"
                 >
                   <FantasyCard className="p-6 transition-all duration-300 group-hover:border-[#e0bc75] group-hover:shadow-[0_0_30px_rgba(197,160,89,0.3)]">
@@ -294,7 +305,7 @@ export default function CombatListPage() {
                     <div className="mt-5 pt-3 border-t border-[#c5a059]/15 flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-[#c5a059] group-hover:underline flex items-center gap-1">
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>Resume Battle</span>
+                        <span>{session.status === "preparing" ? "Configure Encounter" : "Resume Battle"}</span>
                       </span>
 
                       <button

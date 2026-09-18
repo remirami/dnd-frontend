@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { CombatLog } from "./CombatLog";
 import type { CombatSession, CombatParticipant, CombatAction, CharacterSpell } from "@/lib/types/combat";
 import type { Enemy, Attack } from "@/lib/types/enemy";
 
@@ -100,6 +101,10 @@ export default function CombatPage() {
     const loadSession = async () => {
         try {
             const response = await combatApi.getById(sessionId);
+            if (response.data.status === 'preparing') {
+                router.replace(`/combat/${sessionId}/setup`);
+                return;
+            }
             setSession(response.data);
             if (response.data.participants) {
                 checkCombatOutcome(response.data.participants);
@@ -317,10 +322,10 @@ export default function CombatPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-[#0c0d12] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-slate-400">Loading combat...</p>
+                    <div className="w-8 h-8 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                    <p className="font-lora text-sm text-[#d1cdb8]/80 italic">Summoning the battlefield...</p>
                 </div>
             </div>
         );
@@ -328,8 +333,14 @@ export default function CombatPage() {
 
     if (!session) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center text-white">
-                Combat session not found
+            <div className="min-h-screen bg-[#0c0d12] flex items-center justify-center text-[#d1cdb8] font-lora">
+                <div className="text-center space-y-4 p-8 bg-[#12141a] border border-[#c5a059]/30 rounded-lg shadow-2xl">
+                    <p className="font-cinzel-decorative text-2xl text-[#c5a059]">Combat Session Not Found</p>
+                    <p className="text-sm text-[#d1cdb8]/70">The tactical skirmish you sought could not be retrieved from the archives.</p>
+                    <Button onClick={() => router.push("/combat")} className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs font-lora px-5 py-2.5 rounded">
+                        Return to Combat Arena
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -342,6 +353,9 @@ export default function CombatPage() {
 
     // Get the target participant object for display
     const targetParticipant = targetId ? participants.find(p => p.id === parseInt(targetId)) : null;
+
+    // Get the viewed participant object for combat log and bottom inspector panel
+    const viewingParticipant = viewingParticipantId ? participants.find(p => p.id === viewingParticipantId) : null;
 
     // Get character data from the current participant
     const charData = currentParticipant?.participant_type === 'character' ? currentParticipant.character : null;
@@ -455,30 +469,32 @@ export default function CombatPage() {
     // HP helpers
     const hpGradient = (current: number, max: number) => {
         const pct = max > 0 ? current / max : 0;
-        if (pct > 0.6) return 'from-emerald-500 to-emerald-400';
-        if (pct > 0.3) return 'from-amber-500 to-amber-400';
+        if (pct > 0.5) return 'from-emerald-600 to-emerald-400';
+        if (pct > 0.25) return 'from-[#c5a059] to-[#e0bc75]';
         if (pct > 0) return 'from-red-600 to-red-400';
-        return 'from-slate-700 to-slate-600';
+        return 'from-stone-800 to-stone-700';
     };
 
     // Target selector - shared between Attack and Damage tabs
     const TargetSelector = () => (
-        <div>
-            <Label className="text-slate-400 text-sm mb-2 block">Target</Label>
+        <div className="font-lora">
+            <Label className="text-[#c5a059] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                Target Combatant
+            </Label>
             <Select value={targetId} onValueChange={setTargetId}>
-                <SelectTrigger className="bg-slate-900/60 border-slate-700 text-white h-11">
+                <SelectTrigger className="bg-[#0c0d12] border border-[#c5a059]/40 text-slate-100 hover:border-[#c5a059] h-11 transition-all rounded">
                     <SelectValue placeholder="Choose a target..." />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-700">
+                <SelectContent className="bg-[#12141a] border border-[#c5a059]/40 text-slate-100 shadow-2xl">
                     {participants
                         .filter(p => p.current_hp > 0 && p.is_active)
                         .map((p) => (
-                            <SelectItem key={p.id} value={p.id.toString()} className="text-white">
+                            <SelectItem key={p.id} value={p.id.toString()} className="text-slate-200 focus:bg-[#c5a059]/15 focus:text-[#e0bc75] cursor-pointer">
                                 <div className="flex items-center gap-3">
-                                    <span className={`w-2 h-2 rounded-full ${p.participant_type === 'character' ? 'bg-blue-400' : 'bg-red-400'
+                                    <span className={`w-2 h-2 rounded-full ${p.participant_type === 'character' ? 'bg-[#c5a059]' : 'bg-red-400'
                                         }`} />
-                                    <span>{p.name}</span>
-                                    <span className="text-slate-500 text-xs ml-auto">
+                                    <span className="font-semibold">{p.name}</span>
+                                    <span className="text-[#d1cdb8]/60 text-xs ml-auto font-fira-sans">
                                         HP {p.current_hp}/{p.max_hp} • AC {p.armor_class}
                                     </span>
                                 </div>
@@ -487,14 +503,14 @@ export default function CombatPage() {
                 </SelectContent>
             </Select>
             {targetParticipant && (
-                <div className={`mt-2 px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${targetParticipant.participant_type === 'character'
-                    ? 'bg-blue-900/20 border border-blue-800/30 text-blue-300'
-                    : 'bg-red-900/20 border border-red-800/30 text-red-300'
+                <div className={`mt-2.5 px-3.5 py-2 rounded border text-sm flex items-center gap-2 font-lora transition-all ${targetParticipant.participant_type === 'character'
+                    ? 'bg-[#181a21] border-[#c5a059]/40 text-[#c5a059]'
+                    : 'bg-[#241315] border-red-800/60 text-red-300'
                     }`}>
-                    <span className={`w-2 h-2 rounded-full ${targetParticipant.participant_type === 'character' ? 'bg-blue-400' : 'bg-red-400'
+                    <span className={`w-2 h-2 rounded-full ${targetParticipant.participant_type === 'character' ? 'bg-[#c5a059]' : 'bg-red-400'
                         }`} />
-                    Targeting: <strong>{targetParticipant.name}</strong>
-                    <span className="text-slate-500 ml-auto">
+                    <span>Targeting: <strong className="font-bold">{targetParticipant.name}</strong></span>
+                    <span className="text-[#d1cdb8]/70 ml-auto text-xs font-fira-sans">
                         HP {targetParticipant.current_hp}/{targetParticipant.max_hp} • AC {targetParticipant.armor_class}
                     </span>
                 </div>
@@ -503,43 +519,44 @@ export default function CombatPage() {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white">
+        <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col font-lora">
             {/* Victory/Defeat Modal */}
             {combatOutcome && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-                    <div className={`max-w-md w-full mx-4 rounded-2xl border-2 p-8 text-center space-y-6 shadow-2xl ${combatOutcome === 'victory'
-                        ? 'bg-gradient-to-b from-emerald-900/90 to-slate-900 border-emerald-500/50'
-                        : 'bg-gradient-to-b from-red-900/90 to-slate-900 border-red-500/50'
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in font-lora">
+                    <div className={`max-w-md w-full mx-4 rounded-xl border-2 p-8 text-center space-y-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] ${combatOutcome === 'victory'
+                        ? 'bg-[#12141a] border-[#c5a059] shadow-[0_0_30px_rgba(197,160,89,0.3)]'
+                        : 'bg-[#181315] border-red-700/70 shadow-[0_0_30px_rgba(239,68,68,0.3)]'
                         }`}>
-                        <div className="text-6xl">
+                        <div className="text-6xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
                             {combatOutcome === 'victory' ? '⚔️' : '💀'}
                         </div>
-                        <h2 className="text-4xl font-bold tracking-tight">
-                            {combatOutcome === 'victory' ? 'Victory!' : 'Defeat'}
+                        <h2 className={`font-cinzel-decorative text-3xl font-bold tracking-wider ${combatOutcome === 'victory' ? 'text-[#c5a059] drop-shadow-[0_2px_12px_rgba(197,160,89,0.5)]' : 'text-red-400'
+                            }`}>
+                            {combatOutcome === 'victory' ? 'Victory Achieved!' : 'Party Defeated'}
                         </h2>
-                        <p className="text-slate-300 text-lg">
+                        <p className="text-[#d1cdb8]/80 text-sm leading-relaxed">
                             {combatOutcome === 'victory'
-                                ? 'All enemies have been slain!'
-                                : 'The party has fallen...'}
+                                ? 'All opposing hostiles have fallen. The field belongs to your heroes!'
+                                : 'The party has succumbed to the perils of combat...'}
                         </p>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 pt-2">
                             <Button
                                 onClick={() => router.push('/combat')}
-                                className="flex-1 bg-slate-700 hover:bg-slate-600 h-11"
+                                className="flex-1 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] border border-[#c5a059]/40 h-11 text-xs font-semibold rounded"
                             >
-                                Back to Combats
+                                Back to Arena
                             </Button>
                             <Button
                                 onClick={async () => {
                                     await combatApi.end(sessionId);
                                     router.push('/combat');
                                 }}
-                                className={`flex-1 h-11 font-semibold ${combatOutcome === 'victory'
-                                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                                    : 'bg-red-600 hover:bg-red-700'
+                                className={`flex-1 h-11 font-bold text-xs uppercase tracking-wider rounded ${combatOutcome === 'victory'
+                                    ? 'bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] shadow-[0_0_15px_rgba(197,160,89,0.4)]'
+                                    : 'bg-red-800 hover:bg-red-700 text-white'
                                     }`}
                             >
-                                End Combat
+                                Conclude Combat
                             </Button>
                         </div>
                     </div>
@@ -547,30 +564,30 @@ export default function CombatPage() {
             )}
 
             {/* Top Bar */}
-            <div className="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
-                <div className="max-w-[1800px] mx-auto px-6 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-xl font-bold tracking-tight">
-                            <span className="text-amber-400">⚔</span> Combat Simulation
+            <div className="border-b border-[#181a21] bg-[#0c0d12]/95 backdrop-blur-md sticky top-0 z-30 font-lora">
+                <div className="max-w-[1800px] mx-auto px-6 py-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <h1 className="font-cinzel-decorative text-lg md:text-xl font-bold tracking-wider text-[#c5a059] drop-shadow-[0_2px_8px_rgba(197,160,89,0.3)] flex items-center gap-2">
+                            <span>⚔</span> COMBAT SIMULATION
                         </h1>
-                        <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-sm px-3 py-1">
+                        <span className="inline-flex items-center px-3 py-0.5 rounded-sm text-xs font-semibold font-fira-sans border border-[#c5a059]/40 bg-[#181a21] text-[#c5a059] shadow-[0_0_10px_rgba(197,160,89,0.15)]">
                             Round {session.current_round}
-                        </Badge>
-                        <Badge className="bg-slate-700/60 text-slate-300 border-slate-600/30 text-sm px-3 py-1">
+                        </span>
+                        <span className="inline-flex items-center px-3 py-0.5 rounded-sm text-[11px] font-semibold uppercase tracking-wider font-lora border border-[#c5a059]/25 bg-[#12141a] text-[#d1cdb8]/80">
                             {session.status || (session.is_active ? 'Active' : 'Ended')}
-                        </Badge>
+                        </span>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex items-center gap-3">
                         <Button
                             onClick={() => router.push("/combat")}
                             variant="ghost"
-                            className="text-slate-400 hover:text-white hover:bg-slate-800"
+                            className="text-[#d1cdb8]/70 hover:text-[#c5a059] hover:bg-[#c5a059]/10 text-xs font-medium border border-transparent hover:border-[#c5a059]/30 rounded transition-all"
                         >
                             ← Back
                         </Button>
                         <Button
                             onClick={handleEndCombat}
-                            className="bg-red-600/80 hover:bg-red-600 text-white"
+                            className="bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-red-100 border border-red-500/50 text-xs font-semibold rounded px-4 py-2 transition-all shadow-[0_0_12px_rgba(239,68,68,0.2)]"
                             size="sm"
                         >
                             End Combat
@@ -581,39 +598,39 @@ export default function CombatPage() {
 
             {/* Active Turn Banner */}
             {currentParticipant && (
-                <div className={`border-b ${isEnemyTurn
-                    ? 'bg-gradient-to-r from-red-900/30 via-red-900/20 to-transparent border-red-800/40'
-                    : 'bg-gradient-to-r from-blue-900/30 via-blue-900/20 to-transparent border-blue-800/40'
+                <div className={`border-b transition-all duration-300 ${isEnemyTurn
+                    ? 'bg-gradient-to-r from-[#241315] via-[#1a1216] to-[#0c0d12] border-red-900/50'
+                    : 'bg-gradient-to-r from-[#1c1810] via-[#161722] to-[#0c0d12] border-[#c5a059]/30'
                     }`}>
-                    <div className="max-w-[1800px] mx-auto px-6 py-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-3 h-3 rounded-full animate-pulse ${isEnemyTurn ? 'bg-red-400' : 'bg-blue-400'
+                    <div className="max-w-[1800px] mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className={`w-3 h-3 rounded-full animate-pulse shadow-md ${isEnemyTurn ? 'bg-red-400 shadow-red-500/50' : 'bg-[#c5a059] shadow-[0_0_8px_rgba(197,160,89,0.8)]'
                                 }`} />
                             <div>
-                                <p className="text-sm text-slate-400 uppercase tracking-wide font-medium">Current Turn</p>
-                                <h2 className={`text-2xl font-bold ${isEnemyTurn ? 'text-red-300' : 'text-blue-300'
+                                <p className="text-[10px] text-[#d1cdb8]/60 uppercase tracking-widest font-semibold font-lora">Current Turn</p>
+                                <h2 className={`font-cinzel-decorative text-xl sm:text-2xl md:text-3xl font-bold tracking-wide ${isEnemyTurn ? 'text-red-300 drop-shadow-[0_2px_8px_rgba(239,68,68,0.3)]' : 'text-[#c5a059] drop-shadow-[0_2px_8px_rgba(197,160,89,0.3)]'
                                     }`}>
                                     {currentParticipant.name}
                                 </h2>
                             </div>
-                            <div className="flex gap-6 ml-8">
-                                <div className="text-center">
-                                    <p className="text-xs text-slate-500 uppercase">HP</p>
-                                    <p className="text-lg font-bold font-mono">
-                                        {currentParticipant.current_hp}<span className="text-slate-500">/{currentParticipant.max_hp}</span>
+                            <div className="flex gap-4 sm:gap-6 ml-0 md:ml-8 font-lora">
+                                <div className="text-center px-3 py-1 bg-[#0c0d12]/50 border border-[#c5a059]/20 rounded">
+                                    <p className="text-[10px] text-[#d1cdb8]/60 uppercase font-semibold">HP</p>
+                                    <p className="text-base sm:text-lg font-bold font-fira-sans text-slate-100">
+                                        {currentParticipant.current_hp}<span className="text-[#d1cdb8]/40">/{currentParticipant.max_hp}</span>
                                     </p>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-xs text-slate-500 uppercase">AC</p>
-                                    <p className="text-lg font-bold font-mono">{currentParticipant.armor_class}</p>
+                                <div className="text-center px-3 py-1 bg-[#0c0d12]/50 border border-[#c5a059]/20 rounded">
+                                    <p className="text-[10px] text-[#d1cdb8]/60 uppercase font-semibold">AC</p>
+                                    <p className="text-base sm:text-lg font-bold font-fira-sans text-[#e0bc75]">{currentParticipant.armor_class}</p>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-xs text-slate-500 uppercase">Init</p>
-                                    <p className="text-lg font-bold font-mono">{currentParticipant.initiative}</p>
+                                <div className="text-center px-3 py-1 bg-[#0c0d12]/50 border border-[#c5a059]/20 rounded">
+                                    <p className="text-[10px] text-[#d1cdb8]/60 uppercase font-semibold">Init</p>
+                                    <p className="text-base sm:text-lg font-bold font-fira-sans text-[#e0bc75]">{currentParticipant.initiative}</p>
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-xs text-slate-500 uppercase">Attacks</p>
-                                    <p className={`text-lg font-bold font-mono ${currentParticipant.attacks_remaining > 0 ? 'text-amber-400' : 'text-slate-600'}`}>
+                                <div className="text-center px-3 py-1 bg-[#0c0d12]/50 border border-[#c5a059]/20 rounded">
+                                    <p className="text-[10px] text-[#d1cdb8]/60 uppercase font-semibold">Attacks</p>
+                                    <p className={`text-base sm:text-lg font-bold font-fira-sans ${currentParticipant.attacks_remaining > 0 ? 'text-[#c5a059]' : 'text-slate-600'}`}>
                                         {currentParticipant.attacks_remaining}
                                     </p>
                                 </div>
@@ -625,11 +642,11 @@ export default function CombatPage() {
                                     <Button
                                         onClick={handleAiTurn}
                                         disabled={aiProcessing}
-                                        className="bg-red-600 hover:bg-red-700 text-white font-semibold h-10 px-5"
+                                        className="bg-red-950/50 hover:bg-red-900/70 border border-red-500/50 text-red-200 font-lora text-xs font-semibold h-10 px-4 rounded shadow-[0_0_12px_rgba(239,68,68,0.2)]"
                                     >
                                         {aiProcessing ? (
                                             <span className="flex items-center gap-2">
-                                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <span className="w-3.5 h-3.5 border-2 border-red-300/30 border-t-red-300 rounded-full animate-spin" />
                                                 Processing...
                                             </span>
                                         ) : '🤖 AI Turn'}
@@ -637,7 +654,7 @@ export default function CombatPage() {
                                     <Button
                                         onClick={handleAutoEnemyTurns}
                                         disabled={aiProcessing}
-                                        className="bg-red-800/80 hover:bg-red-800 text-white font-semibold h-10 px-5"
+                                        className="bg-[#181a21] hover:bg-red-950/40 border border-red-500/40 text-red-300 font-lora text-xs font-semibold h-10 px-4 rounded"
                                     >
                                         ⚡ Auto All Enemies
                                     </Button>
@@ -645,7 +662,7 @@ export default function CombatPage() {
                             )}
                             <Button
                                 onClick={handleNextTurn}
-                                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold h-10 px-6"
+                                className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs uppercase tracking-wider h-10 px-6 rounded shadow-[0_0_20px_rgba(197,160,89,0.35)] hover:shadow-[0_0_25px_rgba(197,160,89,0.5)] transition-all cursor-pointer"
                             >
                                 End Turn →
                             </Button>
@@ -661,13 +678,13 @@ export default function CombatPage() {
                     {/* Left Column: Initiative + Combat Log */}
                     <div className="col-span-4 flex flex-col gap-5 h-full overflow-hidden">
                         {/* Initiative Tracker */}
-                        <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 flex-shrink-0 overflow-hidden"
+                        <div className="bg-[#12141a] rounded-lg border border-[#c5a059]/25 shadow-[0_4px_20px_rgba(0,0,0,0.35)] flex-shrink-0 overflow-hidden"
                             style={{ maxHeight: '50%' }}>
-                            <div className="px-4 py-3 border-b border-slate-700/50 flex justify-between items-center">
-                                <h3 className="font-semibold text-sm uppercase tracking-wider text-slate-400">Initiative Order</h3>
-                                <span className="text-xs text-slate-500">{sortedParticipants.length} combatants</span>
+                            <div className="px-4 py-3 border-b border-[#c5a059]/20 bg-[#151722] flex justify-between items-center">
+                                <h3 className="font-cinzel-decorative font-bold text-xs uppercase tracking-wider text-[#c5a059]">Initiative Order</h3>
+                                <span className="font-lora text-xs text-[#d1cdb8]/60">{sortedParticipants.length} combatants</span>
                             </div>
-                            <div className="overflow-y-auto p-2 space-y-1" style={{ maxHeight: 'calc(100% - 44px)' }}>
+                            <div className="overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: 'calc(100% - 44px)' }}>
                                 {sortedParticipants.map((p) => {
                                     const isCurrent = currentParticipant?.id === p.id;
                                     const isDead = p.current_hp <= 0;
@@ -678,19 +695,21 @@ export default function CombatPage() {
                                         <div
                                             key={p.id}
                                             onClick={() => handleViewParticipant(p.id)}
-                                            className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 ${isCurrent
+                                            className={`relative flex items-center gap-3 px-3 py-2.5 rounded border cursor-pointer transition-all duration-150 ${isCurrent
                                                 ? isPlayer
-                                                    ? 'bg-blue-900/40 ring-1 ring-blue-500/50'
-                                                    : 'bg-red-900/40 ring-1 ring-red-500/50'
+                                                    ? 'bg-[#1e2230] border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.25)]'
+                                                    : 'bg-[#281518] border-red-500/70 shadow-[0_0_12px_rgba(239,68,68,0.25)]'
                                                 : isDead
-                                                    ? 'bg-slate-900/30 opacity-50'
+                                                    ? 'bg-[#0c0d12]/40 border-stone-800 opacity-45'
                                                     : isViewing
-                                                        ? 'bg-slate-700/60 ring-1 ring-slate-500/50'
-                                                        : 'bg-slate-900/20 hover:bg-slate-700/40'
+                                                        ? 'bg-[#181a21] border-[#c5a059]/50'
+                                                        : 'bg-[#181a21]/60 border-transparent hover:border-[#c5a059]/30 hover:bg-[#181a21]'
                                                 }`}
                                         >
                                             {/* Initiative Badge */}
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isPlayer ? 'bg-blue-600/30 text-blue-300' : 'bg-red-600/30 text-red-300'
+                                            <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold font-fira-sans flex-shrink-0 border ${isPlayer
+                                                ? 'bg-[#c5a059]/20 text-[#c5a059] border-[#c5a059]/40'
+                                                : 'bg-red-950/40 text-red-300 border-red-700/40'
                                                 }`}>
                                                 {p.initiative}
                                             </div>
@@ -698,29 +717,29 @@ export default function CombatPage() {
                                             {/* Name + HP */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`font-medium text-sm truncate ${isDead ? 'line-through text-slate-500' : 'text-slate-200'
+                                                    <span className={`font-lora font-semibold text-sm truncate ${isDead ? 'line-through text-slate-500' : 'text-slate-100'
                                                         }`}>
                                                         {p.name}
                                                     </span>
                                                     {isDead && <span className="text-xs">💀</span>}
                                                     {isCurrent && (
-                                                        <span className={`w-2 h-2 rounded-full animate-pulse flex-shrink-0 ${isPlayer ? 'bg-blue-400' : 'bg-red-400'
+                                                        <span className={`w-2 h-2 rounded-full animate-pulse flex-shrink-0 ${isPlayer ? 'bg-[#c5a059]' : 'bg-red-400'
                                                             }`} />
                                                     )}
                                                 </div>
 
                                                 {/* HP Bar */}
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <div className="flex-1 h-1.5 bg-slate-950 rounded-full overflow-hidden">
+                                                    <div className="flex-1 h-1.5 bg-[#0c0d12] border border-[#c5a059]/15 rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${damagedParticipantIds.has(p.id)
-                                                                    ? 'from-red-500 to-red-400'
+                                                                    ? 'from-red-600 to-red-400'
                                                                     : hpGradient(p.current_hp, p.max_hp)
                                                                 }`}
                                                             style={{ width: `${Math.max(0, (p.current_hp / p.max_hp) * 100)}%` }}
                                                         />
                                                     </div>
-                                                    <span className={`text-[10px] font-mono flex-shrink-0 transition-colors duration-300 ${damagedParticipantIds.has(p.id) ? 'text-red-400 font-bold' : 'text-slate-500'
+                                                    <span className={`text-[10px] font-fira-sans flex-shrink-0 transition-colors duration-300 ${damagedParticipantIds.has(p.id) ? 'text-red-400 font-bold' : 'text-[#d1cdb8]/60'
                                                         }`}>
                                                         {p.current_hp}/{p.max_hp}
                                                     </span>
@@ -728,8 +747,8 @@ export default function CombatPage() {
                                             </div>
 
                                             {/* AC */}
-                                            <div className="text-xs text-slate-500 flex-shrink-0">
-                                                🛡 {p.armor_class}
+                                            <div className="text-xs font-fira-sans text-[#c5a059]/80 flex-shrink-0 flex items-center gap-1">
+                                                <span className="text-[10px] text-[#c5a059]">🛡</span> {p.armor_class}
                                             </div>
                                         </div>
                                     );
@@ -738,61 +757,12 @@ export default function CombatPage() {
                         </div>
 
                         {/* Combat Log */}
-                        <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 flex-1 overflow-hidden flex flex-col min-h-0">
-                            <div className="px-4 py-3 border-b border-slate-700/50 flex justify-between items-center flex-shrink-0">
-                                <h3 className="font-semibold text-sm uppercase tracking-wider text-slate-400">Combat Log</h3>
-                                <Badge variant="outline" className="text-slate-500 border-slate-700 text-xs">
-                                    {actions.length} entries
-                                </Badge>
-                            </div>
-                            <div ref={logRef} className="flex-1 overflow-y-auto p-3 space-y-2">
-                                {actions.length === 0 ? (
-                                    <p className="text-center text-slate-600 italic pt-8 text-sm">
-                                        No actions yet...
-                                    </p>
-                                ) : (
-                                    <>
-                                        {actions.map((action) => (
-                                            <div key={action.id} className={`text-sm border-b pb-2 ${action.is_ai ? 'border-red-900/20 pl-2 border-l-2 border-l-red-600/40' : 'border-slate-800/40'}`}>
-                                                {action.action_type === 'attack' ? (
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            {action.is_ai && (
-                                                                <span className="text-[10px] bg-red-900/40 text-red-300 px-1.5 py-0 rounded">AI</span>
-                                                            )}
-                                                            <span className={`font-medium ${action.is_ai ? 'text-red-300' : 'text-slate-300'}`}>{action.actor_name}</span>
-                                                            <span className="text-slate-600">→</span>
-                                                            <span className="text-slate-300">{action.target_name}</span>
-                                                            {action.critical ? (
-                                                                <Badge className="bg-yellow-600/80 text-yellow-100 text-[10px] px-1.5 py-0">CRIT!</Badge>
-                                                            ) : action.hit ? (
-                                                                <Badge className="bg-emerald-700/60 text-emerald-200 text-[10px] px-1.5 py-0">HIT</Badge>
-                                                            ) : (
-                                                                <Badge className="bg-slate-700/60 text-slate-400 text-[10px] px-1.5 py-0">MISS</Badge>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-xs text-slate-500 mt-0.5">
-                                                            {action.attack_name} • {action.attack_roll}+{action.attack_modifier}={action.attack_total} vs AC
-                                                            {action.hit && action.damage_amount !== undefined && (
-                                                                <span className="text-red-400 font-medium ml-1">
-                                                                    • {action.damage_amount} dmg
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-slate-400">
-                                                        <span className="font-medium text-slate-300">{action.actor_name}</span>{' '}
-                                                        {action.description || action.action_type_display}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-
-
-                                    </>
-                                )}
-                            </div>
+                        <div className="bg-[#12141a] rounded-lg border border-[#c5a059]/25 flex-1 overflow-hidden flex flex-col min-h-0 shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
+                            <CombatLog
+                                actions={actions}
+                                selectedParticipant={viewingParticipant}
+                                onClearFilter={() => setViewingParticipantId(null)}
+                            />
                         </div>
                     </div>
 
@@ -800,40 +770,40 @@ export default function CombatPage() {
                     <div className="col-span-8 h-full overflow-y-auto">
                         <div className="space-y-5">
                             {/* Action Panel Tabs */}
-                            <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
+                            <div className="bg-[#12141a] rounded-lg border border-[#c5a059]/25 shadow-[0_4px_20px_rgba(0,0,0,0.35)] overflow-hidden">
                                 {/* Tab Headers */}
-                                <div className="flex border-b border-slate-700/50">
+                                <div className="flex border-b border-[#c5a059]/20 bg-[#151722] font-lora">
                                     <button
                                         onClick={() => setActiveTab('attack')}
-                                        className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'attack'
-                                            ? 'text-amber-400 border-b-2 border-amber-400 bg-slate-800/30'
-                                            : 'text-slate-400 hover:text-slate-300'
+                                        className={`flex-1 px-4 py-3 text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${activeTab === 'attack'
+                                            ? 'text-[#c5a059] border-b-2 border-[#c5a059] bg-[#181a21]'
+                                            : 'text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a21]/50'
                                             }`}
                                     >
                                         ⚔️ Attack
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('damage')}
-                                        className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'damage'
-                                            ? 'text-amber-400 border-b-2 border-amber-400 bg-slate-800/30'
-                                            : 'text-slate-400 hover:text-slate-300'
+                                        className={`flex-1 px-4 py-3 text-xs uppercase tracking-wider font-bold transition-all cursor-pointer ${activeTab === 'damage'
+                                            ? 'text-[#c5a059] border-b-2 border-[#c5a059] bg-[#181a21]'
+                                            : 'text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a21]/50'
                                             }`}
                                     >
                                         💊 Damage & Healing
                                     </button>
                                 </div>
 
-                                <div className="p-5">
+                                <div className="p-5 font-lora">
                                     {activeTab === 'attack' ? (
                                         <div className="space-y-5">
                                             {/* Actor indicator */}
                                             {currentParticipant && (
-                                                <div className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${isEnemyTurn
-                                                    ? 'bg-red-900/20 border border-red-800/30 text-red-300'
-                                                    : 'bg-blue-900/20 border border-blue-800/30 text-blue-300'
+                                                <div className={`px-3.5 py-2.5 rounded border text-sm flex items-center gap-2 font-lora ${isEnemyTurn
+                                                    ? 'bg-[#241315] border-red-800/40 text-red-300'
+                                                    : 'bg-[#181a21] border-[#c5a059]/30 text-[#c5a059]'
                                                     }`}>
-                                                    <span className={`w-2 h-2 rounded-full ${isEnemyTurn ? 'bg-red-400' : 'bg-blue-400'}`} />
-                                                    Attacker: <strong>{currentParticipant.name}</strong>
+                                                    <span className={`w-2 h-2 rounded-full ${isEnemyTurn ? 'bg-red-400' : 'bg-[#c5a059]'}`} />
+                                                    <span>Attacker: <strong className="font-bold">{currentParticipant.name}</strong></span>
                                                 </div>
                                             )}
 
@@ -845,24 +815,26 @@ export default function CombatPage() {
                                                 /* Enemy Attacks */
                                                 enemyAttacks.length > 0 ? (
                                                     <div>
-                                                        <Label className="text-slate-400 text-sm mb-3 block">Enemy Attacks</Label>
+                                                        <Label className="text-[#c5a059] font-cinzel-decorative text-xs font-bold uppercase tracking-wider mb-3 block">
+                                                            Enemy Martial Attacks
+                                                        </Label>
                                                         <div className="grid grid-cols-2 gap-3">
                                                             {enemyAttacks.map((attack, idx) => (
                                                                 <button
                                                                     key={idx}
                                                                     onClick={() => handleAttack(attack.name, attack.bonus)}
                                                                     disabled={!targetId}
-                                                                    className={`text-left p-4 rounded-lg border transition-all duration-150 ${!targetId
-                                                                        ? 'bg-slate-900/30 border-slate-800 opacity-50 cursor-not-allowed'
-                                                                        : 'bg-slate-900/50 border-slate-700 hover:border-amber-500/50 hover:bg-amber-950/20 cursor-pointer'
+                                                                    className={`text-left p-4 rounded border transition-all duration-150 ${!targetId
+                                                                        ? 'bg-[#181a21]/40 border-stone-800 opacity-50 cursor-not-allowed'
+                                                                        : 'bg-[#181a21] border-red-900/40 hover:border-red-500/70 hover:bg-[#241315] cursor-pointer'
                                                                         }`}
                                                                 >
-                                                                    <p className="font-semibold text-sm text-slate-200">{attack.name}</p>
-                                                                    <div className="flex items-center gap-3 mt-1.5">
-                                                                        <span className="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">
+                                                                    <p className="font-cinzel-decorative font-bold text-sm text-red-200">{attack.name}</p>
+                                                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                                        <span className="text-xs bg-red-950/40 text-red-300 border border-red-800/40 px-2 py-0.5 rounded font-fira-sans font-bold">
                                                                             +{attack.bonus} to hit
                                                                         </span>
-                                                                        <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded">
+                                                                        <span className="text-xs bg-[#12141a] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded font-fira-sans">
                                                                             {attack.damage}
                                                                         </span>
                                                                     </div>
@@ -871,17 +843,17 @@ export default function CombatPage() {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-slate-500 text-sm text-center py-4">No attack data available</p>
+                                                    <p className="text-[#d1cdb8]/50 text-sm text-center py-4 italic">No enemy attack data available</p>
                                                 )
                                             ) : (
                                                 /* Player Character Attacks — Weapons + Spells */
                                                 <div className="space-y-5">
                                                     {/* === WEAPONS === */}
                                                     <div>
-                                                        <Label className="text-slate-400 text-sm mb-3 block flex items-center gap-2">
+                                                        <Label className="text-[#c5a059] font-cinzel-decorative text-xs font-bold uppercase tracking-wider mb-3 block flex items-center gap-2">
                                                             <span>⚔️ Weapons</span>
                                                             {characterWeapons.length > 0 && (
-                                                                <Badge className="bg-slate-700/50 text-slate-400 border-slate-600/30 text-[10px] font-normal">
+                                                                <Badge className="bg-[#181a21] text-[#c5a059] border-[#c5a059]/30 text-[10px] font-normal">
                                                                     {characterWeapons.length}
                                                                 </Badge>
                                                             )}
@@ -893,27 +865,27 @@ export default function CombatPage() {
                                                                         key={idx}
                                                                         onClick={() => handleAttack(weapon.name, weapon.bonus)}
                                                                         disabled={!targetId}
-                                                                        className={`text-left p-4 rounded-lg border transition-all duration-150 ${!targetId
-                                                                            ? 'bg-slate-900/30 border-slate-800 opacity-50 cursor-not-allowed'
-                                                                            : 'bg-slate-900/50 border-slate-700 hover:border-amber-500/50 hover:bg-amber-950/20 cursor-pointer'
+                                                                        className={`text-left p-4 rounded border transition-all duration-150 ${!targetId
+                                                                            ? 'bg-[#181a21]/40 border-[#c5a059]/10 opacity-50 cursor-not-allowed'
+                                                                            : 'bg-[#181a21] border-[#c5a059]/30 hover:border-[#c5a059] hover:shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:bg-[#1a1d29] cursor-pointer'
                                                                             }`}
                                                                     >
-                                                                        <p className="font-semibold text-sm text-slate-200">{weapon.name}</p>
+                                                                        <p className="font-cinzel-decorative font-bold text-sm text-[#e0bc75]">{weapon.name}</p>
                                                                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                                            <span className="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded">
+                                                                            <span className="text-xs bg-[#c5a059]/20 text-[#c5a059] border border-[#c5a059]/30 px-2 py-0.5 rounded font-fira-sans font-bold">
                                                                                 +{weapon.bonus} to hit
                                                                             </span>
-                                                                            <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded">
+                                                                            <span className="text-xs bg-red-950/40 text-red-300 border border-red-800/40 px-2 py-0.5 rounded font-fira-sans font-bold">
                                                                                 {weapon.damage} + {weapon.abilityMod}
                                                                             </span>
                                                                             {weapon.damageType && (
-                                                                                <span className="text-xs text-slate-500">{weapon.damageType}</span>
+                                                                                <span className="text-xs text-[#d1cdb8]/60 font-lora italic">{weapon.damageType}</span>
                                                                             )}
                                                                         </div>
                                                                         {weapon.properties.length > 0 && (
                                                                             <div className="flex gap-1 mt-2 flex-wrap">
                                                                                 {weapon.properties.map((prop, i) => (
-                                                                                    <span key={i} className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
+                                                                                    <span key={i} className="text-[10px] bg-[#12141a] text-[#d1cdb8]/60 border border-[#c5a059]/20 px-1.5 py-0.5 rounded font-lora">
                                                                                         {prop}
                                                                                     </span>
                                                                                 ))}
@@ -923,9 +895,9 @@ export default function CombatPage() {
                                                                 ))}
                                                             </div>
                                                         ) : (
-                                                            <div className="text-center py-4 bg-slate-900/30 rounded-lg border border-dashed border-slate-700">
-                                                                <p className="text-slate-500 text-sm">No weapons in inventory</p>
-                                                                <p className="text-slate-600 text-xs mt-1">Add weapons from the character sheet</p>
+                                                            <div className="text-center py-5 bg-[#181a21]/40 rounded border border-dashed border-[#c5a059]/25 font-lora">
+                                                                <p className="text-[#d1cdb8]/60 text-sm">No weapons in inventory</p>
+                                                                <p className="text-[#d1cdb8]/40 text-xs mt-1">Equip weapons from the character sheet</p>
                                                             </div>
                                                         )}
                                                     </div>
@@ -933,15 +905,15 @@ export default function CombatPage() {
                                                     {/* === SPELLS === */}
                                                     {charData?.spells && charData.spells.length > 0 && (
                                                         <div>
-                                                            <Label className="text-slate-400 text-sm mb-3 block flex items-center gap-2">
+                                                            <Label className="text-[#c5a059] font-cinzel-decorative text-xs font-bold uppercase tracking-wider mb-3 block flex items-center gap-2">
                                                                 <span>✨ Spells</span>
                                                                 {charData.stats?.spell_save_dc && (
-                                                                    <span className="text-[10px] bg-purple-900/30 text-purple-300 px-1.5 py-0.5 rounded">
+                                                                    <span className="text-[10px] bg-purple-950/40 text-purple-300 border border-purple-800/40 px-2 py-0.5 rounded font-fira-sans font-medium">
                                                                         Save DC {charData.stats.spell_save_dc}
                                                                     </span>
                                                                 )}
                                                                 {charData.stats?.spell_attack_bonus != null && (
-                                                                    <span className="text-[10px] bg-purple-900/30 text-purple-300 px-1.5 py-0.5 rounded">
+                                                                    <span className="text-[10px] bg-purple-950/40 text-purple-300 border border-purple-800/40 px-2 py-0.5 rounded font-fira-sans font-medium">
                                                                         +{charData.stats.spell_attack_bonus} spell attack
                                                                     </span>
                                                                 )}
@@ -952,26 +924,26 @@ export default function CombatPage() {
                                                                     .map(([level, spells]) => {
                                                                         const slots = level > 0 ? getSpellSlots(level) : null;
                                                                         return (
-                                                                            <div key={level} className="bg-slate-900/30 rounded-lg border border-slate-800 p-3">
+                                                                            <div key={level} className="bg-[#181a21] rounded border border-[#c5a059]/25 p-3.5 font-lora">
                                                                                 <div className="flex items-center justify-between mb-2">
-                                                                                    <span className="text-xs font-semibold text-purple-300 uppercase tracking-wider">
+                                                                                    <span className="text-xs font-cinzel-decorative font-bold text-[#e0bc75] uppercase tracking-wider">
                                                                                         {level === 0 ? 'Cantrips' : `Level ${level}`}
                                                                                     </span>
                                                                                     {slots && slots.total > 0 && (
                                                                                         <div className="flex items-center gap-1.5">
-                                                                                            <span className="text-[10px] text-slate-500">Slots:</span>
+                                                                                            <span className="text-[10px] text-[#d1cdb8]/60">Slots:</span>
                                                                                             <div className="flex gap-1">
                                                                                                 {Array.from({ length: slots.total }).map((_, i) => (
                                                                                                     <div
                                                                                                         key={i}
                                                                                                         className={`w-3 h-3 rounded-full border ${i < slots.remaining
-                                                                                                            ? 'bg-purple-500 border-purple-400'
-                                                                                                            : 'bg-slate-800 border-slate-600'
+                                                                                                            ? 'bg-[#c5a059] border-[#e0bc75]'
+                                                                                                            : 'bg-[#12141a] border-stone-700'
                                                                                                             }`}
                                                                                                     />
                                                                                                 ))}
                                                                                             </div>
-                                                                                            <span className="text-[10px] text-slate-500 ml-1">
+                                                                                            <span className="text-[10px] font-fira-sans text-[#c5a059] ml-1">
                                                                                                 {slots.remaining}/{slots.total}
                                                                                             </span>
                                                                                         </div>
@@ -989,24 +961,24 @@ export default function CombatPage() {
                                                                                                 );
                                                                                             }}
                                                                                             disabled={!targetId || (slots !== null && slots.remaining <= 0)}
-                                                                                            className={`text-left px-3 py-2 rounded-lg border text-sm transition-all duration-150 ${(!targetId || (slots !== null && slots.remaining <= 0))
-                                                                                                ? 'bg-slate-900/30 border-slate-800 opacity-40 cursor-not-allowed'
-                                                                                                : 'bg-slate-900/50 border-slate-700 hover:border-purple-500/50 hover:bg-purple-950/20 cursor-pointer'
+                                                                                            className={`text-left px-3 py-2 rounded border text-xs transition-all duration-150 ${(!targetId || (slots !== null && slots.remaining <= 0))
+                                                                                                ? 'bg-[#12141a]/40 border-[#c5a059]/15 opacity-40 cursor-not-allowed'
+                                                                                                : 'bg-[#12141a] border-[#c5a059]/30 hover:border-[#c5a059] hover:bg-[#c5a059]/10 text-slate-100 hover:text-[#e0bc75] cursor-pointer'
                                                                                                 }`}
                                                                                         >
-                                                                                            <span className="text-slate-200">{spell.name}</span>
-                                                                                            <div className="flex items-center gap-2 mt-1">
+                                                                                            <span className="font-semibold">{spell.name}</span>
+                                                                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                                                                 {spell.spell_details?.school_display && (
-                                                                                                    <span className="text-[10px] text-purple-400">{spell.spell_details.school_display}</span>
+                                                                                                    <span className="text-[10px] text-[#c5a059]/70">{spell.spell_details.school_display}</span>
                                                                                                 )}
                                                                                                 {spell.spell_details?.concentration && (
-                                                                                                    <span className="text-[10px] bg-yellow-900/30 text-yellow-300 px-1 rounded">C</span>
+                                                                                                    <span className="text-[10px] bg-amber-950/40 text-amber-300 border border-amber-800/40 px-1 rounded">C</span>
                                                                                                 )}
                                                                                                 {spell.spell_details?.ritual && (
-                                                                                                    <span className="text-[10px] bg-blue-900/30 text-blue-300 px-1 rounded">R</span>
+                                                                                                    <span className="text-[10px] bg-blue-950/40 text-blue-300 border border-blue-800/40 px-1 rounded">R</span>
                                                                                                 )}
                                                                                                 {spell.spell_details?.range && (
-                                                                                                    <span className="text-[10px] text-slate-500">{spell.spell_details.range}</span>
+                                                                                                    <span className="text-[10px] text-[#d1cdb8]/50">{spell.spell_details.range}</span>
                                                                                                 )}
                                                                                             </div>
                                                                                         </button>
@@ -1023,62 +995,62 @@ export default function CombatPage() {
                                         </div>
                                     ) : (
                                         /* Damage & Healing Tab */
-                                        <div className="space-y-5">
+                                        <div className="space-y-5 font-lora">
                                             {/* Target Selection - shared */}
                                             <TargetSelector />
 
                                             <div className="grid grid-cols-2 gap-6">
                                                 {/* Damage */}
                                                 <div className="space-y-3">
-                                                    <h4 className="font-semibold text-sm text-red-400 flex items-center gap-2">
-                                                        <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />
-                                                        Apply Damage
+                                                    <h4 className="font-cinzel-decorative font-bold text-xs uppercase tracking-wider text-red-400 flex items-center gap-2">
+                                                        <span className="w-2 h-2 bg-red-400 rounded-full" />
+                                                        Apply Martial Damage
                                                     </h4>
                                                     <div className="flex gap-2">
                                                         <Input
                                                             type="number"
                                                             value={damageAmount}
                                                             onChange={(e) => setDamageAmount(e.target.value)}
-                                                            placeholder="Amount"
-                                                            className="bg-slate-900/60 border-slate-700 text-white h-11"
+                                                            placeholder="Damage amount"
+                                                            className="bg-[#0c0d12] border border-[#c5a059]/40 focus:border-[#c5a059] text-slate-100 placeholder-[#d1cdb8]/30 rounded h-11 font-fira-sans"
                                                         />
                                                         <Button
                                                             onClick={handleApplyDamage}
                                                             disabled={!damageAmount || !targetId}
-                                                            className="bg-red-600/80 hover:bg-red-600 h-11 px-6"
+                                                            className="bg-red-950/60 hover:bg-red-900 border border-red-500/50 text-red-200 font-lora font-bold text-xs uppercase tracking-wider h-11 px-5 rounded shadow-[0_0_12px_rgba(239,68,68,0.2)] cursor-pointer"
                                                         >
                                                             Damage
                                                         </Button>
                                                     </div>
                                                     {!targetId && (
-                                                        <p className="text-xs text-slate-600">Select a target above first</p>
+                                                        <p className="text-xs text-[#d1cdb8]/50 italic">Select a target above first</p>
                                                     )}
                                                 </div>
 
                                                 {/* Healing */}
                                                 <div className="space-y-3">
-                                                    <h4 className="font-semibold text-sm text-emerald-400 flex items-center gap-2">
-                                                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                                                        Apply Healing
+                                                    <h4 className="font-cinzel-decorative font-bold text-xs uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                                                        <span className="w-2 h-2 bg-emerald-400 rounded-full" />
+                                                        Apply Restoration
                                                     </h4>
                                                     <div className="flex gap-2">
                                                         <Input
                                                             type="number"
                                                             value={healAmount}
                                                             onChange={(e) => setHealAmount(e.target.value)}
-                                                            placeholder="Amount"
-                                                            className="bg-slate-900/60 border-slate-700 text-white h-11"
+                                                            placeholder="Healing amount"
+                                                            className="bg-[#0c0d12] border border-[#c5a059]/40 focus:border-[#c5a059] text-slate-100 placeholder-[#d1cdb8]/30 rounded h-11 font-fira-sans"
                                                         />
                                                         <Button
                                                             onClick={handleApplyHealing}
                                                             disabled={!healAmount || !targetId}
-                                                            className="bg-emerald-600/80 hover:bg-emerald-600 h-11 px-6"
+                                                            className="bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-200 font-lora font-bold text-xs uppercase tracking-wider h-11 px-5 rounded shadow-[0_0_12px_rgba(34,197,94,0.2)] cursor-pointer"
                                                         >
                                                             Heal
                                                         </Button>
                                                     </div>
                                                     {!targetId && (
-                                                        <p className="text-xs text-slate-600">Select a target above first</p>
+                                                        <p className="text-xs text-[#d1cdb8]/50 italic">Select a target above first</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -1094,34 +1066,34 @@ export default function CombatPage() {
                                 const hpPct = viewed.max_hp > 0 ? (viewed.current_hp / viewed.max_hp) * 100 : 0;
 
                                 return (
-                                    <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5">
+                                    <div className="bg-[#12141a] rounded-lg border border-[#c5a059]/25 p-5 font-lora shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
                                         <div className="flex items-start justify-between mb-4">
                                             <div>
-                                                <h3 className="text-lg font-bold text-slate-100">{viewed.name}</h3>
-                                                <p className="text-sm text-slate-500">
-                                                    {viewed.participant_type === 'character' ? 'Player Character' : 'Enemy'}
+                                                <h3 className="font-cinzel-decorative text-xl font-bold text-[#c5a059] tracking-wide">{viewed.name}</h3>
+                                                <p className="text-xs text-[#d1cdb8]/60 mt-0.5 font-lora">
+                                                    {viewed.participant_type === 'character' ? 'Player Character' : 'Enemy Hostile'}
                                                 </p>
                                             </div>
                                             <div className="flex gap-4">
-                                                <div className="text-center">
-                                                    <p className="text-xs text-slate-500 uppercase">AC</p>
-                                                    <p className="text-xl font-bold font-mono text-slate-200">{viewed.armor_class}</p>
+                                                <div className="text-center px-3 py-1 bg-[#181a21] border border-[#c5a059]/20 rounded">
+                                                    <p className="text-[10px] text-[#d1cdb8]/60 uppercase font-semibold">AC</p>
+                                                    <p className="text-lg font-bold font-fira-sans text-[#e0bc75]">{viewed.armor_class}</p>
                                                 </div>
-                                                <div className="text-center">
-                                                    <p className="text-xs text-slate-500 uppercase">Init</p>
-                                                    <p className="text-xl font-bold font-mono text-slate-200">{viewed.initiative}</p>
+                                                <div className="text-center px-3 py-1 bg-[#181a21] border border-[#c5a059]/20 rounded">
+                                                    <p className="text-[10px] text-[#d1cdb8]/60 uppercase font-semibold">Init</p>
+                                                    <p className="text-lg font-bold font-fira-sans text-[#e0bc75]">{viewed.initiative}</p>
                                                 </div>
                                             </div>
                                         </div>
                                         {/* Full-width HP bar */}
                                         <div>
-                                            <div className="flex justify-between text-sm mb-1.5">
-                                                <span className="text-slate-400">Hit Points</span>
-                                                <span className="font-mono font-bold">
-                                                    {viewed.current_hp} <span className="text-slate-500">/ {viewed.max_hp}</span>
+                                            <div className="flex justify-between text-xs mb-1.5 font-lora">
+                                                <span className="text-[#d1cdb8]/70">Hit Points</span>
+                                                <span className="font-fira-sans font-bold text-slate-100">
+                                                    {viewed.current_hp} <span className="text-[#d1cdb8]/40">/ {viewed.max_hp}</span>
                                                 </span>
                                             </div>
-                                            <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden">
+                                            <div className="w-full h-2.5 bg-[#0c0d12] border border-[#c5a059]/20 rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${hpGradient(viewed.current_hp, viewed.max_hp)}`}
                                                     style={{ width: `${Math.max(0, hpPct)}%` }}
@@ -1130,37 +1102,37 @@ export default function CombatPage() {
                                         </div>
                                         {/* Equipped Items */}
                                         {viewed.equipped_items && (
-                                            <div className="mt-3 flex flex-wrap gap-2">
+                                            <div className="mt-3.5 flex flex-wrap gap-2">
                                                 {viewed.equipped_items.weapon && (
-                                                    <Badge className="bg-amber-600/20 text-amber-300 border-amber-500/30 text-xs">
+                                                    <span className="inline-flex items-center gap-1 text-xs bg-[#181a21] text-[#c5a059] border border-[#c5a059]/30 px-2.5 py-1 rounded">
                                                         ⚔️ {viewed.equipped_items.weapon.name} ({viewed.equipped_items.weapon.damage_dice})
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                                 {viewed.equipped_items.armor && (
-                                                    <Badge className="bg-blue-600/20 text-blue-300 border-blue-500/30 text-xs">
+                                                    <span className="inline-flex items-center gap-1 text-xs bg-[#181a21] text-[#e0bc75] border border-[#c5a059]/30 px-2.5 py-1 rounded">
                                                         🛡 {viewed.equipped_items.armor.name}
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                                 {viewed.equipped_items.shield && (
-                                                    <Badge className="bg-blue-600/20 text-blue-300 border-blue-500/30 text-xs">
+                                                    <span className="inline-flex items-center gap-1 text-xs bg-[#181a21] text-[#e0bc75] border border-[#c5a059]/30 px-2.5 py-1 rounded">
                                                         🛡 {viewed.equipped_items.shield.name}
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                             </div>
                                         )}
 
                                         {/* Enemy Stat Block */}
                                         {viewed.participant_type === 'enemy' && viewed.enemy_stats && (
-                                            <div className="mt-4 space-y-3">
+                                            <div className="mt-4 space-y-3 font-lora">
                                                 {/* Ability Scores Grid */}
                                                 <div>
-                                                    <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Ability Scores</h4>
+                                                    <h4 className="text-xs font-cinzel-decorative font-bold text-[#c5a059] uppercase tracking-wider mb-2">Ability Scores</h4>
                                                     <div className="grid grid-cols-6 gap-2">
                                                         {Object.entries(viewed.enemy_stats.ability_scores).map(([ability, data]) => (
-                                                            <div key={ability} className="bg-slate-900/60 rounded-lg border border-slate-700/50 text-center p-2">
-                                                                <p className="text-[10px] font-semibold text-slate-400 uppercase">{ability.slice(0, 3)}</p>
-                                                                <p className="text-lg font-bold text-slate-200">{data.score}</p>
-                                                                <p className={`text-xs font-mono ${data.modifier >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                            <div key={ability} className="bg-[#181a21] rounded border border-[#c5a059]/25 text-center p-2">
+                                                                <p className="text-[10px] font-semibold text-[#d1cdb8]/60 uppercase">{ability.slice(0, 3)}</p>
+                                                                <p className="text-base font-bold font-fira-sans text-[#c5a059]">{data.score}</p>
+                                                                <p className={`text-xs font-fira-sans font-bold ${data.modifier >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                                                     {data.modifier >= 0 ? '+' : ''}{data.modifier}
                                                                 </p>
                                                             </div>
@@ -1171,38 +1143,38 @@ export default function CombatPage() {
                                                 {/* Speed & Proficiency */}
                                                 <div className="flex flex-wrap gap-2">
                                                     {viewed.enemy_stats.speed && (
-                                                        <Badge className="bg-cyan-600/20 text-cyan-300 border-cyan-500/30 text-xs">
+                                                        <span className="text-xs bg-[#181a21] text-[#d1cdb8] border border-[#c5a059]/25 px-2 py-0.5 rounded">
                                                             🏃 {viewed.enemy_stats.speed}
-                                                        </Badge>
+                                                        </span>
                                                     )}
                                                     {viewed.enemy_stats.proficiency_bonus && (
-                                                        <Badge className="bg-violet-600/20 text-violet-300 border-violet-500/30 text-xs">
+                                                        <span className="text-xs bg-[#181a21] text-[#c5a059] border border-[#c5a059]/30 px-2 py-0.5 rounded font-fira-sans">
                                                             Prof +{viewed.enemy_stats.proficiency_bonus}
-                                                        </Badge>
+                                                        </span>
                                                     )}
                                                     {viewed.enemy_stats.senses?.darkvision && (
-                                                        <Badge className="bg-slate-600/20 text-slate-300 border-slate-500/30 text-xs">
+                                                        <span className="text-xs bg-[#181a21] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded">
                                                             👁 Darkvision {viewed.enemy_stats.senses.darkvision}
-                                                        </Badge>
+                                                        </span>
                                                     )}
                                                     {viewed.enemy_stats.senses?.passive_perception && (
-                                                        <Badge className="bg-slate-600/20 text-slate-300 border-slate-500/30 text-xs">
+                                                        <span className="text-xs bg-[#181a21] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded font-fira-sans">
                                                             PP {viewed.enemy_stats.senses.passive_perception}
-                                                        </Badge>
+                                                        </span>
                                                     )}
                                                 </div>
 
                                                 {/* Saving Throws */}
                                                 {Object.values(viewed.enemy_stats.saving_throws).some(v => v !== null) && (
                                                     <div>
-                                                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Saving Throws</h4>
+                                                        <h4 className="text-xs font-semibold text-[#d1cdb8]/70 uppercase tracking-wider mb-1">Saving Throws</h4>
                                                         <div className="flex flex-wrap gap-1.5">
                                                             {Object.entries(viewed.enemy_stats.saving_throws)
                                                                 .filter(([, val]) => val !== null)
                                                                 .map(([ability, val]) => (
-                                                                    <Badge key={ability} className="bg-indigo-600/20 text-indigo-300 border-indigo-500/30 text-xs">
+                                                                    <span key={ability} className="text-xs bg-[#181a21] text-[#e0bc75] border border-[#c5a059]/20 px-2 py-0.5 rounded font-fira-sans">
                                                                         {ability.toUpperCase()} +{val}
-                                                                    </Badge>
+                                                                    </span>
                                                                 ))}
                                                         </div>
                                                     </div>
@@ -1211,15 +1183,15 @@ export default function CombatPage() {
                                                 {/* Enemy Attacks */}
                                                 {viewed.enemy_attacks && viewed.enemy_attacks.length > 0 && (
                                                     <div>
-                                                        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Attacks</h4>
+                                                        <h4 className="text-xs font-cinzel-decorative font-bold text-red-400 uppercase tracking-wider mb-2">Martial Attacks</h4>
                                                         <div className="space-y-1.5">
                                                             {viewed.enemy_attacks.map((atk, i) => (
-                                                                <div key={i} className="flex items-center gap-3 bg-slate-900/40 rounded-lg px-3 py-2 border border-slate-800/50">
-                                                                    <span className="text-sm font-medium text-slate-200">{atk.name}</span>
-                                                                    <span className="text-xs bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">
+                                                                <div key={i} className="flex items-center gap-3 bg-[#181a21] rounded px-3 py-2 border border-[#c5a059]/20">
+                                                                    <span className="text-sm font-semibold text-slate-200">{atk.name}</span>
+                                                                    <span className="text-xs bg-red-950/40 text-red-300 border border-red-800/40 px-1.5 py-0.5 rounded font-fira-sans font-bold">
                                                                         +{atk.bonus}
                                                                     </span>
-                                                                    <span className="text-xs bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded">
+                                                                    <span className="text-xs bg-[#12141a] text-[#d1cdb8]/80 border border-stone-700 px-1.5 py-0.5 rounded font-fira-sans">
                                                                         {atk.damage}
                                                                     </span>
                                                                 </div>
@@ -1231,12 +1203,12 @@ export default function CombatPage() {
                                                 {/* Abilities */}
                                                 {viewed.enemy_abilities && viewed.enemy_abilities.length > 0 && (
                                                     <div>
-                                                        <h4 className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2">Abilities</h4>
+                                                        <h4 className="text-xs font-cinzel-decorative font-bold text-[#c5a059] uppercase tracking-wider mb-2">Special Abilities</h4>
                                                         <div className="space-y-1.5">
                                                             {viewed.enemy_abilities.map((ab, i) => (
-                                                                <div key={i} className="bg-slate-900/40 rounded-lg px-3 py-2 border border-slate-800/50">
-                                                                    <p className="text-sm font-medium text-slate-200">{ab.name}</p>
-                                                                    <p className="text-xs text-slate-400 mt-0.5">{ab.description}</p>
+                                                                <div key={i} className="bg-[#181a21] rounded px-3 py-2 border border-[#c5a059]/20">
+                                                                    <p className="text-sm font-semibold text-[#e0bc75]">{ab.name}</p>
+                                                                    <p className="text-xs text-[#d1cdb8]/70 mt-0.5 leading-relaxed">{ab.description}</p>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -1246,15 +1218,15 @@ export default function CombatPage() {
                                                 {/* Resistances/Immunities */}
                                                 {viewed.enemy_resistances && viewed.enemy_resistances.length > 0 && (
                                                     <div>
-                                                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Resistances & Immunities</h4>
+                                                        <h4 className="text-xs font-semibold text-[#d1cdb8]/70 uppercase tracking-wider mb-1">Resistances & Immunities</h4>
                                                         <div className="flex flex-wrap gap-1.5">
                                                             {viewed.enemy_resistances.map((r, i) => (
-                                                                <Badge key={i} className={`text-xs ${r.type === 'immunity' ? 'bg-yellow-600/20 text-yellow-300 border-yellow-500/30' :
-                                                                    r.type === 'vulnerability' ? 'bg-red-600/20 text-red-300 border-red-500/30' :
-                                                                        'bg-slate-600/20 text-slate-300 border-slate-500/30'
+                                                                <span key={i} className={`text-xs px-2 py-0.5 rounded border ${r.type === 'immunity' ? 'bg-[#c5a059]/15 text-[#c5a059] border-[#c5a059]/30' :
+                                                                    r.type === 'vulnerability' ? 'bg-red-950/40 text-red-300 border-red-800/40' :
+                                                                        'bg-[#181a21] text-[#d1cdb8]/70 border-stone-700'
                                                                     }`}>
                                                                     {r.type === 'immunity' ? '🛡' : r.type === 'vulnerability' ? '⚠' : '↓'} {r.damage_type}
-                                                                </Badge>
+                                                                </span>
                                                             ))}
                                                         </div>
                                                     </div>
@@ -1265,9 +1237,9 @@ export default function CombatPage() {
                                         {viewed.conditions && viewed.conditions.length > 0 && (
                                             <div className="mt-3 flex flex-wrap gap-1.5">
                                                 {viewed.conditions.map((cond, i) => (
-                                                    <Badge key={i} className="bg-purple-600/30 text-purple-300 border-purple-500/30 text-xs">
+                                                    <span key={i} className="bg-purple-950/40 text-purple-300 border border-purple-800/40 text-xs px-2 py-0.5 rounded font-fira-sans">
                                                         {cond}
-                                                    </Badge>
+                                                    </span>
                                                 ))}
                                             </div>
                                         )}

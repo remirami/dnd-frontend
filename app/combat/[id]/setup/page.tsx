@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { combatApi } from "@/lib/api/combat";
@@ -34,6 +34,63 @@ export default function CombatSetupPage() {
     const [cancelling, setCancelling] = useState(false);
 
     const sessionId = Number(params.id);
+
+    const hasStartedRef = useRef(false);
+    const sessionRef = useRef<CombatSession | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        sessionRef.current = session;
+    }, [session]);
+
+    // Cleanup unstarted empty combat if the user leaves the page or closes the tab
+    useEffect(() => {
+        isMountedRef.current = true;
+
+        const cleanupIfEmpty = () => {
+            if (hasStartedRef.current) return;
+            const participants = sessionRef.current?.participants || [];
+            if (participants.length === 0) {
+                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+                const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                try {
+                    fetch(`${baseUrl}/combat/sessions/${sessionId}/`, {
+                        method: 'DELETE',
+                        headers,
+                        keepalive: true,
+                    });
+                } catch {
+                    // Ignore unload error
+                }
+            }
+        };
+
+        const handleBeforeUnload = () => {
+            cleanupIfEmpty();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('pagehide', handleBeforeUnload);
+
+        return () => {
+            isMountedRef.current = false;
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('pagehide', handleBeforeUnload);
+
+            // Delay execution slightly to prevent false deletion in React StrictMode development cycles
+            setTimeout(() => {
+                if (!isMountedRef.current && !hasStartedRef.current) {
+                    const participants = sessionRef.current?.participants || [];
+                    if (participants.length === 0) {
+                        combatApi.delete(sessionId).catch(() => {});
+                    }
+                }
+            }, 300);
+        };
+    }, [sessionId]);
 
     const partyParticipants = session?.participants?.filter(p => p.participant_type === 'character') || [];
     const enemyParticipants = session?.participants?.filter(p => p.participant_type === 'enemy') || [];
@@ -238,18 +295,21 @@ export default function CombatSetupPage() {
         }
 
         try {
+            hasStartedRef.current = true;
             // Pass manual initiative values as overrides;
             // the backend will auto-roll for any participants still at 0
             await combatApi.rollInitiative(sessionId, initiativeValues);
             await combatApi.start(sessionId);
             router.push(`/combat/${sessionId}`);
         } catch (error) {
+            hasStartedRef.current = false;
             console.error("Failed to start combat:", error);
             alert("Failed to start combat");
         }
     };
 
     const handleCancel = async () => {
+        hasStartedRef.current = true;
         setCancelling(true);
         try {
             await combatApi.delete(sessionId);
