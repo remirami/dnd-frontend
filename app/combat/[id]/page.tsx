@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { CombatLog } from "./CombatLog";
 import { MonsterStatblockModal } from "@/components/monsters/MonsterStatblockModal";
+import { ConditionBadge } from "@/components/combat/ConditionBadge";
+import { isIncapacitating } from "@/lib/data/conditions";
 import type { CombatSession, CombatParticipant, CombatAction, CharacterSpell } from "@/lib/types/combat";
 import type { Enemy, Attack } from "@/lib/types/enemy";
 
@@ -304,6 +306,10 @@ export default function CombatPage() {
             alert("Please select a target for the attack");
             return;
         }
+        if (currentIsIncapacitated) {
+            alert(`${current.name} is ${incapacitatingName} and cannot take actions or reactions. Please end your turn.`);
+            return;
+        }
         if (current.attacks_remaining <= 0) {
             alert(`${current.name} has no attacks remaining this turn. Please end your turn or take a different action.`);
             return;
@@ -399,6 +405,9 @@ export default function CombatPage() {
     const currentParticipant = getCurrentParticipant();
     const sortedParticipants = [...participants].sort((a, b) => b.initiative - a.initiative);
     const isEnemyTurn = currentParticipant?.participant_type === 'enemy';
+    const currentIsIncapacitated = currentParticipant?.conditions?.some((c: any) => isIncapacitating(c)) ?? false;
+    const currentIncapacitatingCond = currentParticipant?.conditions?.find((c: any) => isIncapacitating(c));
+    const incapacitatingName = currentIncapacitatingCond ? (typeof currentIncapacitatingCond === 'string' ? currentIncapacitatingCond : (currentIncapacitatingCond.name || 'Incapacitated')) : 'Incapacitated';
     const actions = session.actions || [];
 
     // Get the target participant object for display
@@ -658,10 +667,19 @@ export default function CombatPage() {
                                 }`} />
                             <div>
                                 <p className="text-[10px] text-[#d1cdb8]/60 uppercase tracking-widest font-semibold font-lora">Current Turn</p>
-                                <h2 className={`font-cinzel-decorative text-xl sm:text-2xl md:text-3xl font-bold tracking-wide ${isEnemyTurn ? 'text-red-300 drop-shadow-[0_2px_8px_rgba(239,68,68,0.3)]' : 'text-[#c5a059] drop-shadow-[0_2px_8px_rgba(197,160,89,0.3)]'
-                                    }`}>
-                                    {currentParticipant.name}
-                                </h2>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <h2 className={`font-cinzel-decorative text-xl sm:text-2xl md:text-3xl font-bold tracking-wide ${isEnemyTurn ? 'text-red-300 drop-shadow-[0_2px_8px_rgba(239,68,68,0.3)]' : 'text-[#c5a059] drop-shadow-[0_2px_8px_rgba(197,160,89,0.3)]'
+                                        }`}>
+                                        {currentParticipant.name}
+                                    </h2>
+                                    {currentParticipant.conditions && currentParticipant.conditions.length > 0 && (
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {currentParticipant.conditions.map((cond: any, cIdx: number) => (
+                                                <ConditionBadge key={cond?.id ?? cIdx} condition={cond} size="sm" />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex gap-4 sm:gap-6 ml-0 md:ml-8 font-lora">
                                 <div className="text-center px-3 py-1 bg-[#0c0d12]/50 border border-[#c5a059]/20 rounded">
@@ -822,19 +840,13 @@ export default function CombatPage() {
                                                 {/* Active Conditions */}
                                                 {p.conditions && p.conditions.length > 0 && (
                                                     <div className="flex items-center gap-1 flex-wrap mt-1">
-                                                        {p.conditions.map((cond: any, cIdx: number) => {
-                                                            const condName = typeof cond === 'string' ? cond : (cond?.name || 'Condition');
-                                                            const condDesc = typeof cond === 'object' ? cond?.description : undefined;
-                                                            return (
-                                                                <span
-                                                                    key={cond?.id ?? cIdx}
-                                                                    className="text-[9px] px-1.5 py-0.2 rounded bg-purple-950/70 text-purple-300 border border-purple-800/50 capitalize font-medium"
-                                                                    title={condDesc || undefined}
-                                                                >
-                                                                    {condName}
-                                                                </span>
-                                                            );
-                                                        })}
+                                                        {p.conditions.map((cond: any, cIdx: number) => (
+                                                            <ConditionBadge
+                                                                key={cond?.id ?? cIdx}
+                                                                condition={cond}
+                                                                size="sm"
+                                                            />
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
@@ -889,6 +901,21 @@ export default function CombatPage() {
                                 <div className="p-5 font-lora">
                                     {activeTab === 'attack' ? (
                                         <div className="space-y-5">
+                                            {/* Incapacitation Warning Banner */}
+                                            {currentIsIncapacitated && (
+                                                <div className="p-4 rounded-lg bg-red-950/70 border border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.35)] flex items-start gap-3 animate-in fade-in duration-300">
+                                                    <span className="text-2xl flex-shrink-0">🛑</span>
+                                                    <div className="flex-1">
+                                                        <h4 className="font-cinzel-decorative font-bold text-red-200 text-sm tracking-wide">
+                                                            {currentParticipant?.name} is {incapacitatingName}
+                                                        </h4>
+                                                        <p className="text-xs text-red-300/90 font-lora mt-1 leading-relaxed">
+                                                            An incapacitated creature cannot take actions or reactions. You cannot attack, cast spells, or use abilities this turn. Please click <strong>End Turn →</strong> above to proceed.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Actor indicator */}
                                             {currentParticipant && (
                                                 <div className={`px-3.5 py-2.5 rounded border text-sm flex items-center gap-2 font-lora ${isEnemyTurn
@@ -921,7 +948,7 @@ export default function CombatPage() {
                                                         <div className="grid grid-cols-2 gap-3">
                                                             {currentParticipant.enemy_actions.map((action: any) => {
                                                                 const isRecharging = action.has_recharge && (currentParticipant.recharge_state?.[action.name] === false);
-                                                                const isDisabled = !targetId || isRecharging || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0);
+                                                                const isDisabled = !targetId || isRecharging || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0) || currentIsIncapacitated;
                                                                 return (
                                                                     <button
                                                                         key={action.id}
@@ -975,8 +1002,8 @@ export default function CombatPage() {
                                                                 <button
                                                                     key={idx}
                                                                     onClick={() => handleAttack(attack.name, attack.bonus)}
-                                                                    disabled={!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0)}
-                                                                    className={`text-left p-4 rounded border transition-all duration-150 ${(!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0))
+                                                                    disabled={!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0) || currentIsIncapacitated}
+                                                                    className={`text-left p-4 rounded border transition-all duration-150 ${(!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0) || currentIsIncapacitated)
                                                                         ? 'bg-[#181a21]/40 border-stone-800 opacity-50 cursor-not-allowed'
                                                                         : 'bg-[#181a21] border-red-900/40 hover:border-red-500/70 hover:bg-[#241315] cursor-pointer'
                                                                         }`}
@@ -1016,8 +1043,8 @@ export default function CombatPage() {
                                                                     <button
                                                                         key={idx}
                                                                         onClick={() => handleAttack(weapon.name, weapon.bonus)}
-                                                                        disabled={!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0)}
-                                                                        className={`text-left p-4 rounded border transition-all duration-150 ${(!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0))
+                                                                        disabled={!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0) || currentIsIncapacitated}
+                                                                        className={`text-left p-4 rounded border transition-all duration-150 ${(!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0) || currentIsIncapacitated)
                                                                             ? 'bg-[#181a21]/40 border-[#c5a059]/10 opacity-50 cursor-not-allowed'
                                                                             : 'bg-[#181a21] border-[#c5a059]/30 hover:border-[#c5a059] hover:shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:bg-[#1a1d29] cursor-pointer'
                                                                             }`}
@@ -1112,8 +1139,8 @@ export default function CombatPage() {
                                                                                                     charData.stats?.spell_attack_bonus || 0
                                                                                                 );
                                                                                             }}
-                                                                                            disabled={!targetId || (slots !== null && slots.remaining <= 0)}
-                                                                                            className={`text-left px-3 py-2 rounded border text-xs transition-all duration-150 ${(!targetId || (slots !== null && slots.remaining <= 0))
+                                                                                            disabled={!targetId || isAttacking || (slots !== null && slots.remaining <= 0) || (currentParticipant && currentParticipant.attacks_remaining <= 0) || currentIsIncapacitated}
+                                                                                            className={`text-left px-3 py-2 rounded border text-xs transition-all duration-150 ${(!targetId || isAttacking || (slots !== null && slots.remaining <= 0) || (currentParticipant && currentParticipant.attacks_remaining <= 0) || currentIsIncapacitated)
                                                                                                 ? 'bg-[#12141a]/40 border-[#c5a059]/15 opacity-40 cursor-not-allowed'
                                                                                                 : 'bg-[#12141a] border-[#c5a059]/30 hover:border-[#c5a059] hover:bg-[#c5a059]/10 text-slate-100 hover:text-[#e0bc75] cursor-pointer'
                                                                                                 }`}
@@ -1404,20 +1431,14 @@ export default function CombatPage() {
                                         )}
                                         {/* Conditions */}
                                         {viewed.conditions && viewed.conditions.length > 0 && (
-                                            <div className="mt-3 flex flex-wrap gap-1.5">
-                                                {viewed.conditions.map((cond: any, i: number) => {
-                                                    const condName = typeof cond === 'string' ? cond : (cond?.name || 'Condition');
-                                                    const condDesc = typeof cond === 'object' ? cond?.description : undefined;
-                                                    return (
-                                                        <span
-                                                            key={cond?.id ?? i}
-                                                            className="bg-purple-950/40 text-purple-300 border border-purple-800/40 text-xs px-2 py-0.5 rounded font-fira-sans capitalize"
-                                                            title={condDesc || undefined}
-                                                        >
-                                                            {condName}
-                                                        </span>
-                                                    );
-                                                })}
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {viewed.conditions.map((cond: any, i: number) => (
+                                                    <ConditionBadge
+                                                        key={cond?.id ?? i}
+                                                        condition={cond}
+                                                        size="md"
+                                                    />
+                                                ))}
                                             </div>
                                         )}
                                     </div>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { CombatParticipant } from '@/lib/types/combat';
+import { ConditionBadge } from '@/components/combat/ConditionBadge';
 
 interface MonsterStatblockModalProps {
     participant?: CombatParticipant | null;
@@ -67,6 +68,14 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
                     {stats?.speed && (
                         <div>
                             <strong className="text-white">Speed:</strong> <span>{stats.speed}</span>
+                        </div>
+                    )}
+                    {participant.conditions && participant.conditions.length > 0 && (
+                        <div className="pt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-800">
+                            <span className="text-xs text-red-400 font-cinzel uppercase font-semibold">Active Conditions:</span>
+                            {participant.conditions.map((c, idx) => (
+                                <ConditionBadge key={idx} condition={c} size="sm" />
+                            ))}
                         </div>
                     )}
                 </div>
@@ -251,14 +260,14 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
 
                                         {/* Conditions */}
                                         {((act.conditions_inflicted_names && act.conditions_inflicted_names.length > 0) || ((act as any).conditions_inflicted && (act as any).conditions_inflicted.length > 0)) && (
-                                            <div className="text-xs text-red-400/90 font-lora mt-1">
-                                                <span>Inflicts condition: </span>
-                                                <strong>
-                                                    {((act.conditions_inflicted_names || (act as any).conditions_inflicted) || [])
-                                                        .map((c: any) => typeof c === 'string' ? c : c?.name || '')
-                                                        .filter(Boolean)
-                                                        .join(', ')}
-                                                </strong>
+                                            <div className="flex flex-wrap items-center gap-1.5 text-xs font-lora mt-2">
+                                                <span className="text-red-400 font-semibold">Inflicts:</span>
+                                                {((act.conditions_inflicted_names || (act as any).conditions_inflicted) || [])
+                                                    .map((c: any) => typeof c === 'string' ? c : c?.name || '')
+                                                    .filter(Boolean)
+                                                    .map((name: string, cIdx: number) => (
+                                                        <ConditionBadge key={cIdx} condition={name} size="sm" />
+                                                    ))}
                                             </div>
                                         )}
 
