@@ -34,6 +34,7 @@ export default function CombatPage() {
     // IDs of participants whose HP bar should flash red (took damage this step)
     const [damagedParticipantIds, setDamagedParticipantIds] = useState<Set<number>>(new Set());
     const [statblockParticipant, setStatblockParticipant] = useState<CombatParticipant | null>(null);
+    const [isAttacking, setIsAttacking] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
     const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
@@ -53,7 +54,8 @@ export default function CombatPage() {
             if (a.fumble) return `⚠️ ${a.attacker} fumbled attack with ${a.attack_name}!`;
             if (a.hit) {
                 const crit = a.critical ? ' CRITICAL HIT' : ' hit';
-                const cond = a.condition_applied ? ` (Inflicted ${a.condition_applied}!)` : '';
+                const condName = typeof a.condition_applied === 'string' ? a.condition_applied : a.condition_applied?.name;
+                const cond = condName ? ` (Inflicted ${condName}!)` : '';
                 return `💥 ${a.attacker}${crit} ${a.target} with ${a.attack_name}${pt} for ${a.damage} damage!${cond}`;
             }
             return `🛡️ ${a.attacker} attacked ${a.target} with ${a.attack_name}${pt} but missed (rolled ${a.attack_total} vs AC ${a.target_ac}).`;
@@ -302,6 +304,12 @@ export default function CombatPage() {
             alert("Please select a target for the attack");
             return;
         }
+        if (current.attacks_remaining <= 0) {
+            alert(`${current.name} has no attacks remaining this turn. Please end your turn or take a different action.`);
+            return;
+        }
+        if (isAttacking) return;
+        setIsAttacking(true);
         try {
             await combatApi.attack(sessionId, {
                 attacker_id: current.id,
@@ -311,7 +319,13 @@ export default function CombatPage() {
             });
             await loadSession();
         } catch (error: any) {
-            alert(`Attack failed: ${error.response?.data?.error || error.message}`);
+            const errMsg = error.response?.data?.error || 
+                (typeof error.response?.data === 'string' ? error.response.data : null) ||
+                (error.response?.data && typeof error.response.data === 'object' ? JSON.stringify(error.response.data) : null) ||
+                error.message;
+            alert(`Attack failed: ${errMsg}`);
+        } finally {
+            setIsAttacking(false);
         }
     };
 
@@ -804,6 +818,25 @@ export default function CombatPage() {
                                                         {p.current_hp}/{p.max_hp}
                                                     </span>
                                                 </div>
+
+                                                {/* Active Conditions */}
+                                                {p.conditions && p.conditions.length > 0 && (
+                                                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                                                        {p.conditions.map((cond: any, cIdx: number) => {
+                                                            const condName = typeof cond === 'string' ? cond : (cond?.name || 'Condition');
+                                                            const condDesc = typeof cond === 'object' ? cond?.description : undefined;
+                                                            return (
+                                                                <span
+                                                                    key={cond?.id ?? cIdx}
+                                                                    className="text-[9px] px-1.5 py-0.2 rounded bg-purple-950/70 text-purple-300 border border-purple-800/50 capitalize font-medium"
+                                                                    title={condDesc || undefined}
+                                                                >
+                                                                    {condName}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* AC */}
@@ -888,7 +921,7 @@ export default function CombatPage() {
                                                         <div className="grid grid-cols-2 gap-3">
                                                             {currentParticipant.enemy_actions.map((action: any) => {
                                                                 const isRecharging = action.has_recharge && (currentParticipant.recharge_state?.[action.name] === false);
-                                                                const isDisabled = !targetId || isRecharging;
+                                                                const isDisabled = !targetId || isRecharging || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0);
                                                                 return (
                                                                     <button
                                                                         key={action.id}
@@ -942,8 +975,8 @@ export default function CombatPage() {
                                                                 <button
                                                                     key={idx}
                                                                     onClick={() => handleAttack(attack.name, attack.bonus)}
-                                                                    disabled={!targetId}
-                                                                    className={`text-left p-4 rounded border transition-all duration-150 ${!targetId
+                                                                    disabled={!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0)}
+                                                                    className={`text-left p-4 rounded border transition-all duration-150 ${(!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0))
                                                                         ? 'bg-[#181a21]/40 border-stone-800 opacity-50 cursor-not-allowed'
                                                                         : 'bg-[#181a21] border-red-900/40 hover:border-red-500/70 hover:bg-[#241315] cursor-pointer'
                                                                         }`}
@@ -983,8 +1016,8 @@ export default function CombatPage() {
                                                                     <button
                                                                         key={idx}
                                                                         onClick={() => handleAttack(weapon.name, weapon.bonus)}
-                                                                        disabled={!targetId}
-                                                                        className={`text-left p-4 rounded border transition-all duration-150 ${!targetId
+                                                                        disabled={!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0)}
+                                                                        className={`text-left p-4 rounded border transition-all duration-150 ${(!targetId || isAttacking || (currentParticipant && currentParticipant.attacks_remaining <= 0))
                                                                             ? 'bg-[#181a21]/40 border-[#c5a059]/10 opacity-50 cursor-not-allowed'
                                                                             : 'bg-[#181a21] border-[#c5a059]/30 hover:border-[#c5a059] hover:shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:bg-[#1a1d29] cursor-pointer'
                                                                             }`}
@@ -1372,11 +1405,19 @@ export default function CombatPage() {
                                         {/* Conditions */}
                                         {viewed.conditions && viewed.conditions.length > 0 && (
                                             <div className="mt-3 flex flex-wrap gap-1.5">
-                                                {viewed.conditions.map((cond, i) => (
-                                                    <span key={i} className="bg-purple-950/40 text-purple-300 border border-purple-800/40 text-xs px-2 py-0.5 rounded font-fira-sans">
-                                                        {cond}
-                                                    </span>
-                                                ))}
+                                                {viewed.conditions.map((cond: any, i: number) => {
+                                                    const condName = typeof cond === 'string' ? cond : (cond?.name || 'Condition');
+                                                    const condDesc = typeof cond === 'object' ? cond?.description : undefined;
+                                                    return (
+                                                        <span
+                                                            key={cond?.id ?? i}
+                                                            className="bg-purple-950/40 text-purple-300 border border-purple-800/40 text-xs px-2 py-0.5 rounded font-fira-sans capitalize"
+                                                            title={condDesc || undefined}
+                                                        >
+                                                            {condName}
+                                                        </span>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>

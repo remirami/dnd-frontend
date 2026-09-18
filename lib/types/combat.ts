@@ -190,7 +190,7 @@ export interface CombatParticipant {
     armor_class: number;
     is_player: boolean;
     is_active: boolean;
-    conditions: string[];
+    conditions: Array<string | { id: number; name: string; description?: string }>;
     attacks_remaining: number;
     equipped_items?: {
         weapon?: { name: string; damage_dice: string } | null;

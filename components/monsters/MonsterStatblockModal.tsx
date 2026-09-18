@@ -253,7 +253,12 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
                                         {((act.conditions_inflicted_names && act.conditions_inflicted_names.length > 0) || ((act as any).conditions_inflicted && (act as any).conditions_inflicted.length > 0)) && (
                                             <div className="text-xs text-red-400/90 font-lora mt-1">
                                                 <span>Inflicts condition: </span>
-                                                <strong>{(act.conditions_inflicted_names || (act as any).conditions_inflicted).join(', ')}</strong>
+                                                <strong>
+                                                    {((act.conditions_inflicted_names || (act as any).conditions_inflicted) || [])
+                                                        .map((c: any) => typeof c === 'string' ? c : c?.name || '')
+                                                        .filter(Boolean)
+                                                        .join(', ')}
+                                                </strong>
                                             </div>
                                         )}
 
