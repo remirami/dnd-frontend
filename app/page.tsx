@@ -74,7 +74,7 @@ export default function Home() {
       id: "gauntlet",
       title: "GAUNTLET",
       icon: <GauntletPillarIcon className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059]" />,
-      href: "/combat",
+      href: "/gauntlet",
       tooltipHeader: "✦ FACE THE CHALLENGE ✦",
       tooltipText:
         "Test your heroes' endurance in the merciless Gauntlet. How many waves of monsters can you survive in the depths of the dungeon?",

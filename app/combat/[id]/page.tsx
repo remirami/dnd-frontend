@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { combatApi } from "@/lib/api/combat";
 import { enemiesApi } from "@/lib/api/enemies";
+import { gauntletApi } from "@/lib/api/gauntlet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,9 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { CombatLog } from "./CombatLog";
 import { MonsterStatblockModal } from "@/components/monsters/MonsterStatblockModal";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
+import { GauntletArenaHud } from "@/components/gauntlet/GauntletArenaHud";
+import { RespiteModal } from "@/components/gauntlet/RespiteModal";
+import { VictoryDefeatModal } from "@/components/gauntlet/VictoryDefeatModal";
 import { isIncapacitating } from "@/lib/data/conditions";
 import type { CombatSession, CombatParticipant, CombatAction, CharacterSpell } from "@/lib/types/combat";
 import type { Enemy, Attack } from "@/lib/types/enemy";
+import type { GauntletRun } from "@/lib/types/gauntlet";
 
 export default function CombatPage() {
     const params = useParams();
@@ -67,13 +72,78 @@ export default function CombatPage() {
     };
 
     const sessionId = Number(params.id);
+    const searchParams = useSearchParams();
+    const gauntletRunId = searchParams?.get('gauntletRunId') ? Number(searchParams.get('gauntletRunId')) : null;
+    const [gauntletRun, setGauntletRun] = useState<GauntletRun | null>(null);
+    const [isRespiteOpen, setIsRespiteOpen] = useState(false);
+    const [gauntletModalType, setGauntletModalType] = useState<'victory' | 'defeat' | null>(null);
+
+    useEffect(() => {
+        if (gauntletRunId) {
+            gauntletApi.getRun(gauntletRunId)
+                .then(res => {
+                    setGauntletRun(res.data);
+                    if (res.data.status === 'respite') {
+                        setIsRespiteOpen(true);
+                    }
+                })
+                .catch(err => console.error("Failed to load gauntlet run:", err));
+        }
+    }, [gauntletRunId, sessionId]);
+
+    const handleGauntletNextWave = (nextSessionId: number) => {
+        setIsRespiteOpen(false);
+        router.push(`/combat/${nextSessionId}?gauntletRunId=${gauntletRunId}`);
+    };
+
+    const handleGauntletClaimVictory = async () => {
+        if (!gauntletRunId) return;
+        try {
+            const resp = await gauntletApi.claimVictory(gauntletRunId);
+            setGauntletRun(resp.data.run);
+            setIsRespiteOpen(false);
+            setGauntletModalType('victory');
+        } catch (err) {
+            console.error("Failed to claim gauntlet victory:", err);
+        }
+    };
+
+    const handleGauntletEnterEndless = async () => {
+        if (!gauntletRunId) return;
+        try {
+            const resp = await gauntletApi.enterEndless(gauntletRunId);
+            setGauntletRun(resp.data.run);
+        } catch (err) {
+            console.error("Failed to enter endless overtime:", err);
+        }
+    };
 
     // Check for combat victory or defeat
-    const checkCombatOutcome = (participants: CombatParticipant[]) => {
+    const checkCombatOutcome = (participants: CombatParticipant[]): boolean => {
         const players = participants.filter(p => p.participant_type === 'character');
         const enemies = participants.filter(p => p.participant_type === 'enemy');
         const allPlayersDead = players.length > 0 && players.every(p => p.current_hp <= 0);
         const allEnemiesDead = enemies.length > 0 && enemies.every(p => p.current_hp <= 0);
+
+        if (gauntletRunId) {
+            if (allEnemiesDead) {
+                gauntletApi.syncWave(gauntletRunId)
+                    .then(syncResp => {
+                        setGauntletRun(syncResp.data.run);
+                        setIsRespiteOpen(true);
+                    })
+                    .catch(e => console.error("Failed to sync gauntlet wave:", e));
+                return true;
+            } else if (allPlayersDead) {
+                gauntletApi.syncWave(gauntletRunId)
+                    .then(syncResp => {
+                        setGauntletRun(syncResp.data.run);
+                        setGauntletModalType('defeat');
+                    })
+                    .catch(e => console.error("Failed to sync gauntlet defeat:", e));
+                return true;
+            }
+        }
 
         if (allEnemiesDead) {
             setCombatOutcome('victory');
@@ -620,6 +690,32 @@ export default function CombatPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Gauntlet Respite & Victory/Defeat Modals */}
+            {isRespiteOpen && gauntletRun && (
+                <RespiteModal
+                    run={gauntletRun}
+                    onWaveStarted={handleGauntletNextWave}
+                    onClaimVictory={handleGauntletClaimVictory}
+                    onEnterEndless={handleGauntletEnterEndless}
+                />
+            )}
+
+            {gauntletModalType && gauntletRun && (
+                <VictoryDefeatModal
+                    run={gauntletRun}
+                    type={gauntletModalType}
+                />
+            )}
+
+            {/* Gauntlet Arena Top HUD */}
+            {gauntletRun && (
+                <GauntletArenaHud
+                    run={gauntletRun}
+                    enemiesRemaining={participants.filter(p => p.participant_type === 'enemy' && p.current_hp > 0 && p.is_active).length}
+                    onOpenRespite={() => setIsRespiteOpen(true)}
+                />
             )}
 
             {/* Top Bar */}
