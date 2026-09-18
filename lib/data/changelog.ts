@@ -30,7 +30,7 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
             {
                 id: "1.8.0-1",
                 title: "🎨 Dark-Fantasy Aesthetics & Tabletop Typography",
-                description: "Rebuilt the 5E Dashboard and character views with an immersive tabletop aesthetic featuring deep obsidian (#0c0d12), slate surfaces (#181a21), and radiant gold (#c5a059).",
+                description: "Rebuilt the 5E Portal and character views with an immersive tabletop aesthetic featuring deep obsidian (#0c0d12), slate surfaces (#181a21), and radiant gold (#c5a059).",
                 category: "ui",
                 details: [
                     "Cinzel Decorative typography for main headers, pillars, and 5E branding.",

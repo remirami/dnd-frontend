@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CombatLog } from "./CombatLog";
+import { MonsterStatblockModal } from "@/components/monsters/MonsterStatblockModal";
 import type { CombatSession, CombatParticipant, CombatAction, CharacterSpell } from "@/lib/types/combat";
 import type { Enemy, Attack } from "@/lib/types/enemy";
 
@@ -32,9 +33,34 @@ export default function CombatPage() {
     const [aiProcessing, setAiProcessing] = useState(false);
     // IDs of participants whose HP bar should flash red (took damage this step)
     const [damagedParticipantIds, setDamagedParticipantIds] = useState<Set<number>>(new Set());
+    const [statblockParticipant, setStatblockParticipant] = useState<CombatParticipant | null>(null);
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
+    const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
     const logRef = useRef<HTMLDivElement>(null);
+    const sessionRef = useRef<CombatSession | null>(null);
+
+    useEffect(() => {
+        sessionRef.current = session;
+    }, [session]);
+
+    const formatAiActionSummary = (aiActions: any[]) => {
+        if (!aiActions || aiActions.length === 0) return null;
+        const messages = aiActions.map((a: any) => {
+            if (a.type === 'special_action' || a.type === 'skip') return a.message;
+            if (a.message) return a.message;
+            const pt = a.pack_tactics ? ' [Pack Tactics]' : '';
+            if (a.fumble) return `⚠️ ${a.attacker} fumbled attack with ${a.attack_name}!`;
+            if (a.hit) {
+                const crit = a.critical ? ' CRITICAL HIT' : ' hit';
+                const cond = a.condition_applied ? ` (Inflicted ${a.condition_applied}!)` : '';
+                return `💥 ${a.attacker}${crit} ${a.target} with ${a.attack_name}${pt} for ${a.damage} damage!${cond}`;
+            }
+            return `🛡️ ${a.attacker} attacked ${a.target} with ${a.attack_name}${pt} but missed (rolled ${a.attack_total} vs AC ${a.target_ac}).`;
+        });
+        const hasHit = aiActions.some((a: any) => a.hit || a.type === 'special_action');
+        return { message: messages.join(' • '), isHit: hasHit };
+    };
 
     const sessionId = Number(params.id);
 
@@ -157,17 +183,22 @@ export default function CombatPage() {
             // Peek at current session state to decide if we should continue
             let currentSession: CombatSession | null = null;
             setSession(prev => { currentSession = prev; return prev; });
-            // Give React a tick to flush
             await sleep(0);
 
-            const active = (currentSession as CombatSession | null)?.current_participant ||
-                (currentSession as CombatSession | null)?.participants?.find((p: CombatParticipant) => p.is_active);
-
+            const active = (currentSession as CombatSession | null)?.current_participant;
             if (!active || active.participant_type !== 'enemy') break;
 
             try {
                 const res = await combatApi.aiTurn(sessionId);
                 const updatedSession = res.data.session;
+                sessionRef.current = updatedSession;
+
+                // Display actionable summary banner
+                const summary = formatAiActionSummary(res.data.actions);
+                if (summary) {
+                    setAiActionBanner(summary);
+                    setTimeout(() => setAiActionBanner(null), 4500);
+                }
 
                 // Collect IDs of participants that took damage this turn
                 const hitTargetIds = new Set<number>(
@@ -191,8 +222,7 @@ export default function CombatPage() {
                 }
 
                 // Check if the next participant is still an enemy; if not, stop
-                const next = updatedSession.current_participant ||
-                    updatedSession.participants?.find((p: CombatParticipant) => p.is_active);
+                const next = updatedSession.current_participant;
                 if (!next || next.participant_type !== 'enemy') break;
 
                 await sleep(DELAY_MS);
@@ -207,12 +237,12 @@ export default function CombatPage() {
         try {
             const response = await combatApi.nextTurn(sessionId);
             const updatedSession = response.data.session;
+            sessionRef.current = updatedSession;
             setSession(updatedSession);
             if (updatedSession.participants) checkCombatOutcome(updatedSession.participants);
 
             // Auto-resolve enemy turns step-by-step so HP bars update live
-            const nextParticipant = updatedSession.current_participant ||
-                updatedSession.participants?.find((p: CombatParticipant) => p.is_active);
+            const nextParticipant = updatedSession.current_participant;
             if (nextParticipant && nextParticipant.participant_type === 'enemy') {
                 setAiProcessing(true);
                 try {
@@ -230,12 +260,18 @@ export default function CombatPage() {
         setAiProcessing(true);
         try {
             const response = await combatApi.aiTurn(sessionId);
+            const summary = formatAiActionSummary(response.data.actions);
+            if (summary) {
+                setAiActionBanner(summary);
+                setTimeout(() => setAiActionBanner(null), 4500);
+            }
             // Flash any hit targets
             const hitTargetIds = new Set<number>(
                 response.data.actions
                     .filter(a => a.hit && a.damage && a.damage > 0 && a.target_id != null)
                     .map(a => a.target_id as number)
             );
+            sessionRef.current = response.data.session;
             setSession(response.data.session);
             if (hitTargetIds.size > 0) {
                 setDamagedParticipantIds(hitTargetIds);
@@ -671,6 +707,30 @@ export default function CombatPage() {
                 </div>
             )}
 
+            {/* AI Action Announcement Banner */}
+            {aiActionBanner && (
+                <div className={`px-6 py-2.5 border-b text-xs sm:text-sm font-lora font-medium flex items-center justify-between animate-in slide-in-from-top-2 duration-200 ${
+                    aiActionBanner.isHit 
+                        ? 'bg-red-950/80 text-red-200 border-red-700/60 shadow-[0_0_15px_rgba(239,68,68,0.25)]'
+                        : 'bg-[#181a21] text-amber-200 border-[#c5a059]/40 shadow-[0_0_12px_rgba(197,160,89,0.15)]'
+                }`}>
+                    <div className="max-w-[1800px] mx-auto flex items-center justify-between gap-3 w-full">
+                        <div className="flex items-center gap-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-black/40 border border-current">
+                                🤖 AI Action Result
+                            </span>
+                            <span className="font-semibold">{aiActionBanner.message}</span>
+                        </div>
+                        <button
+                            onClick={() => setAiActionBanner(null)}
+                            className="text-slate-400 hover:text-white text-xs px-1 font-bold cursor-pointer"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Two-Column Layout */}
             <div className="max-w-[1800px] mx-auto px-6 py-5">
                 <div className="grid grid-cols-12 gap-5" style={{ height: 'calc(100vh - 200px)' }}>
@@ -812,8 +872,67 @@ export default function CombatPage() {
 
                                             {/* Attack Options */}
                                             {isEnemyTurn ? (
-                                                /* Enemy Attacks */
-                                                enemyAttacks.length > 0 ? (
+                                                /* Enemy Actions & Attacks */
+                                                currentParticipant?.enemy_actions && currentParticipant.enemy_actions.length > 0 ? (
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <Label className="text-[#c5a059] font-cinzel-decorative text-xs font-bold uppercase tracking-wider block">
+                                                                Enemy Monster Actions
+                                                            </Label>
+                                                            {currentParticipant.multiattack && (
+                                                                <Badge className="bg-amber-950/40 text-amber-300 border-amber-600/40 text-[10px]">
+                                                                    Multiattack ({currentParticipant.multiattack.action_count} Attacks)
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            {currentParticipant.enemy_actions.map((action: any) => {
+                                                                const isRecharging = action.has_recharge && (currentParticipant.recharge_state?.[action.name] === false);
+                                                                const isDisabled = !targetId || isRecharging;
+                                                                return (
+                                                                    <button
+                                                                        key={action.id}
+                                                                        onClick={() => handleAttack(action.name, action.attack_bonus || 0)}
+                                                                        disabled={isDisabled}
+                                                                        className={`text-left p-4 rounded border transition-all duration-150 ${isDisabled
+                                                                            ? 'bg-[#181a21]/40 border-stone-800 opacity-50 cursor-not-allowed'
+                                                                            : 'bg-[#181a21] border-red-900/40 hover:border-red-500/70 hover:bg-[#241315] cursor-pointer'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                                                            <p className="font-cinzel-decorative font-bold text-sm text-red-200 truncate">{action.name}</p>
+                                                                            {action.has_recharge && (
+                                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0 ${isRecharging
+                                                                                    ? 'bg-red-950 text-red-400 border border-red-800'
+                                                                                    : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                                                                    }`}>
+                                                                                    {isRecharging ? `Recharge (${action.recharge_min_roll}-6)` : '✦ Ready'}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                                                            {action.attack_bonus !== null && action.attack_bonus !== undefined && (
+                                                                                <span className="text-xs bg-red-950/40 text-red-300 border border-red-800/40 px-2 py-0.5 rounded font-fira-sans font-bold">
+                                                                                    +{action.attack_bonus} to hit
+                                                                                </span>
+                                                                            )}
+                                                                            {action.saving_throw_dc && (
+                                                                                <span className="text-xs bg-purple-950/40 text-purple-300 border border-purple-800/40 px-2 py-0.5 rounded font-fira-sans font-bold">
+                                                                                    DC {action.saving_throw_dc} {action.saving_throw_ability} Save
+                                                                                </span>
+                                                                            )}
+                                                                            {action.damage_rolls?.map((dmg: any, dIdx: number) => (
+                                                                                <span key={dIdx} className="text-xs bg-[#12141a] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded font-fira-sans">
+                                                                                    {dmg.formula}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ) : enemyAttacks.length > 0 ? (
                                                     <div>
                                                         <Label className="text-[#c5a059] font-cinzel-decorative text-xs font-bold uppercase tracking-wider mb-3 block">
                                                             Enemy Martial Attacks
@@ -1122,62 +1241,79 @@ export default function CombatPage() {
                                         )}
 
                                         {/* Enemy Stat Block */}
-                                        {viewed.participant_type === 'enemy' && viewed.enemy_stats && (
+                                        {viewed.participant_type === 'enemy' && (
                                             <div className="mt-4 space-y-3 font-lora">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="text-xs font-cinzel-decorative font-bold text-[#c5a059] uppercase tracking-wider">
+                                                        Monster Data
+                                                    </h4>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => setStatblockParticipant(viewed)}
+                                                        className="bg-[#c5a059]/20 hover:bg-[#c5a059]/30 text-[#e0bc75] border border-[#c5a059]/40 text-xs px-2.5 py-1 h-7 rounded cursor-pointer"
+                                                    >
+                                                        📜 Full Stat Block
+                                                    </Button>
+                                                </div>
+
                                                 {/* Ability Scores Grid */}
-                                                <div>
-                                                    <h4 className="text-xs font-cinzel-decorative font-bold text-[#c5a059] uppercase tracking-wider mb-2">Ability Scores</h4>
-                                                    <div className="grid grid-cols-6 gap-2">
-                                                        {Object.entries(viewed.enemy_stats.ability_scores).map(([ability, data]) => (
-                                                            <div key={ability} className="bg-[#181a21] rounded border border-[#c5a059]/25 text-center p-2">
-                                                                <p className="text-[10px] font-semibold text-[#d1cdb8]/60 uppercase">{ability.slice(0, 3)}</p>
-                                                                <p className="text-base font-bold font-fira-sans text-[#c5a059]">{data.score}</p>
-                                                                <p className={`text-xs font-fira-sans font-bold ${data.modifier >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                                    {data.modifier >= 0 ? '+' : ''}{data.modifier}
-                                                                </p>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Speed & Proficiency */}
-                                                <div className="flex flex-wrap gap-2">
-                                                    {viewed.enemy_stats.speed && (
-                                                        <span className="text-xs bg-[#181a21] text-[#d1cdb8] border border-[#c5a059]/25 px-2 py-0.5 rounded">
-                                                            🏃 {viewed.enemy_stats.speed}
-                                                        </span>
-                                                    )}
-                                                    {viewed.enemy_stats.proficiency_bonus && (
-                                                        <span className="text-xs bg-[#181a21] text-[#c5a059] border border-[#c5a059]/30 px-2 py-0.5 rounded font-fira-sans">
-                                                            Prof +{viewed.enemy_stats.proficiency_bonus}
-                                                        </span>
-                                                    )}
-                                                    {viewed.enemy_stats.senses?.darkvision && (
-                                                        <span className="text-xs bg-[#181a21] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded">
-                                                            👁 Darkvision {viewed.enemy_stats.senses.darkvision}
-                                                        </span>
-                                                    )}
-                                                    {viewed.enemy_stats.senses?.passive_perception && (
-                                                        <span className="text-xs bg-[#181a21] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded font-fira-sans">
-                                                            PP {viewed.enemy_stats.senses.passive_perception}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Saving Throws */}
-                                                {Object.values(viewed.enemy_stats.saving_throws).some(v => v !== null) && (
-                                                    <div>
-                                                        <h4 className="text-xs font-semibold text-[#d1cdb8]/70 uppercase tracking-wider mb-1">Saving Throws</h4>
-                                                        <div className="flex flex-wrap gap-1.5">
-                                                            {Object.entries(viewed.enemy_stats.saving_throws)
-                                                                .filter(([, val]) => val !== null)
-                                                                .map(([ability, val]) => (
-                                                                    <span key={ability} className="text-xs bg-[#181a21] text-[#e0bc75] border border-[#c5a059]/20 px-2 py-0.5 rounded font-fira-sans">
-                                                                        {ability.toUpperCase()} +{val}
-                                                                    </span>
+                                                {viewed.enemy_stats && (
+                                                    <>
+                                                        <div>
+                                                            <h4 className="text-xs font-cinzel-decorative font-bold text-[#c5a059] uppercase tracking-wider mb-2">Ability Scores</h4>
+                                                            <div className="grid grid-cols-6 gap-2">
+                                                                {Object.entries(viewed.enemy_stats.ability_scores || {}).map(([ability, data]) => (
+                                                                    <div key={ability} className="bg-[#181a21] rounded border border-[#c5a059]/25 text-center p-2">
+                                                                        <p className="text-[10px] font-semibold text-[#d1cdb8]/60 uppercase">{ability.slice(0, 3)}</p>
+                                                                        <p className="text-base font-bold font-fira-sans text-[#c5a059]">{data.score}</p>
+                                                                        <p className={`text-xs font-fira-sans font-bold ${data.modifier >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                                            {data.modifier >= 0 ? '+' : ''}{data.modifier}
+                                                                        </p>
+                                                                    </div>
                                                                 ))}
+                                                            </div>
                                                         </div>
-                                                    </div>
+
+                                                        {/* Speed & Proficiency */}
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {viewed.enemy_stats.speed && (
+                                                                <span className="text-xs bg-[#181a21] text-[#d1cdb8] border border-[#c5a059]/25 px-2 py-0.5 rounded">
+                                                                    🏃 {viewed.enemy_stats.speed}
+                                                                </span>
+                                                            )}
+                                                            {viewed.enemy_stats.proficiency_bonus && (
+                                                                <span className="text-xs bg-[#181a21] text-[#c5a059] border border-[#c5a059]/30 px-2 py-0.5 rounded font-fira-sans">
+                                                                    Prof +{viewed.enemy_stats.proficiency_bonus}
+                                                                </span>
+                                                            )}
+                                                            {viewed.enemy_stats.senses?.darkvision && (
+                                                                <span className="text-xs bg-[#181a21] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded">
+                                                                    👁 Darkvision {viewed.enemy_stats.senses.darkvision}
+                                                                </span>
+                                                            )}
+                                                            {viewed.enemy_stats.senses?.passive_perception && (
+                                                                <span className="text-xs bg-[#181a21] text-[#d1cdb8]/80 border border-stone-700 px-2 py-0.5 rounded font-fira-sans">
+                                                                    PP {viewed.enemy_stats.senses.passive_perception}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Saving Throws */}
+                                                        {viewed.enemy_stats.saving_throws && Object.values(viewed.enemy_stats.saving_throws).some(v => v !== null) && (
+                                                            <div>
+                                                                <h4 className="text-xs font-semibold text-[#d1cdb8]/70 uppercase tracking-wider mb-1">Saving Throws</h4>
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {Object.entries(viewed.enemy_stats.saving_throws)
+                                                                        .filter(([, val]) => val !== null)
+                                                                        .map(([ability, val]) => (
+                                                                            <span key={ability} className="text-xs bg-[#181a21] text-[#e0bc75] border border-[#c5a059]/20 px-2 py-0.5 rounded font-fira-sans">
+                                                                                {ability.toUpperCase()} +{val}
+                                                                            </span>
+                                                                        ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
 
                                                 {/* Enemy Attacks */}
@@ -1260,6 +1396,12 @@ export default function CombatPage() {
                     animation: fade-in 0.3s ease-out;
                 }
             `}</style>
+
+            {/* Monster Stat Block Modal */}
+            <MonsterStatblockModal
+                participant={statblockParticipant}
+                onClose={() => setStatblockParticipant(null)}
+            />
         </div>
     );
 }

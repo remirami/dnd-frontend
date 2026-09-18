@@ -54,7 +54,7 @@ export default function Navbar({
         href="/"
         className="font-cinzel-decorative text-xl md:text-2xl font-bold tracking-wider text-[#c5a059] hover:text-[#e0bc75] transition-colors"
       >
-        5E DASHBOARD
+        5E PORTAL
       </Link>
 
       {/* Center Action Buttons (For subpages like Characters) */}

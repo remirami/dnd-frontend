@@ -97,7 +97,7 @@ export default function Home() {
 
         {/* Center Fancy Logo with Filigree Wings & Crest */}
         <FancyHeaderLogo
-          title="5E DASHBOARD"
+          title="5E PORTAL"
           subtitle="FIFTH EDITION TABLETOP REALM"
           className="flex-1 mx-2"
         />

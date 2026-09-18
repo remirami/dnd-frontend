@@ -203,6 +203,18 @@ export interface CombatParticipant {
     enemy_attacks?: EnemyAttackInfo[];
     enemy_abilities?: EnemyAbilityInfo[];
     enemy_resistances?: EnemyResistanceInfo[];
+    enemy_actions?: any[];
+    multiattack?: {
+        description: string;
+        action_count: number;
+        sequence: Array<{ action_name: string; count: number }>;
+    } | null;
+    enemy_traits?: Array<{
+        name: string;
+        description: string;
+        trait_type: string;
+    }>;
+    recharge_state?: Record<string, boolean>;
 }
 
 export interface CombatSession {

@@ -25,8 +25,11 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
 
     // Check if participant is the target
     const isTarget = (action: CombatAction, participant: CombatParticipant) => {
-        return action.target === participant.id ||
-            (!!action.target_name && !!participant.name && action.target_name.trim().toLowerCase() === participant.name.trim().toLowerCase());
+        if (action.target === participant.id) return true;
+        if (!!action.target_name && !!participant.name && action.target_name.trim().toLowerCase() === participant.name.trim().toLowerCase()) return true;
+        // Also include AoE actions where participant is mentioned in the description
+        if (!action.target && participant.name && action.description && action.description.toLowerCase().includes(participant.name.toLowerCase())) return true;
+        return false;
     };
 
     // Filter calculations

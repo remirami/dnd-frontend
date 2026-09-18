@@ -33,7 +33,7 @@ const firaSans = Fira_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "5E Dashboard - D&D 5e Campaign Manager",
+  title: "5E Portal - D&D 5e Campaign Manager",
   description: "Character creation, tactical combat, and encounter management built on official 5e SRD rules.",
 };
 

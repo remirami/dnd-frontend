@@ -9,7 +9,7 @@ interface FancyHeaderLogoProps {
 }
 
 export default function FancyHeaderLogo({
-  title = "5E DASHBOARD",
+  title = "5E PORTAL",
   subtitle = "FIFTH EDITION TABLETOP REALM",
   className = "",
 }: FancyHeaderLogoProps) {

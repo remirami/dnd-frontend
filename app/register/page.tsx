@@ -77,7 +77,7 @@ export default function RegisterPage() {
             href="/"
             className="font-cinzel-decorative text-2xl md:text-3xl font-bold tracking-widest text-[#c5a059] hover:text-[#e0bc75] transition-colors drop-shadow-[0_2px_10px_rgba(197,160,89,0.3)] inline-block"
           >
-            5E DASHBOARD
+            5E PORTAL
           </Link>
         </div>
 
