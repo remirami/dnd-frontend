@@ -97,6 +97,14 @@ export interface CharacterSpellDetails {
     range: string;
     concentration: boolean;
     ritual: boolean;
+    description?: string;
+    higher_level?: string;
+    duration?: string;
+    damage_progression?: Array<{
+        spell_slot_level: number;
+        damage_dice: string;
+        damage_type_name?: string;
+    }>;
 }
 
 export interface CharacterSpell {
@@ -194,6 +202,7 @@ export interface CombatParticipant {
     is_active: boolean;
     conditions: Array<string | { id: number; name: string; description?: string }>;
     attacks_remaining: number;
+    action_used?: boolean;
     equipped_items?: {
         weapon?: { name: string; damage_dice: string } | null;
         armor?: { name: string; base_ac: number } | null;

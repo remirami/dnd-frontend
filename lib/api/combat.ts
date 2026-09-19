@@ -48,6 +48,40 @@ export const combatApi = {
     attack: (sessionId: number, data: { attacker_id: number; target_id: number; attack_name: string; attack_bonus: number }) =>
         apiClient.post<any>(`/combat/sessions/${sessionId}/attack/`, data),
 
+    // Cast a spell
+    castSpell: (sessionId: number, data: {
+        caster_id: number;
+        target_id?: number | null;
+        spell_name: string;
+        spell_level?: number;
+        save_type?: string;
+        save_dc?: number;
+        damage_string?: string;
+        damage_type?: number;
+        is_healing?: boolean;
+        is_ritual?: boolean;
+        requires_concentration?: boolean;
+    }) =>
+        apiClient.post<{
+            message: string;
+            spell_name: string;
+            spell_level?: number;
+            target?: string;
+            target_id?: number;
+            target_hp?: number;
+            is_healing?: boolean;
+            healing_amount?: number;
+            save_type?: string;
+            save_dc?: number;
+            save_roll?: number;
+            save_total?: number;
+            save_success?: boolean;
+            damage?: number;
+            condition_applied?: string | null;
+            concentration_started?: boolean;
+            action: any;
+        }>(`/combat/sessions/${sessionId}/cast_spell/`, data),
+
     // AI: Resolve current enemy's turn
     aiTurn: (sessionId: number) =>
         apiClient.post<AITurnResponse>(`/combat/sessions/${sessionId}/ai_turn/`),

@@ -16,6 +16,13 @@ export interface AttackFeedback {
     critical?: boolean;
     damage?: number;
     timestamp: number;
+    // Spell specific feedback
+    spellName?: string;
+    isSpell?: boolean;
+    isHealing?: boolean;
+    healingAmount?: number;
+    saveSuccess?: boolean;
+    conditionApplied?: string | null;
 }
 
 interface BattlefieldArenaProps {
@@ -72,6 +79,110 @@ function CornerFiligree({
     );
 }
 
+function FloatingCombatText({ text }: { text: AttackFeedback }) {
+    if (text.isHealing) {
+        return (
+            <div className="animate-combat-hit flex flex-col items-center select-none">
+                <span className="font-cinzel text-2xl sm:text-3xl font-black tracking-widest uppercase text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.95)]">
+                    💚 HEALED!
+                </span>
+                {text.healingAmount != null && text.healingAmount > 0 && (
+                    <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-emerald-300 drop-shadow-[0_0_12px_rgba(110,231,183,0.85)] mt-0.5">
+                        +{text.healingAmount} HP
+                    </span>
+                )}
+            </div>
+        );
+    }
+
+    if (text.isSpell) {
+        if (text.saveSuccess === true) {
+            return (
+                <div className="animate-combat-miss flex flex-col items-center select-none">
+                    <span className="font-cinzel text-xl sm:text-2xl font-black tracking-widest uppercase text-sky-300 drop-shadow-[0_0_14px_rgba(125,211,252,0.8)]">
+                        🛡️ SAVED!
+                    </span>
+                    {text.damage != null && text.damage > 0 ? (
+                        <span className="font-fira-sans text-base sm:text-lg font-bold text-amber-300 mt-0.5">
+                            Half Damage: -{text.damage} HP
+                        </span>
+                    ) : (
+                        <span className="font-lora text-xs font-semibold text-slate-300/80 italic tracking-wider">
+                            RESISTED
+                        </span>
+                    )}
+                </div>
+            );
+        }
+
+        if (text.saveSuccess === false) {
+            return (
+                <div className="animate-combat-hit flex flex-col items-center select-none">
+                    <span className="font-cinzel text-2xl sm:text-3xl font-black tracking-widest uppercase text-red-500 drop-shadow-[0_0_18px_rgba(239,68,68,0.9)]">
+                        💥 SAVE FAILED!
+                    </span>
+                    {text.damage != null && text.damage > 0 && (
+                        <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.85)] mt-0.5">
+                            -{text.damage} HP
+                        </span>
+                    )}
+                    {text.conditionApplied && (
+                        <span className="font-cinzel text-sm sm:text-base font-bold text-purple-300 uppercase tracking-wider mt-1 drop-shadow-[0_0_10px_rgba(216,180,254,0.8)]">
+                            ⚡ {text.conditionApplied}
+                        </span>
+                    )}
+                </div>
+            );
+        }
+
+        return (
+            <div className="animate-combat-hit flex flex-col items-center select-none">
+                <span className="font-cinzel text-2xl sm:text-3xl font-black tracking-widest uppercase text-purple-400 drop-shadow-[0_0_18px_rgba(192,132,252,0.9)]">
+                    ✨ {text.spellName ? text.spellName.toUpperCase() : "SPELL HIT!"}
+                </span>
+                {text.damage != null && text.damage > 0 && (
+                    <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.85)] mt-0.5">
+                        -{text.damage} HP
+                    </span>
+                )}
+                {text.conditionApplied && (
+                    <span className="font-cinzel text-sm sm:text-base font-bold text-amber-300 uppercase tracking-wider mt-1">
+                        ⚡ {text.conditionApplied}
+                    </span>
+                )}
+            </div>
+        );
+    }
+
+    return text.hit ? (
+        <div className="animate-combat-hit flex flex-col items-center select-none">
+            <span
+                className={`font-cinzel text-2xl sm:text-3xl font-black tracking-widest uppercase ${
+                    text.critical
+                        ? "text-amber-300 drop-shadow-[0_0_20px_rgba(251,191,36,0.95)]"
+                        : "text-red-500 drop-shadow-[0_0_18px_rgba(239,68,68,0.9)]"
+                }`}
+            >
+                {text.critical ? "💥 CRITICAL HIT!" : "⚔️ HIT!"}
+            </span>
+            {text.damage != null && text.damage > 0 && (
+                <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.85)] mt-0.5">
+                    -{text.damage} HP
+                </span>
+            )}
+        </div>
+    ) : (
+        <div className="animate-combat-miss flex flex-col items-center select-none">
+            <span className="font-cinzel text-xl sm:text-2xl font-black tracking-widest uppercase text-slate-100 drop-shadow-[0_0_14px_rgba(241,245,249,0.8)]">
+                🛡️ MISS
+            </span>
+            <span className="font-lora text-xs font-semibold text-slate-300/80 italic tracking-wider">
+                DEFLECTED
+            </span>
+        </div>
+    );
+}
+
 export function BattlefieldArena({
     currentParticipant,
     targetParticipant,
@@ -89,26 +200,16 @@ export function BattlefieldArena({
     lastAttackFeedback,
 }: BattlefieldArenaProps) {
     // Active floating combat text state
-    const [floatingText, setFloatingText] = useState<{
-        targetId: number;
-        hit: boolean;
-        critical?: boolean;
-        damage?: number;
-    } | null>(null);
+    const [floatingText, setFloatingText] = useState<AttackFeedback | null>(null);
 
     // Trigger floating combat text whenever a new attack feedback arrives
     useEffect(() => {
         if (lastAttackFeedback) {
-            setFloatingText({
-                targetId: lastAttackFeedback.targetId,
-                hit: lastAttackFeedback.hit,
-                critical: lastAttackFeedback.critical,
-                damage: lastAttackFeedback.damage,
-            });
+            setFloatingText(lastAttackFeedback);
 
             const timer = setTimeout(() => {
                 setFloatingText(null);
-            }, 1800);
+            }, 2200);
 
             return () => clearTimeout(timer);
         }
@@ -207,36 +308,10 @@ export function BattlefieldArena({
                     <CornerFiligree position="bl" color={isEnemyTurn ? "#ef4444" : "#c5a059"} />
                     <CornerFiligree position="br" color={isEnemyTurn ? "#ef4444" : "#c5a059"} />
 
-                    {/* Floating Combat Text Overlay if Attacker was targeted (e.g. counter-attack / turn damage) */}
+                    {/* Floating Combat Text Overlay if Attacker was targeted (e.g. counter-attack / turn damage / self-heal) */}
                     {attackerIsTargetOfAttack && floatingText && (
                         <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
-                            {floatingText.hit ? (
-                                <div className="animate-combat-hit flex flex-col items-center select-none">
-                                    <span
-                                        className={`font-cinzel text-2xl sm:text-3xl font-black tracking-widest uppercase ${
-                                            floatingText.critical
-                                                ? "text-amber-300 drop-shadow-[0_0_20px_rgba(251,191,36,0.95)]"
-                                                : "text-red-500 drop-shadow-[0_0_18px_rgba(239,68,68,0.9)]"
-                                        }`}
-                                    >
-                                        {floatingText.critical ? "💥 CRITICAL HIT!" : "⚔️ HIT!"}
-                                    </span>
-                                    {floatingText.damage != null && floatingText.damage > 0 && (
-                                        <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.85)] mt-0.5">
-                                            -{floatingText.damage} HP
-                                        </span>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="animate-combat-miss flex flex-col items-center select-none">
-                                    <span className="font-cinzel text-xl sm:text-2xl font-black tracking-widest uppercase text-slate-100 drop-shadow-[0_0_14px_rgba(241,245,249,0.8)]">
-                                        🛡️ MISS
-                                    </span>
-                                    <span className="font-lora text-xs font-semibold text-slate-300/80 italic tracking-wider">
-                                        DEFLECTED
-                                    </span>
-                                </div>
-                            )}
+                            <FloatingCombatText text={floatingText} />
                         </div>
                     )}
 
@@ -394,33 +469,7 @@ export function BattlefieldArena({
                     {/* Floating Combat Text Overlay when Defender is targeted */}
                     {defenderIsTargetOfAttack && floatingText && (
                         <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
-                            {floatingText.hit ? (
-                                <div className="animate-combat-hit flex flex-col items-center select-none">
-                                    <span
-                                        className={`font-cinzel text-2xl sm:text-3xl font-black tracking-widest uppercase ${
-                                            floatingText.critical
-                                                ? "text-amber-300 drop-shadow-[0_0_20px_rgba(251,191,36,0.95)]"
-                                                : "text-red-500 drop-shadow-[0_0_18px_rgba(239,68,68,0.9)]"
-                                        }`}
-                                    >
-                                        {floatingText.critical ? "💥 CRITICAL HIT!" : "⚔️ HIT!"}
-                                    </span>
-                                    {floatingText.damage != null && floatingText.damage > 0 && (
-                                        <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.85)] mt-0.5">
-                                            -{floatingText.damage} HP
-                                        </span>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="animate-combat-miss flex flex-col items-center select-none">
-                                    <span className="font-cinzel text-xl sm:text-2xl font-black tracking-widest uppercase text-slate-100 drop-shadow-[0_0_14px_rgba(241,245,249,0.8)]">
-                                        🛡️ MISS
-                                    </span>
-                                    <span className="font-lora text-xs font-semibold text-slate-300/80 italic tracking-wider">
-                                        DEFLECTED
-                                    </span>
-                                </div>
-                            )}
+                            <FloatingCombatText text={floatingText} />
                         </div>
                     )}
 

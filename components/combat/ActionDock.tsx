@@ -26,6 +26,7 @@ interface ActionDockProps {
     characterSpells: Map<number, CharacterSpell[]>;
     charData: any;
     getSpellSlots: (level: number) => { total: number; used: number; remaining: number };
+    onSelectSpell?: (spell: CharacterSpell) => void;
     // Monster actions (practice mode)
     enemyAttacks: Array<{ name: string; bonus: number; damage: string; type?: string; description?: string }>;
     // Test mode damage/healing
@@ -49,6 +50,7 @@ export function ActionDock({
     characterSpells,
     charData,
     getSpellSlots,
+    onSelectSpell,
     enemyAttacks,
     damageAmount,
     setDamageAmount,
@@ -79,7 +81,7 @@ export function ActionDock({
         );
     }
 
-    const hasAttacksLeft = currentParticipant ? currentParticipant.attacks_remaining > 0 : false;
+    const hasAttacksLeft = currentParticipant ? (currentParticipant.attacks_remaining > 0 && !currentParticipant.action_used) : false;
     const isActionDisabled = !targetId || isAttacking || !hasAttacksLeft || currentIsIncapacitated;
 
     return (
@@ -299,19 +301,31 @@ export function ActionDock({
                                         <div className="flex items-center gap-1.5">
                                             {spells.map((spell) => {
                                                 const noSlots = slots !== null && slots.remaining <= 0;
-                                                const disabled = isActionDisabled || noSlots;
+                                                const disabled = !hasAttacksLeft || currentIsIncapacitated || isAttacking || (noSlots && !spell.is_ritual);
                                                 return (
                                                     <button
                                                         key={spell.id}
-                                                        onClick={() => onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0)}
+                                                        onClick={() => {
+                                                            if (onSelectSpell) {
+                                                                onSelectSpell(spell);
+                                                            } else {
+                                                                onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0);
+                                                            }
+                                                        }}
                                                         disabled={disabled}
-                                                        className={`px-2.5 py-1.5 rounded border text-xs font-lora font-medium transition-all ${
+                                                        className={`px-3 py-1.5 rounded border text-xs font-lora font-medium transition-all flex items-center gap-1.5 ${
                                                             disabled
                                                                 ? 'bg-[#141622]/40 border-slate-800 opacity-40 cursor-not-allowed'
-                                                                : 'bg-[#181a28] border-purple-800/60 hover:border-purple-400 text-purple-200 hover:bg-[#251f33] cursor-pointer'
+                                                                : 'bg-[#181a28] border-purple-800/60 hover:border-purple-400 text-purple-200 hover:bg-[#251f33] shadow-[0_0_10px_rgba(168,85,247,0.15)] cursor-pointer'
                                                         }`}
                                                     >
+                                                        <span>✨</span>
                                                         <span>{spell.name}</span>
+                                                        {spell.is_ritual && (
+                                                            <span className="text-[9px] px-1 rounded bg-blue-950 text-blue-300 font-mono">
+                                                                R
+                                                            </span>
+                                                        )}
                                                     </button>
                                                 );
                                             })}

@@ -21,6 +21,7 @@ import { VictoryDefeatModal } from "@/components/gauntlet/VictoryDefeatModal";
 import { InitiativeRibbon } from "@/components/combat/InitiativeRibbon";
 import { BattlefieldArena, type AttackFeedback } from "@/components/combat/BattlefieldArena";
 import { ActionDock } from "@/components/combat/ActionDock";
+import { SpellCastModal } from "@/components/combat/SpellCastModal";
 import { CombatLogDrawer } from "@/components/combat/CombatLogDrawer";
 import { ParticipantInspectorDrawer } from "@/components/combat/ParticipantInspectorDrawer";
 import { isIncapacitating } from "@/lib/data/conditions";
@@ -51,6 +52,8 @@ export default function CombatPage() {
     const [statblockParticipant, setStatblockParticipant] = useState<CombatParticipant | null>(null);
     const [isAttacking, setIsAttacking] = useState(false);
     const [lastAttackFeedback, setLastAttackFeedback] = useState<AttackFeedback | null>(null);
+    const [selectedSpellForCast, setSelectedSpellForCast] = useState<CharacterSpell | null>(null);
+    const [isCastingSpell, setIsCastingSpell] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
     const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
@@ -484,6 +487,85 @@ export default function CombatPage() {
         }
     };
 
+    const handleCastSpell = async (data: {
+        casterId: number;
+        targetId: number | null;
+        spellName: string;
+        spellLevel: number;
+        saveType?: string;
+        saveDc?: number;
+        damageString?: string;
+        isHealing?: boolean;
+        isRitual?: boolean;
+        requiresConcentration?: boolean;
+    }) => {
+        const current = getCurrentParticipant();
+        if (!current) return;
+        if (current.is_active && current.conditions?.some((c: any) => isIncapacitating(c))) {
+            alert(`${current.name} is ${incapacitatingName} and cannot take actions.`);
+            return;
+        }
+        if (current.attacks_remaining <= 0 || current.action_used) {
+            alert(`${current.name} has no actions remaining this turn. Please end your turn.`);
+            return;
+        }
+        if (isCastingSpell) return;
+        setIsCastingSpell(true);
+        try {
+            const res = await combatApi.castSpell(sessionId, {
+                caster_id: data.casterId,
+                target_id: data.targetId,
+                spell_name: data.spellName,
+                spell_level: data.spellLevel,
+                save_type: data.saveType,
+                save_dc: data.saveDc,
+                damage_string: data.damageString,
+                is_healing: data.isHealing,
+                is_ritual: data.isRitual,
+                requires_concentration: data.requiresConcentration,
+            });
+
+            if (res.data) {
+                const resolvedTargetId = res.data.target_id || data.targetId;
+                if (resolvedTargetId) {
+                    setLastAttackFeedback({
+                        targetId: resolvedTargetId,
+                        hit: res.data.is_healing ? true : (res.data.save_success === false || !res.data.save_type),
+                        damage: res.data.damage || 0,
+                        timestamp: Date.now(),
+                        spellName: res.data.spell_name,
+                        isSpell: true,
+                        isHealing: !!res.data.is_healing,
+                        healingAmount: res.data.healing_amount || 0,
+                        saveSuccess: res.data.save_success,
+                        conditionApplied: res.data.condition_applied,
+                    });
+
+                    if (res.data.damage && res.data.damage > 0) {
+                        setDamagedParticipantIds(prev => new Set([...prev, resolvedTargetId]));
+                        setTimeout(() => {
+                            setDamagedParticipantIds(prev => {
+                                const next = new Set(prev);
+                                next.delete(resolvedTargetId);
+                                return next;
+                            });
+                        }, 1200);
+                    }
+                }
+            }
+            await loadSession();
+            setSelectedSpellForCast(null);
+        } catch (error: any) {
+            const errMsg = error.response?.data?.error ||
+                (typeof error.response?.data === 'string' ? error.response.data : null) ||
+                (error.response?.data && typeof error.response.data === 'object' ? JSON.stringify(error.response.data) : null) ||
+                error.message;
+            alert(`Spellcasting failed: ${errMsg}`);
+        } finally {
+            setIsCastingSpell(false);
+        }
+    };
+
     // FIX: damage/healing now use targetId, not the initiative-selected participant
     const handleApplyDamage = async () => {
         if (!targetId || !damageAmount) return;
@@ -823,6 +905,7 @@ export default function CombatPage() {
                 characterSpells={characterSpells}
                 charData={charData}
                 getSpellSlots={getSpellSlots}
+                onSelectSpell={(spell) => setSelectedSpellForCast(spell)}
                 enemyAttacks={enemyAttacks}
                 damageAmount={damageAmount}
                 setDamageAmount={setDamageAmount}
@@ -851,6 +934,21 @@ export default function CombatPage() {
                 participant={statblockParticipant}
                 onClose={() => setStatblockParticipant(null)}
             />
+
+            {/* Dedicated Spellcasting Action Modal */}
+            {selectedSpellForCast && currentParticipant && (
+                <SpellCastModal
+                    isOpen={!!selectedSpellForCast}
+                    onClose={() => setSelectedSpellForCast(null)}
+                    spell={selectedSpellForCast}
+                    caster={currentParticipant}
+                    allParticipants={participants}
+                    initialTargetId={targetId}
+                    getSpellSlots={getSpellSlots}
+                    isCasting={isCastingSpell}
+                    onCast={handleCastSpell}
+                />
+            )}
         </div>
     );
 }
