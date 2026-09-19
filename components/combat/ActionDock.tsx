@@ -13,7 +13,7 @@ interface ActionDockProps {
     gauntletRunId: number | null;
     isAttacking: boolean;
     currentIsIncapacitated: boolean;
-    onAttack: (attackName: string, attackBonus: number) => void;
+    onAttack: (attackName: string, attackBonus: number, options?: { advantage?: boolean; disadvantage?: boolean }) => void;
     // Weapon & Spell data
     characterWeapons: Array<{
         name: string;
@@ -73,6 +73,7 @@ export function ActionDock({
     const [lohTargetId, setLohTargetId] = useState<number | null>(null);
     const [supplyTargetId, setSupplyTargetId] = useState<number | null>(null);
     const [isOperating, setIsOperating] = useState(false);
+    const [rollMode, setRollMode] = useState<'normal' | 'advantage' | 'disadvantage'>('normal');
 
     // If it's an enemy turn in Gauntlet, display the Autonomous AI indicator card
     if (isEnemyTurn && gauntletRunId) {
@@ -211,6 +212,49 @@ export function ActionDock({
                     )}
                 </div>
 
+                {/* Middle: Advantage / Normal / Disadvantage Roll Mode Selector */}
+                <div className="flex items-center gap-1 bg-[#0b0d14] px-1.5 py-0.5 rounded-md border border-[#c5a059]/25 shadow-inner">
+                    <span className="text-[10px] font-cinzel font-bold text-[#c5a059]/70 mr-1 hidden sm:inline">
+                        ROLL:
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setRollMode('advantage')}
+                        title="Roll with Advantage (rolls 2d20, takes higher)"
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                            rollMode === 'advantage'
+                                ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.6)] font-bold'
+                                : 'text-emerald-400/60 hover:text-emerald-300 hover:bg-emerald-950/40'
+                        }`}
+                    >
+                        ADV
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setRollMode('normal')}
+                        title="Normal Roll (1d20)"
+                        className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-all cursor-pointer ${
+                            rollMode === 'normal'
+                                ? 'bg-[#c5a059] text-[#0c0d12] font-bold shadow-[0_0_8px_rgba(197,160,89,0.4)]'
+                                : 'text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-white/5'
+                        }`}
+                    >
+                        NORM
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setRollMode('disadvantage')}
+                        title="Roll with Disadvantage (rolls 2d20, takes lower)"
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
+                            rollMode === 'disadvantage'
+                                ? 'bg-purple-600 text-white shadow-[0_0_10px_rgba(168,85,247,0.6)] font-bold'
+                                : 'text-purple-400/60 hover:text-purple-300 hover:bg-purple-950/40'
+                        }`}
+                    >
+                        DIS
+                    </button>
+                </div>
+
                 {/* Right: 5e Resource Status Pips (Action, Bonus Action, Reaction) */}
                 <div className="flex items-center gap-3 font-cinzel text-[11px] text-[#d1cdb8]/80">
                     <div className="flex items-center gap-1.5">
@@ -243,7 +287,7 @@ export function ActionDock({
                                         return (
                                             <button
                                                 key={act.id}
-                                                onClick={() => onAttack(act.name, act.attack_bonus || 0)}
+                                                onClick={() => onAttack(act.name, act.attack_bonus || 0, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' })}
                                                 disabled={disabled}
                                                 className={`flex-shrink-0 px-3 py-2 rounded border text-left transition-all duration-150 w-48 ${
                                                     disabled
@@ -276,7 +320,7 @@ export function ActionDock({
                                     {enemyAttacks.map((atk, i) => (
                                         <button
                                             key={i}
-                                            onClick={() => onAttack(atk.name, atk.bonus)}
+                                            onClick={() => onAttack(atk.name, atk.bonus, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' })}
                                             disabled={isActionDisabled}
                                             className={`flex-shrink-0 px-3 py-2 rounded border text-left transition-all duration-150 w-44 ${
                                                 isActionDisabled
@@ -299,7 +343,7 @@ export function ActionDock({
                                     {characterWeapons.map((wp, idx) => (
                                         <button
                                             key={idx}
-                                            onClick={() => onAttack(wp.name, wp.bonus)}
+                                            onClick={() => onAttack(wp.name, wp.bonus, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' })}
                                             disabled={isActionDisabled}
                                             className={`flex-shrink-0 px-3.5 py-2 rounded border text-left transition-all duration-150 w-52 ${
                                                 isActionDisabled
@@ -359,7 +403,7 @@ export function ActionDock({
                                                             if (onSelectSpell) {
                                                                 onSelectSpell(spell);
                                                             } else {
-                                                                onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0);
+                                                                onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' });
                                                             }
                                                         }}
                                                         disabled={disabled}

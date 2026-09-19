@@ -45,7 +45,7 @@ export const combatApi = {
         apiClient.post<CombatSession>(`/combat/sessions/${id}/roll_initiative/`, overrides ? { overrides } : {}),
 
     // Make an attack
-    attack: (sessionId: number, data: { attacker_id: number; target_id: number; attack_name: string; attack_bonus: number }) =>
+    attack: (sessionId: number, data: { attacker_id: number; target_id: number; attack_name: string; attack_bonus: number; advantage?: boolean; disadvantage?: boolean }) =>
         apiClient.post<any>(`/combat/sessions/${sessionId}/attack/`, data),
 
     // Cast a spell

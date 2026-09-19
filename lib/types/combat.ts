@@ -15,6 +15,8 @@ export interface CombatAction {
     damage_amount?: number;
     damage_type?: string;
     is_ai?: boolean;
+    is_advantage?: boolean;
+    is_disadvantage?: boolean;
     description: string;
     round_number: number;
     turn_number: number;

@@ -70,6 +70,31 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
         const actorMatch = selectedParticipant ? isActor(action, selectedParticipant) : false;
         const targetMatch = selectedParticipant ? isTarget(action, selectedParticipant) : false;
 
+        const parseAdvantageRoll = (desc: string) => {
+            if (!desc) return null;
+            const match = desc.match(/d20\s*\((advantage|disadvantage)\):\s*(\d+),\s*(\d+)\s*→\s*(\d+)/i);
+            if (!match) return null;
+            return {
+                type: match[1].toLowerCase() as 'advantage' | 'disadvantage',
+                die1: parseInt(match[2], 10),
+                die2: parseInt(match[3], 10),
+                chosen: parseInt(match[4], 10),
+            };
+        };
+
+        const parsedAdv = parseAdvantageRoll(action.description);
+        const isAdvantage = Boolean(
+            action.is_advantage ||
+            parsedAdv?.type === 'advantage' ||
+            (action.description && /advantage/i.test(action.description) && !/disadvantage/i.test(action.description)) ||
+            (action.description && /pack tactics/i.test(action.description))
+        );
+        const isDisadvantage = Boolean(
+            action.is_disadvantage ||
+            parsedAdv?.type === 'disadvantage' ||
+            (action.description && /disadvantage/i.test(action.description))
+        );
+
         if (action.action_type === 'attack') {
             return (
                 <div className="flex flex-col gap-1.5">
@@ -95,11 +120,21 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                             )}
                         </div>
 
-                        {/* Round + Outcome badges */}
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Round + Advantage/Disadvantage + Outcome badges */}
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                             <span className="text-[10px] font-fira-sans text-[#c5a059]/60 border border-[#c5a059]/20 px-1.5 py-0.5 rounded-sm bg-[#c5a059]/5 whitespace-nowrap">
                                 Round {action.round_number}
                             </span>
+                            {isAdvantage && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold font-fira-sans px-1.5 py-0.5 rounded-sm bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.35)] tracking-wider whitespace-nowrap">
+                                    <span>🎲</span> ADV
+                                </span>
+                            )}
+                            {isDisadvantage && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold font-fira-sans px-1.5 py-0.5 rounded-sm bg-purple-950/90 text-purple-300 border border-purple-500/60 shadow-[0_0_8px_rgba(168,85,247,0.35)] tracking-wider whitespace-nowrap">
+                                    <span>⚠️</span> DISADV
+                                </span>
+                            )}
                             {action.critical ? (
                                 <span className="text-[10px] font-bold font-fira-sans px-2 py-0.5 rounded-sm bg-[#c5a059] text-[#0c0d12] shadow-[0_0_8px_rgba(197,160,89,0.5)]">
                                     CRITICAL!
@@ -117,20 +152,61 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                     </div>
 
                     {/* Attack details row */}
-                    <div className="text-xs font-fira-sans text-[#d1cdb8]/55 flex items-center gap-2 flex-wrap">
-                        {action.attack_name && <span className="text-[#d1cdb8]/80">{action.attack_name}</span>}
-                        <span className="text-[#c5a059]/30">•</span>
+                    <div className="text-xs font-fira-sans text-[#d1cdb8]/75 flex items-center gap-2 flex-wrap">
+                        {action.attack_name && <span className="text-[#d1cdb8] font-medium">{action.attack_name}</span>}
+                        <span className="text-[#c5a059]/40">•</span>
                         <span>
-                            Roll:{" "}
-                            <span className={action.critical ? "text-[#c5a059] font-bold" : "text-[#d1cdb8]"}>
+                            Total:{" "}
+                            <span className={action.critical ? "text-[#c5a059] font-bold" : "text-white font-semibold"}>
                                 {action.attack_total}
                             </span>
                         </span>
-                        {action.description && (
-                            <span className="text-[#d1cdb8]/35 italic">
-                                ({action.description.split('|')[0].trim()})
-                            </span>
-                        )}
+
+                        {/* Detailed Roll breakdown */}
+                        {parsedAdv ? (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#12141e] border border-[#c5a059]/25 text-[11px] font-mono">
+                                <span className={parsedAdv.type === 'advantage' ? 'text-emerald-400 font-bold' : 'text-purple-400 font-bold'}>
+                                    {parsedAdv.type === 'advantage' ? 'Advantage' : 'Disadvantage'}:
+                                </span>
+                                <span className="text-stone-400">[</span>
+                                <span
+                                    title={parsedAdv.die1 === parsedAdv.chosen ? "Chosen roll" : "Dropped roll"}
+                                    className={parsedAdv.die1 === parsedAdv.chosen ? (parsedAdv.type === 'advantage' ? 'text-emerald-300 font-bold underline' : 'text-purple-300 font-bold underline') : 'text-stone-500 line-through'}
+                                >
+                                    {parsedAdv.die1}
+                                </span>
+                                <span className="text-stone-500">,</span>
+                                <span
+                                    title={(parsedAdv.die1 !== parsedAdv.chosen || parsedAdv.die1 === parsedAdv.die2) && parsedAdv.die2 === parsedAdv.chosen ? "Chosen roll" : "Dropped roll"}
+                                    className={(parsedAdv.die1 !== parsedAdv.chosen || parsedAdv.die1 === parsedAdv.die2) && parsedAdv.die2 === parsedAdv.chosen ? (parsedAdv.type === 'advantage' ? 'text-emerald-300 font-bold underline' : 'text-purple-300 font-bold underline') : 'text-stone-500 line-through'}
+                                >
+                                    {parsedAdv.die2}
+                                </span>
+                                <span className="text-stone-400">]</span>
+                                <span className="text-[#c5a059]">→</span>
+                                <span className={parsedAdv.type === 'advantage' ? 'text-emerald-300 font-bold' : 'text-purple-300 font-bold'}>
+                                    {parsedAdv.chosen}
+                                </span>
+                                {action.description.includes('|') && (
+                                    <span className="text-[#d1cdb8]/60 ml-1">
+                                        ({action.description.split('|')[1].trim()})
+                                    </span>
+                                )}
+                            </div>
+                        ) : action.description ? (
+                            action.description.includes('|') ? (
+                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#12141e] border border-[#c5a059]/20 text-[11px] font-mono text-[#d1cdb8]/85">
+                                    <span>{action.description.split('|')[0].trim()}</span>
+                                    <span className="text-[#d1cdb8]/50">
+                                        ({action.description.split('|')[1].trim()})
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-[#d1cdb8]/75 text-[11px] font-lora">
+                                    {action.description}
+                                </span>
+                            )
+                        ) : null}
                     </div>
 
                     {/* Damage line */}
@@ -173,7 +249,7 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                         )}
                     </div>
                     {action.description && (
-                        <div className="text-xs text-[#d1cdb8]/50 font-fira-sans mt-0.5 italic">
+                        <div className="text-xs text-[#d1cdb8]/80 font-lora mt-1 bg-[#12141e] px-2 py-0.5 rounded border border-[#c5a059]/15 inline-block">
                             {action.description}
                         </div>
                     )}

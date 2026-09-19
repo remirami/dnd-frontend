@@ -110,7 +110,7 @@ export default function CombatPage() {
         const messages = aiActions.map((a: any) => {
             if (a.type === 'special_action' || a.type === 'skip') return a.message;
             if (a.message) return a.message;
-            const pt = a.pack_tactics ? ' [Pack Tactics]' : '';
+            const pt = a.pack_tactics ? ' [Pack Tactics (Advantage)]' : a.is_advantage ? ' [Advantage]' : a.is_disadvantage ? ' [Disadvantage]' : '';
             if (a.fumble) return `⚠️ ${a.attacker} fumbled attack with ${a.attack_name}!`;
             if (a.hit) {
                 const crit = a.critical ? ' CRITICAL HIT' : ' hit';
@@ -443,7 +443,11 @@ export default function CombatPage() {
         }
     };
 
-    const handleAttack = async (attackName: string, attackBonus: number) => {
+    const handleAttack = async (
+        attackName: string,
+        attackBonus: number,
+        options?: { advantage?: boolean; disadvantage?: boolean }
+    ) => {
         const current = getCurrentParticipant();
         if (!current || !targetId) {
             alert("Please select a target for the attack");
@@ -465,6 +469,8 @@ export default function CombatPage() {
                 target_id: parseInt(targetId),
                 attack_name: attackName,
                 attack_bonus: attackBonus,
+                advantage: options?.advantage,
+                disadvantage: options?.disadvantage,
             });
             if (res.data) {
                 setLastAttackFeedback({

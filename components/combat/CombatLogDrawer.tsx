@@ -136,8 +136,11 @@ export function CombatLogDrawer({
         if (act.action_type === "attack") {
             const hit = act.hit === true;
             const crit = act.critical ? " (CRIT)" : "";
+            const isAdv = act.is_advantage || (act.description && /advantage/i.test(act.description) && !/disadvantage/i.test(act.description)) || (act.description && /pack tactics/i.test(act.description));
+            const isDisadv = act.is_disadvantage || (act.description && /disadvantage/i.test(act.description));
+            const advTag = isAdv ? " [ADV]" : isDisadv ? " [DIS]" : "";
             const dmg = hit && act.damage_amount != null ? ` for ${act.damage_amount} dmg` : "";
-            return `${act.actor_name} ${hit ? "hit" : "missed"} ${act.target_name || "target"}${crit}${dmg}`;
+            return `${act.actor_name} ${hit ? "hit" : "missed"} ${act.target_name || "target"}${advTag}${crit}${dmg}`;
         }
         if (act.action_type === "spell") {
             return `${act.actor_name} cast ${act.attack_name || "a spell"} on ${act.target_name || "target"}`;
