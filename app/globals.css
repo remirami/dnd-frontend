@@ -153,3 +153,75 @@
 .font-fira-sans {
   font-family: var(--font-fira-sans), sans-serif;
 }
+
+/* Floating Combat Text & Impact Animations */
+@keyframes combat-hit-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.4);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -10px) scale(1.25);
+  }
+  30% {
+    transform: translate(-50%, -15px) scale(1.0);
+  }
+  85% {
+    opacity: 1;
+    transform: translate(-50%, -30px) scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50px) scale(0.85);
+  }
+}
+
+@keyframes combat-miss-drift {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 5px) scale(0.7);
+  }
+  20% {
+    opacity: 0.95;
+    transform: translate(-50%, -10px) scale(1.05);
+  }
+  85% {
+    opacity: 0.9;
+    transform: translate(-45%, -25px) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-40%, -45px) scale(0.8);
+  }
+}
+
+@keyframes card-impact-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px) rotate(-0.5deg);
+  }
+  40% {
+    transform: translateX(6px) rotate(0.5deg);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.animate-combat-hit {
+  animation: combat-hit-pop 3.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-combat-miss {
+  animation: combat-miss-drift 3.2s ease-out forwards;
+}
+
+.animate-card-impact {
+  animation: card-impact-shake 0.4s ease-in-out;
+}

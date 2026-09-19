@@ -118,6 +118,8 @@ export interface CharacterData {
     name: string;
     level: number;
     proficiency_bonus: number;
+    character_class?: { id: number; name: string } | null;
+    class_name?: string;
     stats: CharacterStats;
     character_items: CharacterItem[];
     spells: CharacterSpell[];

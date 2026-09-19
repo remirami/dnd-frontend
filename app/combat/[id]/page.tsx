@@ -19,7 +19,7 @@ import { GauntletArenaHud } from "@/components/gauntlet/GauntletArenaHud";
 import { RespiteModal } from "@/components/gauntlet/RespiteModal";
 import { VictoryDefeatModal } from "@/components/gauntlet/VictoryDefeatModal";
 import { InitiativeRibbon } from "@/components/combat/InitiativeRibbon";
-import { BattlefieldArena } from "@/components/combat/BattlefieldArena";
+import { BattlefieldArena, type AttackFeedback } from "@/components/combat/BattlefieldArena";
 import { ActionDock } from "@/components/combat/ActionDock";
 import { CombatLogDrawer } from "@/components/combat/CombatLogDrawer";
 import { ParticipantInspectorDrawer } from "@/components/combat/ParticipantInspectorDrawer";
@@ -50,6 +50,7 @@ export default function CombatPage() {
     const [damagedParticipantIds, setDamagedParticipantIds] = useState<Set<number>>(new Set());
     const [statblockParticipant, setStatblockParticipant] = useState<CombatParticipant | null>(null);
     const [isAttacking, setIsAttacking] = useState(false);
+    const [lastAttackFeedback, setLastAttackFeedback] = useState<AttackFeedback | null>(null);
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
     const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
@@ -87,6 +88,22 @@ export default function CombatPage() {
 
     const formatAiActionSummary = (aiActions: any[]) => {
         if (!aiActions || aiActions.length === 0) return null;
+
+        // Trigger floating combat text for AI attack against player
+        const attackAction = aiActions.find((a: any) => a.hit !== undefined || a.type === 'attack');
+        if (attackAction && sessionRef.current?.participants) {
+            const targetP = sessionRef.current.participants.find(p => p.name === attackAction.target);
+            if (targetP) {
+                setLastAttackFeedback({
+                    targetId: targetP.id,
+                    hit: !!attackAction.hit,
+                    critical: !!attackAction.critical,
+                    damage: attackAction.damage || 0,
+                    timestamp: Date.now(),
+                });
+            }
+        }
+
         const messages = aiActions.map((a: any) => {
             if (a.type === 'special_action' || a.type === 'skip') return a.message;
             if (a.message) return a.message;
@@ -289,13 +306,12 @@ export default function CombatPage() {
             try {
                 const res = await combatApi.aiTurn(sessionId);
                 const updatedSession = res.data.session;
-                sessionRef.current = updatedSession;
 
                 // Display actionable summary banner
                 const summary = formatAiActionSummary(res.data.actions);
                 if (summary) {
                     setAiActionBanner(summary);
-                    setTimeout(() => setAiActionBanner(null), 4500);
+                    setTimeout(() => setAiActionBanner(null), 5000);
                 }
 
                 // Collect IDs of participants that took damage this turn
@@ -305,15 +321,26 @@ export default function CombatPage() {
                         .map(a => a.target_id as number)
                 );
 
-                // Update session — HP bars will animate via CSS transition
-                setSession(updatedSession);
+                // Show lingering state: updated HP & conditions, but the attacking enemy remains the active participant
+                const lingeringSession: CombatSession = {
+                    ...currentSession,
+                    participants: updatedSession.participants,
+                    actions: updatedSession.actions,
+                };
+                setSession(lingeringSession);
 
                 // Flash red on damaged participants
                 if (hitTargetIds.size > 0) {
                     setDamagedParticipantIds(hitTargetIds);
-                    await sleep(FLASH_MS);
-                    setDamagedParticipantIds(new Set());
+                    setTimeout(() => setDamagedParticipantIds(new Set()), 1200);
                 }
+
+                // Linger for 3.5 seconds so player can see who attacked, the roll, floating text, and damage
+                await sleep(3500);
+
+                // Advance to the new turn
+                sessionRef.current = updatedSession;
+                setSession(updatedSession);
 
                 if (updatedSession.participants) {
                     if (checkCombatOutcome(updatedSession.participants)) break;
@@ -323,7 +350,8 @@ export default function CombatPage() {
                 const next = updatedSession.current_participant;
                 if (!next || next.participant_type !== 'enemy' || next.current_hp <= 0) break;
 
-                await sleep(DELAY_MS);
+                // Short delay before the next enemy starts their turn
+                await sleep(600);
             } catch (err: any) {
                 console.error('Step-by-step AI turn failed:', err);
                 break;
@@ -357,11 +385,13 @@ export default function CombatPage() {
     const handleAiTurn = async () => {
         setAiProcessing(true);
         try {
+            const currentSession = sessionRef.current;
             const response = await combatApi.aiTurn(sessionId);
+            const updatedSession = response.data.session;
             const summary = formatAiActionSummary(response.data.actions);
             if (summary) {
                 setAiActionBanner(summary);
-                setTimeout(() => setAiActionBanner(null), 4500);
+                setTimeout(() => setAiActionBanner(null), 5000);
             }
             // Flash any hit targets
             const hitTargetIds = new Set<number>(
@@ -369,12 +399,28 @@ export default function CombatPage() {
                     .filter(a => a.hit && a.damage && a.damage > 0 && a.target_id != null)
                     .map(a => a.target_id as number)
             );
-            sessionRef.current = response.data.session;
-            setSession(response.data.session);
+
+            // Hold lingering state with enemy as active participant and updated HP
+            if (currentSession) {
+                const lingeringSession: CombatSession = {
+                    ...currentSession,
+                    participants: updatedSession.participants,
+                    actions: updatedSession.actions,
+                };
+                setSession(lingeringSession);
+            }
+
             if (hitTargetIds.size > 0) {
                 setDamagedParticipantIds(hitTargetIds);
-                setTimeout(() => setDamagedParticipantIds(new Set()), 600);
+                setTimeout(() => setDamagedParticipantIds(new Set()), 1200);
             }
+
+            // Linger for 3.5s so player sees the enemy attack and damage
+            await new Promise(resolve => setTimeout(resolve, 3500));
+
+            sessionRef.current = updatedSession;
+            setSession(updatedSession);
+
             if (response.data.session.participants) {
                 checkCombatOutcome(response.data.session.participants);
             }
@@ -411,12 +457,21 @@ export default function CombatPage() {
         if (isAttacking) return;
         setIsAttacking(true);
         try {
-            await combatApi.attack(sessionId, {
+            const res = await combatApi.attack(sessionId, {
                 attacker_id: current.id,
                 target_id: parseInt(targetId),
                 attack_name: attackName,
                 attack_bonus: attackBonus,
             });
+            if (res.data) {
+                setLastAttackFeedback({
+                    targetId: parseInt(targetId),
+                    hit: !!res.data.hit,
+                    critical: !!res.data.critical,
+                    damage: res.data.damage_amount || 0,
+                    timestamp: Date.now(),
+                });
+            }
             await loadSession();
         } catch (error: any) {
             const errMsg = error.response?.data?.error || 
@@ -752,6 +807,7 @@ export default function CombatPage() {
                 gauntletRunId={gauntletRunId}
                 isEnemyTurn={isEnemyTurn}
                 onOpenRespite={() => setIsRespiteOpen(true)}
+                lastAttackFeedback={lastAttackFeedback}
             />
 
             {/* 4. Bottom Tactical Action Dock */}
