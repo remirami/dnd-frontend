@@ -584,6 +584,11 @@ export default function CombatPage() {
 
     const handleApplyHealing = async () => {
         if (!targetId || !healAmount) return;
+        const target = participants.find(p => p.id === parseInt(targetId));
+        if (target?.participant_type === 'enemy' && target.current_hp <= 0) {
+            alert("Cannot heal a defeated enemy!");
+            return;
+        }
         try {
             const current = getCurrentParticipant();
             await combatApi.applyHealing(parseInt(targetId), {
@@ -592,8 +597,79 @@ export default function CombatPage() {
             });
             setHealAmount("");
             await loadSession();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to apply healing:", error);
+            alert(error.response?.data?.error || "Failed to apply healing.");
+        }
+    };
+
+    const handleUseItem = async (itemName: string, customTargetId?: number) => {
+        const current = getCurrentParticipant();
+        if (!current) return;
+        const target = customTargetId || current.id;
+        try {
+            const res = await combatApi.useItem(sessionId, {
+                participant_id: current.id,
+                target_id: target,
+                item_name: itemName,
+            });
+            const actualHealed = res.data.actual_healed ?? res.data.heal_amount;
+            setDamagedParticipantIds(prev => new Set(prev).add(target));
+            setTimeout(() => {
+                setDamagedParticipantIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(target);
+                    return next;
+                });
+            }, 1200);
+            setLastAttackFeedback({
+                targetId: target,
+                hit: true,
+                isHealing: true,
+                healingAmount: actualHealed,
+                spellName: itemName,
+                timestamp: Date.now(),
+            });
+            await loadSession();
+        } catch (error: any) {
+            console.error("Failed to use item:", error);
+            alert(error.response?.data?.error || "Failed to use item.");
+        }
+    };
+
+    const handleUseFeature = async (featureName: string, amount?: number, customTargetId?: number, curePoison?: boolean) => {
+        const current = getCurrentParticipant();
+        if (!current) return;
+        const target = customTargetId || current.id;
+        try {
+            const res = await combatApi.useFeature(sessionId, {
+                participant_id: current.id,
+                target_id: target,
+                feature_name: featureName,
+                amount: amount,
+                cure_poison: curePoison,
+            });
+            const actualHealed = res.data.actual_healed ?? (amount || 0);
+            setDamagedParticipantIds(prev => new Set(prev).add(target));
+            setTimeout(() => {
+                setDamagedParticipantIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(target);
+                    return next;
+                });
+            }, 1200);
+            setLastAttackFeedback({
+                targetId: target,
+                hit: true,
+                isHealing: true,
+                healingAmount: actualHealed,
+                spellName: featureName,
+                timestamp: Date.now(),
+            });
+            await loadSession();
+        } catch (error: any) {
+            console.error("Failed to use feature:", error);
+            alert(error.response?.data?.error || "Failed to use class feature.");
         }
     };
 
@@ -913,6 +989,9 @@ export default function CombatPage() {
                 setHealAmount={setHealAmount}
                 onApplyDamage={handleApplyDamage}
                 onApplyHealing={handleApplyHealing}
+                allParticipants={participants}
+                onUseItem={handleUseItem}
+                onUseFeature={handleUseFeature}
             />
 
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}

@@ -82,6 +82,37 @@ export const combatApi = {
             action: any;
         }>(`/combat/sessions/${sessionId}/cast_spell/`, data),
 
+    // Use consumable item (Potion of Healing, etc.)
+    useItem: (sessionId: number, data: {
+        participant_id: number;
+        target_id?: number;
+        item_name?: string;
+    }) =>
+        apiClient.post<{
+            message: string;
+            heal_amount: number;
+            actual_healed: number;
+            target_hp: number;
+            action: any;
+        }>(`/combat/sessions/${sessionId}/use_item/`, data),
+
+    // Use class feature / trait (Lay on Hands, Second Wind, etc.)
+    useFeature: (sessionId: number, data: {
+        participant_id: number;
+        target_id?: number;
+        feature_name: string;
+        amount?: number;
+        cure_poison?: boolean;
+    }) =>
+        apiClient.post<{
+            message: string;
+            healed_amount?: number;
+            actual_healed?: number;
+            remaining_pool?: number;
+            target_hp?: number;
+            action: any;
+        }>(`/combat/sessions/${sessionId}/use_feature/`, data),
+
     // AI: Resolve current enemy's turn
     aiTurn: (sessionId: number) =>
         apiClient.post<AITurnResponse>(`/combat/sessions/${sessionId}/ai_turn/`),

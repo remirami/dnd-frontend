@@ -131,6 +131,7 @@ export interface CharacterData {
     stats: CharacterStats;
     character_items: CharacterItem[];
     spells: CharacterSpell[];
+    features?: Array<{ id: number; name: string; feature_type: string; description: string; source?: string }>;
     saving_throws: Record<string, { modifier: number; proficient: boolean; bonus: number }>;
     skills: Record<string, { modifier: number; proficient: boolean; bonus: number }>;
 }
@@ -203,6 +204,17 @@ export interface CombatParticipant {
     conditions: Array<string | { id: number; name: string; description?: string }>;
     attacks_remaining: number;
     action_used?: boolean;
+    bonus_action_used?: boolean;
+    reaction_used?: boolean;
+    lay_on_hands_pool?: number;
+    max_lay_on_hands_pool?: number;
+    feature_uses?: Record<string, any>;
+    death_save_status?: {
+        successes: number;
+        failures: number;
+        is_stable: boolean;
+        is_dead: boolean;
+    };
     equipped_items?: {
         weapon?: { name: string; damage_dice: string } | null;
         armor?: { name: string; base_ac: number } | null;
