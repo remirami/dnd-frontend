@@ -83,7 +83,7 @@ export default function CombatPage() {
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [session?.current_turn_index, session?.current_round, session?.id, gauntletRunId, combatOutcome]);
+    }, [session?.current_turn_index, session?.current_round, session?.id, gauntletRunId, combatOutcome, session?.participants]);
 
     const formatAiActionSummary = (aiActions: any[]) => {
         if (!aiActions || aiActions.length === 0) return null;
@@ -457,10 +457,23 @@ export default function CombatPage() {
                 }
 
                 if (res.data.session) {
-                    sessionRef.current = res.data.session;
-                    setSession(res.data.session);
-                    if (res.data.session.participants) {
-                        checkCombatOutcome(res.data.session.participants);
+                    const freshSession = { ...res.data.session };
+                    const newTargetHp = res.data.target_hp;
+                    if (newTargetHp !== undefined && freshSession.participants) {
+                        freshSession.participants = freshSession.participants.map((p: CombatParticipant) => 
+                            p.id === tid ? { ...p, current_hp: newTargetHp as number } : p
+                        );
+                    }
+                    const newAttacksRemaining = res.data.attacks_remaining;
+                    if (newAttacksRemaining !== undefined && freshSession.participants) {
+                        freshSession.participants = freshSession.participants.map((p: CombatParticipant) => 
+                            p.id === current.id ? { ...p, attacks_remaining: newAttacksRemaining as number } : p
+                        );
+                    }
+                    sessionRef.current = freshSession;
+                    setSession(freshSession);
+                    if (freshSession.participants) {
+                        checkCombatOutcome(freshSession.participants);
                     }
                 } else if (res.data.target_hp !== undefined) {
                     setSession(prev => {
@@ -561,10 +574,17 @@ export default function CombatPage() {
                 }
 
                 if (res.data.session) {
-                    sessionRef.current = res.data.session;
-                    setSession(res.data.session);
-                    if (res.data.session.participants) {
-                        checkCombatOutcome(res.data.session.participants);
+                    const freshSession = { ...res.data.session };
+                    const newSpellTargetHp = res.data.target_hp;
+                    if (newSpellTargetHp !== undefined && data.targetId && freshSession.participants) {
+                        freshSession.participants = freshSession.participants.map((p: CombatParticipant) => 
+                            p.id === data.targetId ? { ...p, current_hp: newSpellTargetHp as number } : p
+                        );
+                    }
+                    sessionRef.current = freshSession;
+                    setSession(freshSession);
+                    if (freshSession.participants) {
+                        checkCombatOutcome(freshSession.participants);
                     }
                 }
             }
@@ -1053,6 +1073,8 @@ export default function CombatPage() {
                 allParticipants={participants}
                 onUseItem={handleUseItem}
                 onUseFeature={handleUseFeature}
+                onForceAiTurn={handleAiTurn}
+                onNextTurn={handleNextTurn}
             />
 
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}

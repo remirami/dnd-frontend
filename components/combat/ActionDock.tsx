@@ -39,6 +39,8 @@ interface ActionDockProps {
     allParticipants?: CombatParticipant[];
     onUseItem?: (itemName: string, targetId?: number) => Promise<void>;
     onUseFeature?: (featureName: string, amount?: number, targetId?: number, curePoison?: boolean, extraData?: Record<string, any>) => Promise<void>;
+    onForceAiTurn?: () => void;
+    onNextTurn?: () => void;
 }
 
 function getConditionNames(p?: CombatParticipant | null): string[] {
@@ -137,6 +139,8 @@ export function ActionDock({
     allParticipants = [],
     onUseItem,
     onUseFeature,
+    onForceAiTurn,
+    onNextTurn,
 }: ActionDockProps) {
     const [activeTab, setActiveTab] = useState<'weapons' | 'spells' | 'features' | 'maneuvers' | 'consumables' | 'test'>('weapons');
     const [selectedSpellLevel, setSelectedSpellLevel] = useState<number | null>(null);
@@ -149,19 +153,43 @@ export function ActionDock({
     const [useInspiration, setUseInspiration] = useState<boolean>(false);
     const [dmOverrideMode, setDmOverrideMode] = useState<'auto' | 'advantage' | 'normal' | 'disadvantage'>('auto');
 
-    // If it's an enemy turn in Gauntlet, display the Autonomous AI indicator card
+    // If it's an enemy turn in Gauntlet, display the Autonomous AI indicator card with interactive overrides
     if (isEnemyTurn && gauntletRunId) {
         return (
             <div className="w-full bg-[#10121a]/95 border-t border-red-900/50 backdrop-blur-md px-6 py-3 shadow-[0_-4px_25px_rgba(0,0,0,0.6)] z-20">
-                <div className="max-w-4xl mx-auto flex items-center justify-center gap-4 py-2 px-4 rounded-lg bg-[#181317] border border-red-800/40">
-                    <span className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                    <div>
-                        <h4 className="font-cinzel text-sm sm:text-base font-bold text-red-200">
-                            {currentParticipant?.name} is Acting Autonomously...
-                        </h4>
-                        <p className="text-[11px] text-slate-400 font-lora italic">
-                            Evaluating tactical role, target vulnerabilities, and strikes independently.
-                        </p>
+                <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 py-2 px-4 rounded-lg bg-[#181317] border border-red-800/40">
+                    <div className="flex items-center gap-3">
+                        <span className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        <div>
+                            <h4 className="font-cinzel text-sm sm:text-base font-bold text-red-200">
+                                {currentParticipant?.name} is Acting Autonomously...
+                            </h4>
+                            <p className="text-[11px] text-slate-400 font-lora italic">
+                                Evaluating tactical role, target vulnerabilities, and strikes independently.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {onForceAiTurn && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={onForceAiTurn}
+                                className="bg-red-950/60 hover:bg-red-900/80 text-red-200 border-red-700/60 text-xs font-cinzel h-8 px-3 cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+                            >
+                                ⚡ Strike Now
+                            </Button>
+                        )}
+                        {onNextTurn && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={onNextTurn}
+                                className="text-slate-400 hover:text-slate-200 text-xs font-lora h-8 px-2.5 cursor-pointer hover:bg-slate-800/50"
+                            >
+                                Skip Turn →
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
