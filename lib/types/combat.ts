@@ -201,6 +201,7 @@ export interface CombatParticipant {
     initiative: number;
     current_hp: number;
     max_hp: number;
+    temp_hp?: number;
     armor_class: number;
     is_player: boolean;
     is_active: boolean;

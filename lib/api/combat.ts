@@ -80,6 +80,7 @@ export const combatApi = {
             condition_applied?: string | null;
             concentration_started?: boolean;
             action: any;
+            session?: CombatSession;
         }>(`/combat/sessions/${sessionId}/cast_spell/`, data),
 
     // Use consumable item (Potion of Healing, etc.)

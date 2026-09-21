@@ -6,16 +6,19 @@ import type { CombatAction, CombatParticipant } from "@/lib/types/combat";
 
 interface CombatLogDrawerProps {
     actions: CombatAction[];
+    participants?: CombatParticipant[];
     selectedParticipant?: CombatParticipant | null;
     onClearFilter?: () => void;
 }
 
 export function CombatLogDrawer({
     actions,
+    participants = [],
     selectedParticipant,
     onClearFilter,
 }: CombatLogDrawerProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isMaximized, setIsMaximized] = useState(false);
     const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -212,14 +215,20 @@ export function CombatLogDrawer({
             {isOpen && (
                 <div
                     style={
-                        position
+                        isMaximized
+                            ? { left: "max(12px, calc(50vw - 370px))", top: "max(50px, calc(50vh - 380px))" }
+                            : position
                             ? {
-                                  left: `${Math.min(position.x, Math.max(10, window.innerWidth - 480))}px`,
-                                  top: `${Math.max(60, Math.min(position.y - 390, window.innerHeight - 440))}px`,
+                                  left: `${Math.min(position.x, Math.max(10, window.innerWidth - 560))}px`,
+                                  top: `${Math.max(50, Math.min(position.y - 450, window.innerHeight - 520))}px`,
                               }
                             : { bottom: "115px", left: "16px" }
                     }
-                    className="fixed z-50 w-[92vw] sm:w-[460px] h-[380px] sm:h-[440px] bg-[#10121a]/98 border border-[#c5a059]/50 rounded-xl shadow-[0_8px_36px_rgba(0,0,0,0.85)] backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150"
+                    className={`fixed z-50 bg-[#10121a]/98 border border-[#c5a059]/50 rounded-xl shadow-[0_12px_44px_rgba(0,0,0,0.9)] backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 transition-[width,height] duration-200 ${
+                        isMaximized
+                            ? "w-[96vw] sm:w-[740px] h-[82vh] max-h-[820px]"
+                            : "w-[94vw] sm:w-[540px] h-[480px] sm:h-[520px]"
+                    }`}
                 >
                     {/* Header */}
                     <div className="px-4 py-2.5 bg-[#151722] border-b border-[#c5a059]/20 flex items-center justify-between">
@@ -233,7 +242,7 @@ export function CombatLogDrawer({
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            {position && (
+                            {!isMaximized && position && (
                                 <button
                                     onClick={() => {
                                         setPosition(null);
@@ -245,6 +254,15 @@ export function CombatLogDrawer({
                                     Reset pos
                                 </button>
                             )}
+                            {/* Maximize / Restore Toggle */}
+                            <button
+                                onClick={() => setIsMaximized((prev) => !prev)}
+                                title={isMaximized ? "Restore smaller window" : "Maximize window view"}
+                                className="text-slate-400 hover:text-[#c5a059] text-xs px-1.5 py-0.5 rounded border border-slate-700 hover:border-[#c5a059]/40 font-mono transition-colors"
+                            >
+                                {isMaximized ? "🗗" : "⛶"}
+                            </button>
+                            {/* Close Window */}
                             <button
                                 onClick={() => setIsOpen(false)}
                                 className="text-slate-400 hover:text-white text-xs px-2 py-1 font-bold cursor-pointer transition-colors"
@@ -258,6 +276,7 @@ export function CombatLogDrawer({
                     <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                         <CombatLog
                             actions={actions}
+                            participants={participants}
                             selectedParticipant={selectedParticipant}
                             onClearFilter={onClearFilter}
                         />

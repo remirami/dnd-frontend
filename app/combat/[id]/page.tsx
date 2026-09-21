@@ -239,9 +239,6 @@ export default function CombatPage() {
             setTargetId(defaultTarget.id.toString());
         }
 
-        // Also set viewing to current participant
-        setViewingParticipantId(current.id);
-
         // Load enemy data if current is an enemy
         if (current.participant_type === 'enemy') {
             loadEnemyData(current);
@@ -436,15 +433,56 @@ export default function CombatPage() {
                 inspiration: options?.inspiration,
             });
             if (res.data) {
+                const dmgAmount = res.data.damage_amount || res.data.damage || 0;
+                const isHit = !!res.data.hit;
+                const tid = parseInt(targetId);
+
                 setLastAttackFeedback({
-                    targetId: parseInt(targetId),
-                    hit: !!res.data.hit,
+                    targetId: tid,
+                    hit: isHit,
                     critical: !!res.data.critical,
-                    damage: res.data.damage_amount || 0,
+                    damage: dmgAmount,
                     timestamp: Date.now(),
                 });
+
+                if (isHit && dmgAmount > 0) {
+                    setDamagedParticipantIds(prev => new Set([...prev, tid]));
+                    setTimeout(() => {
+                        setDamagedParticipantIds(prev => {
+                            const next = new Set(prev);
+                            next.delete(tid);
+                            return next;
+                        });
+                    }, 1200);
+                }
+
+                if (res.data.session) {
+                    sessionRef.current = res.data.session;
+                    setSession(res.data.session);
+                    if (res.data.session.participants) {
+                        checkCombatOutcome(res.data.session.participants);
+                    }
+                } else if (res.data.target_hp !== undefined) {
+                    setSession(prev => {
+                        if (!prev) return prev;
+                        const nextSession = {
+                            ...prev,
+                            participants: prev.participants.map(p => {
+                                if (p.id === tid) return { ...p, current_hp: res.data.target_hp };
+                                if (p.id === current.id && res.data.attacks_remaining !== undefined) {
+                                    return { ...p, attacks_remaining: res.data.attacks_remaining };
+                                }
+                                return p;
+                            })
+                        };
+                        sessionRef.current = nextSession;
+                        return nextSession;
+                    });
+                }
             }
-            await loadSession();
+            if (!res.data?.session) {
+                await loadSession();
+            }
         } catch (error: any) {
             const errMsg = error.response?.data?.error || 
                 (typeof error.response?.data === 'string' ? error.response.data : null) ||
@@ -521,8 +559,18 @@ export default function CombatPage() {
                         }, 1200);
                     }
                 }
+
+                if (res.data.session) {
+                    sessionRef.current = res.data.session;
+                    setSession(res.data.session);
+                    if (res.data.session.participants) {
+                        checkCombatOutcome(res.data.session.participants);
+                    }
+                }
             }
-            await loadSession();
+            if (!res.data?.session) {
+                await loadSession();
+            }
             setSelectedSpellForCast(null);
         } catch (error: any) {
             const errMsg = error.response?.data?.error ||
@@ -540,11 +588,31 @@ export default function CombatPage() {
         if (!targetId || !damageAmount) return;
         try {
             const current = getCurrentParticipant();
-            await combatApi.applyDamage(parseInt(targetId), {
+            const tid = parseInt(targetId);
+            const res = await combatApi.applyDamage(tid, {
                 amount: parseInt(damageAmount),
                 source_id: current?.id
             });
             setDamageAmount("");
+            if (res.data?.participant) {
+                setDamagedParticipantIds(prev => new Set([...prev, tid]));
+                setTimeout(() => {
+                    setDamagedParticipantIds(prev => {
+                        const next = new Set(prev);
+                        next.delete(tid);
+                        return next;
+                    });
+                }, 1000);
+                setSession(prev => {
+                    if (!prev) return prev;
+                    const nextSession = {
+                        ...prev,
+                        participants: prev.participants.map(p => p.id === tid ? { ...p, current_hp: res.data.current_hp } : p)
+                    };
+                    sessionRef.current = nextSession;
+                    return nextSession;
+                });
+            }
             await loadSession();
         } catch (error) {
             console.error("Failed to apply damage:", error);
@@ -560,11 +628,23 @@ export default function CombatPage() {
         }
         try {
             const current = getCurrentParticipant();
-            await combatApi.applyHealing(parseInt(targetId), {
+            const tid = parseInt(targetId);
+            const res = await combatApi.applyHealing(tid, {
                 amount: parseInt(healAmount),
                 source_id: current?.id
             });
             setHealAmount("");
+            if (res.data?.participant) {
+                setSession(prev => {
+                    if (!prev) return prev;
+                    const nextSession = {
+                        ...prev,
+                        participants: prev.participants.map(p => p.id === tid ? { ...p, current_hp: res.data.current_hp } : p)
+                    };
+                    sessionRef.current = nextSession;
+                    return nextSession;
+                });
+            }
             await loadSession();
         } catch (error: any) {
             console.error("Failed to apply healing:", error);
@@ -978,6 +1058,7 @@ export default function CombatPage() {
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}
             <CombatLogDrawer
                 actions={actions}
+                participants={participants}
                 selectedParticipant={viewingParticipant}
                 onClearFilter={() => setViewingParticipantId(null)}
             />
