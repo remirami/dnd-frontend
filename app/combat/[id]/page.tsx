@@ -63,6 +63,7 @@ export default function CombatPage() {
     const logRef = useRef<HTMLDivElement>(null);
     const sessionRef = useRef<CombatSession | null>(null);
     const isAiRunningRef = useRef(false);
+    const hasSyncedWaveRef = useRef(false);
 
     useEffect(() => {
         sessionRef.current = session;
@@ -133,6 +134,8 @@ export default function CombatPage() {
     }, [gauntletRunId, sessionId]);
 
     const handleGauntletNextWave = (nextSessionId: number) => {
+        hasSyncedWaveRef.current = false;
+        setCombatOutcome(null);
         setIsRespiteOpen(false);
         router.push(`/combat/${nextSessionId}?gauntletRunId=${gauntletRunId}`);
     };
@@ -168,20 +171,28 @@ export default function CombatPage() {
 
         if (gauntletRunId) {
             if (allEnemiesDead) {
-                gauntletApi.syncWave(gauntletRunId)
-                    .then(syncResp => {
-                        setGauntletRun(syncResp.data.run);
-                        setIsRespiteOpen(true);
-                    })
-                    .catch(e => console.error("Failed to sync gauntlet wave:", e));
+                setCombatOutcome('victory');
+                if (!hasSyncedWaveRef.current) {
+                    hasSyncedWaveRef.current = true;
+                    gauntletApi.syncWave(gauntletRunId)
+                        .then(syncResp => {
+                            setGauntletRun(syncResp.data.run);
+                            setIsRespiteOpen(true);
+                        })
+                        .catch(e => console.error("Failed to sync gauntlet wave:", e));
+                }
                 return true;
             } else if (allPlayersDead) {
-                gauntletApi.syncWave(gauntletRunId)
-                    .then(syncResp => {
-                        setGauntletRun(syncResp.data.run);
-                        setGauntletModalType('defeat');
-                    })
-                    .catch(e => console.error("Failed to sync gauntlet defeat:", e));
+                setCombatOutcome('defeat');
+                setGauntletModalType('defeat');
+                if (!hasSyncedWaveRef.current) {
+                    hasSyncedWaveRef.current = true;
+                    gauntletApi.syncWave(gauntletRunId)
+                        .then(syncResp => {
+                            setGauntletRun(syncResp.data.run);
+                        })
+                        .catch(e => console.error("Failed to sync gauntlet defeat:", e));
+                }
                 return true;
             }
         }
@@ -298,7 +309,7 @@ export default function CombatPage() {
             let safetyLimit = 25; // prevent infinite loops
             while (safetyLimit-- > 0) {
                 const currentSession = sessionRef.current;
-                if (!currentSession) break;
+                if (!currentSession || currentSession.status === 'ended' || combatOutcome) break;
 
                 const active = currentSession.current_participant || (currentSession.participants || []).find(p => p.is_active);
                 if (!active || active.participant_type !== 'enemy' || active.current_hp <= 0) break;
