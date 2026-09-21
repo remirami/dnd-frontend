@@ -141,47 +141,61 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-amber-600 hover:bg-amber-700">
+                <Button className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold uppercase tracking-wider shadow-[0_0_14px_rgba(197,160,89,0.35)]">
                     ⚡ Choose ASI/Feat (Level {pendingLevel})
                 </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 text-white border-slate-700 max-w-3xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Ability Score Improvement / Feat Selection</DialogTitle>
-                    <DialogDescription className="text-slate-400">
-                        Level {pendingLevel} - Choose to improve your ability scores or take a feat
+            <DialogContent className="bg-[#10121a]/98 text-slate-100 border border-[#c5a059]/60 shadow-[0_8px_36px_rgba(0,0,0,0.85)] backdrop-blur-xl font-lora max-w-3xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader className="border-b border-[#c5a059]/20 pb-3">
+                    <DialogTitle className="font-cinzel text-lg font-bold text-[#c5a059] tracking-wide">
+                        Ability Score Improvement / Feat Selection
+                    </DialogTitle>
+                    <DialogDescription className="font-lora text-xs text-[#d1cdb8]/70 mt-1">
+                        Level {pendingLevel} — Choose to improve your ability scores or take a powerful feat
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-slate-800">
-                        <TabsTrigger value="asi" className="data-[state=active]:bg-slate-700">Ability Score Improvement</TabsTrigger>
-                        <TabsTrigger value="feat" className="data-[state=active]:bg-slate-700">Feat</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2 bg-[#0c0d12]/80 border border-[#c5a059]/25 p-1 rounded-lg">
+                        <TabsTrigger
+                            value="asi"
+                            className="font-cinzel text-xs font-semibold tracking-wider data-[state=active]:bg-[#181a24] data-[state=active]:text-[#e0bc75] data-[state=active]:border data-[state=active]:border-[#c5a059]/50 text-slate-400"
+                        >
+                            Ability Score Improvement
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="feat"
+                            className="font-cinzel text-xs font-semibold tracking-wider data-[state=active]:bg-[#181a24] data-[state=active]:text-[#e0bc75] data-[state=active]:border data-[state=active]:border-[#c5a059]/50 text-slate-400"
+                        >
+                            Feat
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="asi" className="space-y-4 mt-4">
-                        <div className="space-y-4">
-                            <Label>Choose one:</Label>
+                        <div className="space-y-4 p-4 rounded-lg bg-[#0c0d12]/60 border border-[#c5a059]/25">
+                            <Label className="font-cinzel font-semibold text-[#e0bc75] text-xs uppercase tracking-wide">Choose one:</Label>
 
                             {/* +2 to one ability */}
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-3 p-3 rounded-md bg-[#12141a]/40 border border-[#c5a059]/20">
                                 <input
                                     type="radio"
                                     name="asiMode"
                                     checked={asiMode === "single"}
                                     onChange={() => setAsiMode("single")}
-                                    className="mt-1"
+                                    className="mt-1 accent-[#c5a059] cursor-pointer"
                                 />
                                 <div className="flex-1">
-                                    <Label className="text-base">+2 to one ability score</Label>
+                                    <Label className="text-sm font-semibold text-slate-200 cursor-pointer" onClick={() => setAsiMode("single")}>
+                                        +2 to one ability score
+                                    </Label>
                                     {asiMode === "single" && (
                                         <Select value={singleAbility} onValueChange={setSingleAbility}>
-                                            <SelectTrigger className="mt-2 bg-slate-800 border-slate-600">
+                                            <SelectTrigger className="mt-2 bg-[#0c0d12]/90 border-[#c5a059]/40 text-slate-100">
                                                 <SelectValue placeholder="Select ability" />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-slate-800 border-slate-600 text-white">
+                                            <SelectContent className="bg-[#10121a] border-[#c5a059]/50 text-slate-200 font-lora">
                                                 {ABILITIES.map(ability => (
-                                                    <SelectItem key={ability.value} value={ability.value}>
+                                                    <SelectItem key={ability.value} value={ability.value} className="focus:bg-[#181a24] focus:text-[#e0bc75]">
                                                         {ability.label} ({ability.short})
                                                     </SelectItem>
                                                 ))}
@@ -192,27 +206,29 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
                             </div>
 
                             {/* +1 to two abilities */}
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-3 p-3 rounded-md bg-[#12141a]/40 border border-[#c5a059]/20">
                                 <input
                                     type="radio"
                                     name="asiMode"
                                     checked={asiMode === "double"}
                                     onChange={() => setAsiMode("double")}
-                                    className="mt-1"
+                                    className="mt-1 accent-[#c5a059] cursor-pointer"
                                 />
                                 <div className="flex-1 space-y-2">
-                                    <Label className="text-base">+1 to two different ability scores</Label>
+                                    <Label className="text-sm font-semibold text-slate-200 cursor-pointer" onClick={() => setAsiMode("double")}>
+                                        +1 to two different ability scores
+                                    </Label>
                                     {asiMode === "double" && (
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 mt-2">
                                             <div>
-                                                <Label className="text-sm text-slate-400">First Ability</Label>
+                                                <Label className="text-xs text-[#d1cdb8]/70">First Ability</Label>
                                                 <Select value={ability1} onValueChange={setAbility1}>
-                                                    <SelectTrigger className="bg-slate-800 border-slate-600">
+                                                    <SelectTrigger className="bg-[#0c0d12]/90 border-[#c5a059]/40 text-slate-100">
                                                         <SelectValue placeholder="Select" />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-slate-800 border-slate-600 text-white">
+                                                    <SelectContent className="bg-[#10121a] border-[#c5a059]/50 text-slate-200 font-lora">
                                                         {ABILITIES.map(ability => (
-                                                            <SelectItem key={ability.value} value={ability.value}>
+                                                            <SelectItem key={ability.value} value={ability.value} className="focus:bg-[#181a24] focus:text-[#e0bc75]">
                                                                 {ability.short}
                                                             </SelectItem>
                                                         ))}
@@ -220,14 +236,14 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
                                                 </Select>
                                             </div>
                                             <div>
-                                                <Label className="text-sm text-slate-400">Second Ability</Label>
+                                                <Label className="text-xs text-[#d1cdb8]/70">Second Ability</Label>
                                                 <Select value={ability2} onValueChange={setAbility2}>
-                                                    <SelectTrigger className="bg-slate-800 border-slate-600">
+                                                    <SelectTrigger className="bg-[#0c0d12]/90 border-[#c5a059]/40 text-slate-100">
                                                         <SelectValue placeholder="Select" />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-slate-800 border-slate-600 text-white">
+                                                    <SelectContent className="bg-[#10121a] border-[#c5a059]/50 text-slate-200 font-lora">
                                                         {ABILITIES.map(ability => (
-                                                            <SelectItem key={ability.value} value={ability.value}>
+                                                            <SelectItem key={ability.value} value={ability.value} className="focus:bg-[#181a24] focus:text-[#e0bc75]">
                                                                 {ability.short}
                                                             </SelectItem>
                                                         ))}
@@ -240,11 +256,20 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
                             </div>
                         </div>
 
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-slate-400">
+                        <DialogFooter className="border-t border-[#c5a059]/20 pt-3 flex items-center justify-between gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setOpen(false)}
+                                className="text-[#d1cdb8]/70 hover:text-white hover:bg-[#c5a059]/10 border border-[#c5a059]/20 font-lora text-xs h-8 px-3"
+                            >
                                 Cancel
                             </Button>
-                            <Button onClick={handleApplyASI} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                            <Button
+                                onClick={handleApplyASI}
+                                disabled={loading}
+                                className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs uppercase tracking-wider h-8 px-4 shadow-[0_0_14px_rgba(197,160,89,0.35)]"
+                            >
                                 {loading ? "Applying..." : "Apply ASI"}
                             </Button>
                         </DialogFooter>
@@ -256,29 +281,32 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
                                 placeholder="Search feats..."
                                 value={featSearch}
                                 onChange={(e) => setFeatSearch(e.target.value)}
-                                className="bg-slate-800 border-slate-600"
+                                className="bg-[#0c0d12]/80 border-[#c5a059]/40 text-slate-100 placeholder:text-slate-500 font-lora text-sm focus:border-[#c5a059]"
                             />
 
-                            <div className="max-h-96 overflow-y-auto space-y-2">
+                            <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
                                 {filteredFeats.map(feat => (
                                     <Card
                                         key={feat.id}
-                                        className={`cursor-pointer transition-colors ${selectedFeat?.id === feat.id
-                                                ? "bg-blue-900/50 border-blue-600"
+                                        className={`cursor-pointer transition-all duration-150 border ${
+                                            selectedFeat?.id === feat.id
+                                                ? "bg-[#181a24] border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.25)]"
                                                 : feat.is_eligible
-                                                    ? "bg-slate-800 border-slate-700 hover:bg-slate-700"
-                                                    : "bg-slate-800/50 border-slate-700/50 opacity-60"
-                                            }`}
+                                                    ? "bg-[#12141a]/60 border-[#c5a059]/25 hover:border-[#c5a059]/60 hover:bg-[#181a24]/60"
+                                                    : "bg-[#0c0d12]/40 border-slate-800/60 opacity-50 cursor-not-allowed"
+                                        }`}
                                         onClick={() => feat.is_eligible && setSelectedFeat(feat)}
                                     >
                                         <CardHeader className="p-3">
-                                            <CardTitle className="text-base flex items-center justify-between">
-                                                <span>{feat.name}</span>
+                                            <CardTitle className="text-sm font-cinzel font-bold flex items-center justify-between">
+                                                <span className={selectedFeat?.id === feat.id ? "text-[#e0bc75]" : "text-slate-100"}>
+                                                    {feat.name}
+                                                </span>
                                                 {!feat.is_eligible && (
-                                                    <span className="text-xs text-red-400">🔒 {feat.reason_if_not}</span>
+                                                    <span className="text-xs text-rose-400 font-lora font-normal">🔒 {feat.reason_if_not}</span>
                                                 )}
                                             </CardTitle>
-                                            <CardDescription className="text-xs text-slate-400">
+                                            <CardDescription className="text-xs font-lora text-[#d1cdb8]/75 mt-1 leading-relaxed">
                                                 {feat.description}
                                             </CardDescription>
                                         </CardHeader>
@@ -287,14 +315,19 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
                             </div>
                         </div>
 
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="text-slate-400">
+                        <DialogFooter className="border-t border-[#c5a059]/20 pt-3 flex items-center justify-between gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setOpen(false)}
+                                className="text-[#d1cdb8]/70 hover:text-white hover:bg-[#c5a059]/10 border border-[#c5a059]/20 font-lora text-xs h-8 px-3"
+                            >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleApplyFeat}
                                 disabled={loading || !selectedFeat}
-                                className="bg-purple-600 hover:bg-purple-700"
+                                className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs uppercase tracking-wider h-8 px-4 shadow-[0_0_14px_rgba(197,160,89,0.35)] disabled:opacity-50"
                             >
                                 {loading ? "Applying..." : "Take Feat"}
                             </Button>

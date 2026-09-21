@@ -244,7 +244,7 @@ export default function CharacterDetailsPage() {
                         </h1>
                         <p className="font-lora text-base sm:text-lg text-[#d1cdb8] font-medium mt-1">
                             Level {character.level} {character.race?.name_display || character.race?.name}{" "}
-                            {character.class_levels && character.class_levels.length > 0 ? (
+                            {character.class_levels && character.class_levels.length > 1 ? (
                                 <>
                                     {character.class_levels
                                         .map((cl) => {
@@ -256,6 +256,19 @@ export default function CharacterDetailsPage() {
                                             return `${displayName} ${cl.level}`;
                                         })
                                         .join(" / ")}
+                                </>
+                            ) : character.class_levels && character.class_levels.length === 1 ? (
+                                <>
+                                    {(() => {
+                                        const cl = character.class_levels[0];
+                                        const displayName = cl.class_name.charAt(0).toUpperCase() + cl.class_name.slice(1);
+                                        const subName = (cl.subclass || character.subclass);
+                                        if (subName) {
+                                            const formattedSub = subName.charAt(0).toUpperCase() + subName.slice(1);
+                                            return `${formattedSub} ${displayName}`;
+                                        }
+                                        return displayName;
+                                    })()}
                                 </>
                             ) : (
                                 <>

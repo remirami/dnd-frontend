@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Sparkles } from "lucide-react";
 import { CharacterFeature, Character } from "@/lib/types/character";
 import { charactersApi } from "@/lib/api/characters";
 import { useToast } from "@/components/ui/use-toast";
@@ -88,28 +88,39 @@ export function FeatureSelectionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md bg-slate-900 border-slate-700 text-white">
-                <DialogHeader>
-                    <DialogTitle>Select Options: {feature.name}</DialogTitle>
-                    <DialogDescription className="text-slate-400">
+            <DialogContent className="max-w-md bg-[#10121a]/98 text-slate-100 border border-[#c5a059]/60 shadow-[0_8px_36px_rgba(0,0,0,0.85)] backdrop-blur-xl font-lora">
+                <DialogHeader className="border-b border-[#c5a059]/20 pb-3">
+                    <DialogTitle className="font-cinzel text-lg font-bold text-[#c5a059] tracking-wide flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-[#c5a059]/80" />
+                        <span>Select Options: {feature.name}</span>
+                    </DialogTitle>
+                    <DialogDescription className="font-lora text-xs text-[#d1cdb8]/70 mt-1">
                         Please select {limit} option{limit !== 1 ? 's' : ''} from the list below.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="py-4 space-y-4">
-                    <div className="flex justify-between items-center text-sm font-medium mb-2">
-                        <span>Available Options</span>
-                        <span className={`${isFull ? 'text-green-400' : 'text-slate-400'}`}>
+                <div className="py-3 space-y-3">
+                    <div className="flex justify-between items-center text-xs font-medium px-0.5">
+                        <span className="font-cinzel font-semibold text-[#e0bc75] tracking-wide uppercase text-[11px]">
+                            Available Options
+                        </span>
+                        <span
+                            className={`font-fira-sans font-bold px-2 py-0.5 rounded text-xs border ${
+                                isFull
+                                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                                    : 'bg-[#181a24] text-[#c5a059] border-[#c5a059]/30'
+                            }`}
+                        >
                             {currentCount} / {limit} Selected
                         </span>
                     </div>
 
-                    <div className="border border-slate-700 rounded-lg p-1 max-h-[300px] overflow-y-auto bg-slate-800/50">
+                    <div className="border border-[#c5a059]/25 rounded-lg p-1.5 max-h-[300px] overflow-y-auto bg-[#0c0d12]/80 divide-y divide-[#c5a059]/10">
                         {feature.options && feature.options.length > 0 ? (
                             <div className="space-y-1">
                                 {feature.options.map((option) => {
                                     const isSelected = selectedOptions.includes(option);
-                                    const isExcluded = excludedOptions.includes(option) && !isSelected; // Valid only if not currently selected (legacy data protection)
+                                    const isExcluded = excludedOptions.includes(option) && !isSelected;
 
                                     // Disable unselected items if limit is reached OR if excluded
                                     const isDisabled = (!isSelected && isFull) || isExcluded;
@@ -117,23 +128,33 @@ export function FeatureSelectionDialog({
                                     return (
                                         <div
                                             key={option}
-                                            className={`flex items-start space-x-3 p-2 rounded hover:bg-slate-800 transition-colors ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                            className={`flex items-start space-x-3 p-2.5 rounded-md transition-all duration-150 border ${
+                                                isSelected
+                                                    ? 'bg-[#181a24] border-[#c5a059]/50 shadow-[0_0_10px_rgba(197,160,89,0.15)] text-[#e0bc75]'
+                                                    : 'bg-[#12141a]/40 border-transparent hover:border-[#c5a059]/30 hover:bg-[#181a24]/60 text-slate-200'
+                                            } ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                                             onClick={() => !isDisabled && handleToggle(option)}
                                         >
                                             <Checkbox
                                                 id={`opt-${option}`}
                                                 checked={isSelected}
                                                 onCheckedChange={() => !isDisabled && handleToggle(option)}
-                                                className="mt-0.5 border-slate-600 data-[state=checked]:bg-blue-600"
+                                                className="mt-0.5 border-[#c5a059]/60 data-[state=checked]:bg-[#c5a059] data-[state=checked]:text-[#0c0d12] data-[state=checked]:border-[#c5a059]"
                                                 disabled={isDisabled}
                                             />
-                                            <div className="grid gap-1.5 leading-none">
+                                            <div className="grid gap-1 leading-none">
                                                 <Label
                                                     htmlFor={`opt-${option}`}
-                                                    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                                    className={`text-sm font-lora leading-none ${
+                                                        isSelected ? 'text-[#e0bc75] font-semibold' : 'text-slate-200'
+                                                    } ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                                 >
                                                     {option}
-                                                    {isExcluded && <span className="ml-2 text-xs text-red-400 italic">(Already selected elsewhere)</span>}
+                                                    {isExcluded && (
+                                                        <span className="ml-2 text-xs text-rose-400 italic">
+                                                            (Already selected elsewhere)
+                                                        </span>
+                                                    )}
                                                 </Label>
                                             </div>
                                         </div>
@@ -141,35 +162,33 @@ export function FeatureSelectionDialog({
                                 })}
                             </div>
                         ) : (
-                            <div className="p-4 text-center text-slate-500 italic">
+                            <div className="p-4 text-center text-slate-500 italic font-lora text-xs">
                                 No options available.
                             </div>
                         )}
                     </div>
 
-                    {/* Quick validation warning if saving with < limit */}
-                    {/* Only warn if choice_limit > 1 and we have > 0 selections but < limit */}
-                    {/* Does 2024 allow partial selection? Usually yes, but better to finish */}
+                    {/* Quick validation reminder if choice_limit > 1 and partial selection */}
                     {currentCount > 0 && currentCount < limit && (
-                        <div className="flex items-center gap-2 text-amber-400 text-sm bg-amber-950/30 p-2 rounded border border-amber-900/50">
-                            <AlertCircle className="w-4 h-4" />
+                        <div className="flex items-center gap-2 text-amber-300 text-xs bg-amber-950/30 p-2.5 rounded-lg border border-amber-500/35 font-lora">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                             <span>You can still select {limit - currentCount} more option{limit - currentCount !== 1 ? 's' : ''}.</span>
                         </div>
                     )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="border-t border-[#c5a059]/20 pt-3 flex items-center justify-between gap-2">
                     <Button
                         variant="ghost"
                         onClick={() => onOpenChange(false)}
-                        className="text-slate-400 hover:text-white hover:bg-slate-800"
+                        className="text-[#d1cdb8]/70 hover:text-white hover:bg-[#c5a059]/10 border border-[#c5a059]/20 font-lora text-xs h-8 px-3 transition-colors cursor-pointer"
                     >
                         Cancel
                     </Button>
                     <Button
                         onClick={handleSave}
                         disabled={loading}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs uppercase tracking-wider h-8 px-4 shadow-[0_0_14px_rgba(197,160,89,0.35)] transition-all cursor-pointer disabled:opacity-50"
                     >
                         {loading ? "Saving..." : "Save Selection"}
                     </Button>
