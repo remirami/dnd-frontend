@@ -95,6 +95,14 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
             (action.description && /disadvantage/i.test(action.description))
         );
 
+        const getDamageTypeName = (dt: any): string | null => {
+            if (!dt) return null;
+            if (typeof dt === 'string') return dt;
+            if (typeof dt === 'object' && dt.name) return String(dt.name);
+            return null;
+        };
+        const damageTypeName = getDamageTypeName(action.damage_type) || (typeof action.damage_type_name === 'string' ? action.damage_type_name : null);
+
         if (action.action_type === 'attack') {
             return (
                 <div className="flex flex-col gap-1.5">
@@ -213,9 +221,9 @@ export function CombatLog({ actions, selectedParticipant, onClearFilter }: Comba
                     {action.hit && action.damage_amount !== undefined && (
                         <div className="font-fira-sans font-bold text-sm text-[#a63a3a]">
                             {action.damage_amount} damage
-                            {action.damage_type && (
+                            {damageTypeName && (
                                 <span className="text-[#d1cdb8]/40 text-xs font-normal ml-1.5">
-                                    ({action.damage_type})
+                                    ({damageTypeName})
                                 </span>
                             )}
                         </div>

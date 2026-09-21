@@ -13,7 +13,8 @@ export interface CombatAction {
     hit?: boolean;
     critical?: boolean;
     damage_amount?: number;
-    damage_type?: string;
+    damage_type?: string | { id: number; name: string } | null;
+    damage_type_name?: string | null;
     is_ai?: boolean;
     is_advantage?: boolean;
     is_disadvantage?: boolean;
