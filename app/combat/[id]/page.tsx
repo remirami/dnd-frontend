@@ -75,16 +75,11 @@ export default function CombatPage() {
 
         const current = getCurrentParticipant();
         if (current && current.participant_type === 'enemy' && current.current_hp > 0 && current.is_active) {
-            isAiRunningRef.current = true;
-            setAiProcessing(true);
-            const timer = setTimeout(async () => {
-                try {
-                    await stepByStepEnemyTurns();
-                } finally {
-                    setAiProcessing(false);
-                    isAiRunningRef.current = false;
+            const timer = setTimeout(() => {
+                if (!isAiRunningRef.current) {
+                    stepByStepEnemyTurns();
                 }
-            }, 600);
+            }, 500);
             return () => clearTimeout(timer);
         }
     }, [session?.current_turn_index, session?.current_round, session?.id, gauntletRunId, combatOutcome]);
@@ -292,77 +287,86 @@ export default function CombatPage() {
      * flashing the HP bar of any participant that took damage.
      */
     const stepByStepEnemyTurns = async () => {
-        const DELAY_MS = 800; // pause between each enemy turn
-        const FLASH_MS = 600; // how long the red flash lasts
+        if (isAiRunningRef.current) return;
+        isAiRunningRef.current = true;
+        setAiProcessing(true);
 
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // Keep resolving as long as the current participant is an enemy
-        let safetyLimit = 25; // prevent infinite loops
-        while (safetyLimit-- > 0) {
-            const currentSession = sessionRef.current;
-            if (!currentSession) break;
+        try {
+            // Keep resolving as long as the current participant is an enemy
+            let safetyLimit = 25; // prevent infinite loops
+            while (safetyLimit-- > 0) {
+                const currentSession = sessionRef.current;
+                if (!currentSession) break;
 
-            const active = currentSession.current_participant || (currentSession.participants || []).find(p => p.is_active);
-            if (!active || active.participant_type !== 'enemy' || active.current_hp <= 0) break;
+                const active = currentSession.current_participant || (currentSession.participants || []).find(p => p.is_active);
+                if (!active || active.participant_type !== 'enemy' || active.current_hp <= 0) break;
 
-            try {
-                const res = await combatApi.aiTurn(sessionId);
-                const updatedSession = res.data.session;
+                try {
+                    const res = await combatApi.aiTurn(sessionId);
+                    const updatedSession = res.data.session;
 
-                // Display actionable summary banner
-                const summary = formatAiActionSummary(res.data.actions);
-                if (summary) {
-                    setAiActionBanner(summary);
-                    setTimeout(() => setAiActionBanner(null), 5000);
+                    // Display actionable summary banner
+                    const summary = formatAiActionSummary(res.data.actions);
+                    if (summary) {
+                        setAiActionBanner(summary);
+                        setTimeout(() => setAiActionBanner(null), 4000);
+                    }
+
+                    // Collect IDs of participants that took damage this turn
+                    const hitTargetIds = new Set<number>(
+                        res.data.actions
+                            .filter(a => a.hit && a.damage && a.damage > 0 && a.target_id != null)
+                            .map(a => a.target_id as number)
+                    );
+
+                    // Show lingering state: updated HP & conditions, but the attacking enemy remains the active participant
+                    const lingeringSession: CombatSession = {
+                        ...currentSession,
+                        participants: updatedSession.participants,
+                        actions: updatedSession.actions,
+                    };
+                    setSession(lingeringSession);
+                    sessionRef.current = lingeringSession;
+
+                    // Flash red on damaged participants
+                    if (hitTargetIds.size > 0) {
+                        setDamagedParticipantIds(hitTargetIds);
+                        setTimeout(() => setDamagedParticipantIds(new Set()), 1000);
+                    }
+
+                    // Linger for 1.2s so player can see who attacked, the roll, floating text, and damage
+                    await sleep(1200);
+
+                    // Advance to the new turn
+                    sessionRef.current = updatedSession;
+                    setSession(updatedSession);
+
+                    if (updatedSession.participants) {
+                        if (checkCombatOutcome(updatedSession.participants)) break;
+                    }
+
+                    // Check if the next participant is still an enemy; if not, stop
+                    const next = updatedSession.current_participant;
+                    if (!next || next.participant_type !== 'enemy' || next.current_hp <= 0) break;
+
+                    // Brief pause before next enemy strikes
+                    await sleep(400);
+                } catch (err: any) {
+                    console.error('Step-by-step AI turn failed:', err);
+                    await loadSession();
+                    break;
                 }
-
-                // Collect IDs of participants that took damage this turn
-                const hitTargetIds = new Set<number>(
-                    res.data.actions
-                        .filter(a => a.hit && a.damage && a.damage > 0 && a.target_id != null)
-                        .map(a => a.target_id as number)
-                );
-
-                // Show lingering state: updated HP & conditions, but the attacking enemy remains the active participant
-                const lingeringSession: CombatSession = {
-                    ...currentSession,
-                    participants: updatedSession.participants,
-                    actions: updatedSession.actions,
-                };
-                setSession(lingeringSession);
-
-                // Flash red on damaged participants
-                if (hitTargetIds.size > 0) {
-                    setDamagedParticipantIds(hitTargetIds);
-                    setTimeout(() => setDamagedParticipantIds(new Set()), 1200);
-                }
-
-                // Linger for 3.5 seconds so player can see who attacked, the roll, floating text, and damage
-                await sleep(3500);
-
-                // Advance to the new turn
-                sessionRef.current = updatedSession;
-                setSession(updatedSession);
-
-                if (updatedSession.participants) {
-                    if (checkCombatOutcome(updatedSession.participants)) break;
-                }
-
-                // Check if the next participant is still an enemy; if not, stop
-                const next = updatedSession.current_participant;
-                if (!next || next.participant_type !== 'enemy' || next.current_hp <= 0) break;
-
-                // Short delay before the next enemy starts their turn
-                await sleep(600);
-            } catch (err: any) {
-                console.error('Step-by-step AI turn failed:', err);
-                break;
             }
+        } finally {
+            isAiRunningRef.current = false;
+            setAiProcessing(false);
         }
     };
 
     const handleNextTurn = async () => {
+        if (aiProcessing || isAiRunningRef.current) return;
         try {
             const response = await combatApi.nextTurn(sessionId);
             const updatedSession = response.data.session;
@@ -372,13 +376,8 @@ export default function CombatPage() {
 
             // Auto-resolve enemy turns step-by-step so HP bars update live
             const nextParticipant = updatedSession.current_participant;
-            if (nextParticipant && nextParticipant.participant_type === 'enemy') {
-                setAiProcessing(true);
-                try {
-                    await stepByStepEnemyTurns();
-                } finally {
-                    setAiProcessing(false);
-                }
+            if (nextParticipant && nextParticipant.participant_type === 'enemy' && nextParticipant.current_hp > 0) {
+                await stepByStepEnemyTurns();
             }
         } catch (error: any) {
             alert(`Failed to advance turn: ${error.response?.data?.error || error.message}`);
@@ -386,67 +385,18 @@ export default function CombatPage() {
     };
 
     const handleAiTurn = async () => {
-        setAiProcessing(true);
-        try {
-            const currentSession = sessionRef.current;
-            const response = await combatApi.aiTurn(sessionId);
-            const updatedSession = response.data.session;
-            const summary = formatAiActionSummary(response.data.actions);
-            if (summary) {
-                setAiActionBanner(summary);
-                setTimeout(() => setAiActionBanner(null), 5000);
-            }
-            // Flash any hit targets
-            const hitTargetIds = new Set<number>(
-                response.data.actions
-                    .filter(a => a.hit && a.damage && a.damage > 0 && a.target_id != null)
-                    .map(a => a.target_id as number)
-            );
-
-            // Hold lingering state with enemy as active participant and updated HP
-            if (currentSession) {
-                const lingeringSession: CombatSession = {
-                    ...currentSession,
-                    participants: updatedSession.participants,
-                    actions: updatedSession.actions,
-                };
-                setSession(lingeringSession);
-            }
-
-            if (hitTargetIds.size > 0) {
-                setDamagedParticipantIds(hitTargetIds);
-                setTimeout(() => setDamagedParticipantIds(new Set()), 1200);
-            }
-
-            // Linger for 3.5s so player sees the enemy attack and damage
-            await new Promise(resolve => setTimeout(resolve, 3500));
-
-            sessionRef.current = updatedSession;
-            setSession(updatedSession);
-
-            if (response.data.session.participants) {
-                checkCombatOutcome(response.data.session.participants);
-            }
-        } catch (error: any) {
-            alert(`AI turn failed: ${error.response?.data?.error || error.message}`);
-        } finally {
-            setAiProcessing(false);
-        }
+        if (aiProcessing || isAiRunningRef.current) return;
+        await stepByStepEnemyTurns();
     };
 
     const handleAutoEnemyTurns = async () => {
-        setAiProcessing(true);
-        try {
-            await stepByStepEnemyTurns();
-        } finally {
-            setAiProcessing(false);
-        }
+        await stepByStepEnemyTurns();
     };
 
     const handleAttack = async (
         attackName: string,
         attackBonus: number,
-        options?: { advantage?: boolean; disadvantage?: boolean }
+        options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean }
     ) => {
         const current = getCurrentParticipant();
         if (!current || !targetId) {
@@ -471,6 +421,8 @@ export default function CombatPage() {
                 attack_bonus: attackBonus,
                 advantage: options?.advantage,
                 disadvantage: options?.disadvantage,
+                dm_override: options?.dm_override,
+                inspiration: options?.inspiration,
             });
             if (res.data) {
                 setLastAttackFeedback({
@@ -643,7 +595,13 @@ export default function CombatPage() {
         }
     };
 
-    const handleUseFeature = async (featureName: string, amount?: number, customTargetId?: number, curePoison?: boolean) => {
+    const handleUseFeature = async (
+        featureName: string,
+        amount?: number,
+        customTargetId?: number,
+        curePoison?: boolean,
+        extraData?: Record<string, any>
+    ) => {
         const current = getCurrentParticipant();
         if (!current) return;
         const target = customTargetId || current.id;
@@ -654,8 +612,12 @@ export default function CombatPage() {
                 feature_name: featureName,
                 amount: amount,
                 cure_poison: curePoison,
+                ...extraData,
             });
             const actualHealed = res.data.actual_healed ?? (amount || 0);
+            const fnLower = featureName.toLowerCase();
+            const isHealing = actualHealed > 0 || (fnLower.includes('lay on hands') && !curePoison) || fnLower.includes('second wind');
+
             setDamagedParticipantIds(prev => new Set(prev).add(target));
             setTimeout(() => {
                 setDamagedParticipantIds(prev => {
@@ -664,11 +626,13 @@ export default function CombatPage() {
                     return next;
                 });
             }, 1200);
+
             setLastAttackFeedback({
                 targetId: target,
                 hit: true,
-                isHealing: true,
-                healingAmount: actualHealed,
+                isHealing: isHealing,
+                isFeature: !isHealing,
+                healingAmount: isHealing ? actualHealed : undefined,
                 spellName: featureName,
                 timestamp: Date.now(),
             });

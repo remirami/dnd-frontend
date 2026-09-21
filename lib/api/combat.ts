@@ -45,7 +45,7 @@ export const combatApi = {
         apiClient.post<CombatSession>(`/combat/sessions/${id}/roll_initiative/`, overrides ? { overrides } : {}),
 
     // Make an attack
-    attack: (sessionId: number, data: { attacker_id: number; target_id: number; attack_name: string; attack_bonus: number; advantage?: boolean; disadvantage?: boolean }) =>
+    attack: (sessionId: number, data: { attacker_id: number; target_id: number; attack_name: string; attack_bonus: number; advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean }) =>
         apiClient.post<any>(`/combat/sessions/${sessionId}/attack/`, data),
 
     // Cast a spell
@@ -96,13 +96,16 @@ export const combatApi = {
             action: any;
         }>(`/combat/sessions/${sessionId}/use_item/`, data),
 
-    // Use class feature / trait (Lay on Hands, Second Wind, etc.)
+    // Use class feature / trait (Lay on Hands, Second Wind, Rage, Action Surge, etc.)
     useFeature: (sessionId: number, data: {
         participant_id: number;
         target_id?: number;
         feature_name: string;
         amount?: number;
         cure_poison?: boolean;
+        end_rage?: boolean;
+        subaction?: string;
+        [key: string]: any;
     }) =>
         apiClient.post<{
             message: string;
@@ -111,6 +114,7 @@ export const combatApi = {
             remaining_pool?: number;
             target_hp?: number;
             action: any;
+            [key: string]: any;
         }>(`/combat/sessions/${sessionId}/use_feature/`, data),
 
     // AI: Resolve current enemy's turn

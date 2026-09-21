@@ -20,6 +20,7 @@ export interface AttackFeedback {
     spellName?: string;
     isSpell?: boolean;
     isHealing?: boolean;
+    isFeature?: boolean;
     healingAmount?: number;
     saveSuccess?: boolean;
     conditionApplied?: string | null;
@@ -80,6 +81,30 @@ function CornerFiligree({
 }
 
 function FloatingCombatText({ text }: { text: AttackFeedback }) {
+    if (text.isFeature) {
+        const isRage = text.spellName?.toLowerCase().includes('rage');
+        const isSurge = text.spellName?.toLowerCase().includes('surge');
+        const isReckless = text.spellName?.toLowerCase().includes('reckless');
+        return (
+            <div className="animate-combat-hit flex flex-col items-center select-none">
+                <span className={`font-cinzel text-2xl sm:text-3xl font-black tracking-widest uppercase drop-shadow-[0_0_20px_rgba(255,255,255,0.9)] ${
+                    isRage ? 'text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.95)]' :
+                    isSurge ? 'text-amber-400 drop-shadow-[0_0_25px_rgba(251,191,36,0.95)]' :
+                    isReckless ? 'text-orange-400 drop-shadow-[0_0_25px_rgba(249,115,22,0.95)]' :
+                    'text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.95)]'
+                }`}>
+                    {isRage ? '🔥 RAGE!' : isSurge ? '⚡ ACTION SURGE!' : isReckless ? '⚡ RECKLESS ATTACK!' : `⚡ ${text.spellName?.toUpperCase()}`}
+                </span>
+                <span className="font-fira-sans text-xs sm:text-sm font-bold text-slate-200 drop-shadow-[0_0_10px_rgba(0,0,0,0.8)] mt-0.5">
+                    {isRage ? 'Physical Resistance & Melee Bonus Active' :
+                     isSurge ? '+1 Action Granted' :
+                     isReckless ? 'Advantage on Melee STR Attacks' :
+                     'Feature Activated'}
+                </span>
+            </div>
+        );
+    }
+
     if (text.isHealing) {
         return (
             <div className="animate-combat-hit flex flex-col items-center select-none">

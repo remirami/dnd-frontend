@@ -13,7 +13,7 @@ interface ActionDockProps {
     gauntletRunId: number | null;
     isAttacking: boolean;
     currentIsIncapacitated: boolean;
-    onAttack: (attackName: string, attackBonus: number, options?: { advantage?: boolean; disadvantage?: boolean }) => void;
+    onAttack: (attackName: string, attackBonus: number, options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean }) => void;
     // Weapon & Spell data
     characterWeapons: Array<{
         name: string;
@@ -38,7 +38,80 @@ interface ActionDockProps {
     onApplyHealing: () => void;
     allParticipants?: CombatParticipant[];
     onUseItem?: (itemName: string, targetId?: number) => Promise<void>;
-    onUseFeature?: (featureName: string, amount?: number, targetId?: number, curePoison?: boolean) => Promise<void>;
+    onUseFeature?: (featureName: string, amount?: number, targetId?: number, curePoison?: boolean, extraData?: Record<string, any>) => Promise<void>;
+}
+
+function getConditionNames(p?: CombatParticipant | null): string[] {
+    if (!p || !p.conditions) return [];
+    return p.conditions.map((c: any) => (typeof c === 'string' ? c : c.name || '')).map(s => s.toLowerCase());
+}
+
+export function computeRollPrediction(
+    attacker?: CombatParticipant | null,
+    target?: CombatParticipant | null,
+    isMelee: boolean = true,
+    useInspiration: boolean = false
+): { state: 'normal' | 'advantage' | 'disadvantage' | 'canceled'; advReasons: string[]; disadvReasons: string[] } {
+    const advReasons: string[] = [];
+    const disadvReasons: string[] = [];
+
+    const atkConds = getConditionNames(attacker);
+    const tgtConds = getConditionNames(target);
+
+    // Attacker conditions
+    if (atkConds.includes('blinded')) disadvReasons.push('Attacker Blinded');
+    if (atkConds.includes('poisoned')) disadvReasons.push('Attacker Poisoned');
+    if (atkConds.includes('frightened')) disadvReasons.push('Attacker Frightened');
+    if (atkConds.includes('restrained')) disadvReasons.push('Attacker Restrained');
+    if (atkConds.includes('prone')) disadvReasons.push('Attacker Prone');
+    if (atkConds.includes('invisible')) advReasons.push('Attacker Invisible');
+
+    // Attacker features (Reckless Attack grants advantage on melee attacks)
+    if (attacker?.reckless_attack_active && isMelee) {
+        advReasons.push('Reckless Attack');
+    }
+
+    // Target conditions
+    for (const c of ['blinded', 'paralyzed', 'restrained', 'stunned', 'unconscious']) {
+        if (tgtConds.includes(c)) {
+            advReasons.push(`Target ${c.charAt(0).toUpperCase() + c.slice(1)}`);
+            break;
+        }
+    }
+    if (tgtConds.includes('prone')) {
+        if (isMelee) {
+            advReasons.push('Target Prone (Melee Advantage)');
+        } else {
+            disadvReasons.push('Target Prone (Ranged Disadvantage)');
+        }
+    }
+    if (tgtConds.includes('invisible')) {
+        disadvReasons.push('Target Invisible');
+    }
+    if (tgtConds.includes('dodging')) {
+        disadvReasons.push('Target Dodging');
+    }
+
+    // Target features (Attacking a reckless creature grants advantage)
+    if (target?.reckless_attack_active) {
+        advReasons.push('Target is Reckless');
+    }
+
+    // Heroic Inspiration
+    if (useInspiration) {
+        advReasons.push('Heroic Inspiration');
+    }
+
+    let state: 'normal' | 'advantage' | 'disadvantage' | 'canceled' = 'normal';
+    if (advReasons.length > 0 && disadvReasons.length > 0) {
+        state = 'canceled';
+    } else if (advReasons.length > 0) {
+        state = 'advantage';
+    } else if (disadvReasons.length > 0) {
+        state = 'disadvantage';
+    }
+
+    return { state, advReasons, disadvReasons };
 }
 
 export function ActionDock({
@@ -73,7 +146,8 @@ export function ActionDock({
     const [lohTargetId, setLohTargetId] = useState<number | null>(null);
     const [supplyTargetId, setSupplyTargetId] = useState<number | null>(null);
     const [isOperating, setIsOperating] = useState(false);
-    const [rollMode, setRollMode] = useState<'normal' | 'advantage' | 'disadvantage'>('normal');
+    const [useInspiration, setUseInspiration] = useState<boolean>(false);
+    const [dmOverrideMode, setDmOverrideMode] = useState<'auto' | 'advantage' | 'normal' | 'disadvantage'>('auto');
 
     // If it's an enemy turn in Gauntlet, display the Autonomous AI indicator card
     if (isEnemyTurn && gauntletRunId) {
@@ -99,8 +173,22 @@ export function ActionDock({
 
     const charFeatures = charData?.features || [];
     const classLower = (charData?.character_class?.name || charData?.class_name || '').toLowerCase();
-    const isPaladin = classLower === 'paladin' || charFeatures.some((f: any) => f.name.toLowerCase() === 'lay on hands');
-    const isFighter = classLower === 'fighter' || charFeatures.some((f: any) => f.name.toLowerCase() === 'second wind');
+    const isPaladin = classLower === 'paladin' || charFeatures.some((f: any) => f.name.toLowerCase() === 'lay on hands') || !!currentParticipant?.is_paladin;
+    const isFighter = classLower === 'fighter' || charFeatures.some((f: any) => f.name.toLowerCase() === 'second wind') || !!currentParticipant?.is_fighter;
+    const isBarbarian = classLower === 'barbarian' || charFeatures.some((f: any) => f.name.toLowerCase().includes('rage')) || !!currentParticipant?.is_barbarian;
+    const isRogue = classLower === 'rogue' || charFeatures.some((f: any) => f.name.toLowerCase().includes('sneak attack') || f.name.toLowerCase().includes('cunning action')) || !!currentParticipant?.is_rogue;
+
+    const isRaging = !!currentParticipant?.is_raging;
+    const maxRageUses = currentParticipant?.max_rage_uses ?? 2;
+    const rageUses = currentParticipant?.rage_uses_remaining ?? maxRageUses;
+    const recklessActive = !!currentParticipant?.reckless_attack_active;
+    const canReckless = !!currentParticipant?.has_reckless_attack || (isBarbarian && (charData?.level || 1) >= 2);
+
+    const actionSurgeUsed = !!currentParticipant?.action_surge_used || !!currentParticipant?.feature_uses?.action_surge_used;
+    const canActionSurge = isFighter && (currentParticipant?.action_surge_available ?? (!actionSurgeUsed && (charData?.level || 1) >= 2));
+    const secondWindUsed = !!currentParticipant?.second_wind_used || !!currentParticipant?.feature_uses?.second_wind_used;
+
+    const canCunningAction = isRogue && ((charData?.level || 1) >= 2 || !!currentParticipant?.cunning_action_available);
 
     const paladinLevel = charData?.level || 1;
     const lohMax = currentParticipant?.max_lay_on_hands_pool ?? (paladinLevel * 5);
@@ -115,6 +203,30 @@ export function ActionDock({
         ci.item_details?.category === 'Consumable' ||
         ci.item_details?.category?.name === 'Consumable'
     );
+
+    const targetParticipant = allParticipants?.find(p => p.id === parseInt(targetId));
+    const rollPreview = computeRollPrediction(currentParticipant, targetParticipant, true, useInspiration);
+
+    const getAttackOptions = (isMelee: boolean = true) => {
+        if (activeTab === 'test' && dmOverrideMode !== 'auto') {
+            return {
+                dm_override: true,
+                advantage: dmOverrideMode === 'advantage',
+                disadvantage: dmOverrideMode === 'disadvantage',
+            };
+        }
+        const pred = computeRollPrediction(currentParticipant, targetParticipant, isMelee, useInspiration);
+        const opts = {
+            dm_override: false,
+            inspiration: useInspiration,
+            advantage: pred.state === 'advantage',
+            disadvantage: pred.state === 'disadvantage',
+        };
+        if (useInspiration) {
+            setUseInspiration(false);
+        }
+        return opts;
+    };
 
     return (
         <div className="w-full bg-[#10121a]/98 border-t border-[#c5a059]/30 backdrop-blur-md px-4 py-2.5 shadow-[0_-4px_25px_rgba(0,0,0,0.6)] z-20 flex flex-col gap-2">
@@ -154,17 +266,31 @@ export function ActionDock({
                         </button>
                     )}
 
-                    {!isEnemyTurn && (charFeatures.length > 0 || isPaladin || isFighter) && (
+                    {!isEnemyTurn && (charFeatures.length > 0 || isPaladin || isFighter || isBarbarian || isRogue) && (
                         <button
                             onClick={() => setActiveTab('features')}
                             className={`px-3 py-1 rounded text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
                                 activeTab === 'features'
-                                    ? 'bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.35)]'
-                                    : 'bg-[#151722] text-[#d1cdb8]/70 hover:text-white hover:bg-[#1e2233]'
+                                    ? isRaging
+                                        ? 'bg-rose-600 text-white shadow-[0_0_15px_rgba(225,29,72,0.6)]'
+                                        : 'bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.35)]'
+                                    : isRaging
+                                        ? 'bg-rose-950/80 border border-rose-500/60 text-rose-300 animate-pulse'
+                                        : 'bg-[#151722] text-[#d1cdb8]/70 hover:text-white hover:bg-[#1e2233]'
                             }`}
                         >
-                            <span>🌟</span>
+                            <span>{isRaging ? '🔥' : '🌟'}</span>
                             <span>Features</span>
+                            {isRaging && (
+                                <span className="text-[10px] font-fira-sans text-rose-100 font-bold bg-rose-900/90 px-1 py-0.5 rounded">
+                                    RAGING
+                                </span>
+                            )}
+                            {!isRaging && isBarbarian && (
+                                <span className="text-[10px] font-fira-sans text-rose-300 font-bold">
+                                    ({rageUses}/{maxRageUses >= 900 ? '∞' : maxRageUses})
+                                </span>
+                            )}
                             {isPaladin && (
                                 <span className="text-[10px] font-fira-sans text-amber-300 font-bold">
                                     ({lohPool}/{lohMax} HP)
@@ -212,48 +338,122 @@ export function ActionDock({
                     )}
                 </div>
 
-                {/* Middle: Advantage / Normal / Disadvantage Roll Mode Selector */}
-                <div className="flex items-center gap-1 bg-[#0b0d14] px-1.5 py-0.5 rounded-md border border-[#c5a059]/25 shadow-inner">
-                    <span className="text-[10px] font-cinzel font-bold text-[#c5a059]/70 mr-1 hidden sm:inline">
-                        ROLL:
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => setRollMode('advantage')}
-                        title="Roll with Advantage (rolls 2d20, takes higher)"
-                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
-                            rollMode === 'advantage'
-                                ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.6)] font-bold'
-                                : 'text-emerald-400/60 hover:text-emerald-300 hover:bg-emerald-950/40'
-                        }`}
-                    >
-                        ADV
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setRollMode('normal')}
-                        title="Normal Roll (1d20)"
-                        className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-all cursor-pointer ${
-                            rollMode === 'normal'
-                                ? 'bg-[#c5a059] text-[#0c0d12] font-bold shadow-[0_0_8px_rgba(197,160,89,0.4)]'
-                                : 'text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-white/5'
-                        }`}
-                    >
-                        NORM
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setRollMode('disadvantage')}
-                        title="Roll with Disadvantage (rolls 2d20, takes lower)"
-                        className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all cursor-pointer ${
-                            rollMode === 'disadvantage'
-                                ? 'bg-purple-600 text-white shadow-[0_0_10px_rgba(168,85,247,0.6)] font-bold'
-                                : 'text-purple-400/60 hover:text-purple-300 hover:bg-purple-950/40'
-                        }`}
-                    >
-                        DIS
-                    </button>
-                </div>
+                {/* Middle: 5e Rules-Based Roll Indicator & Inspiration / DM Override */}
+                {activeTab === 'test' ? (
+                    <div className="flex items-center gap-1 bg-[#16120f] px-2 py-0.5 rounded-md border border-amber-600/40 shadow-inner">
+                        <span className="text-[10px] font-cinzel font-bold text-amber-400 mr-1">
+                            🧪 DM OVERRIDE:
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setDmOverrideMode('auto')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-all cursor-pointer ${
+                                dmOverrideMode === 'auto'
+                                    ? 'bg-amber-600 text-stone-950 font-bold'
+                                    : 'text-stone-400 hover:text-stone-200'
+                            }`}
+                        >
+                            AUTO
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setDmOverrideMode('advantage')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-all cursor-pointer ${
+                                dmOverrideMode === 'advantage'
+                                    ? 'bg-emerald-600 text-white font-bold shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                                    : 'text-emerald-400/60 hover:text-emerald-300'
+                            }`}
+                        >
+                            ADV
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setDmOverrideMode('normal')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-all cursor-pointer ${
+                                dmOverrideMode === 'normal'
+                                    ? 'bg-stone-600 text-white font-bold'
+                                    : 'text-stone-400 hover:text-stone-200'
+                            }`}
+                        >
+                            NORM
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setDmOverrideMode('disadvantage')}
+                            className={`px-1.5 py-0.5 text-[10px] rounded transition-all cursor-pointer ${
+                                dmOverrideMode === 'disadvantage'
+                                    ? 'bg-purple-600 text-white font-bold shadow-[0_0_8px_rgba(168,85,247,0.5)]'
+                                    : 'text-purple-400/60 hover:text-purple-300'
+                            }`}
+                        >
+                            DIS
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-1.5 bg-[#0b0d14] px-2 py-0.5 rounded-md border border-[#c5a059]/25 shadow-inner">
+                        <span className="text-[10px] font-cinzel font-bold text-[#c5a059]/70 mr-0.5 hidden sm:inline">
+                            ROLL:
+                        </span>
+                        {rollPreview.state === 'advantage' && (
+                            <div
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 font-bold text-[10px] shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                title={`Advantage: ${rollPreview.advReasons.join(', ')}`}
+                            >
+                                <span>✨</span>
+                                <span>ADVANTAGE</span>
+                                {rollPreview.advReasons.length > 0 && (
+                                    <span className="text-[9px] text-emerald-400/80 font-normal font-sans hidden md:inline">
+                                        ({rollPreview.advReasons[0]})
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                        {rollPreview.state === 'disadvantage' && (
+                            <div
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-purple-950/80 border border-purple-500/60 text-purple-300 font-bold text-[10px] shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                                title={`Disadvantage: ${rollPreview.disadvReasons.join(', ')}`}
+                            >
+                                <span>⚠️</span>
+                                <span>DISADVANTAGE</span>
+                                {rollPreview.disadvReasons.length > 0 && (
+                                    <span className="text-[9px] text-purple-400/80 font-normal font-sans hidden md:inline">
+                                        ({rollPreview.disadvReasons[0]})
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                        {rollPreview.state === 'canceled' && (
+                            <div
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-950/80 border border-amber-600/50 text-amber-300 font-bold text-[10px]"
+                                title={`Canceled: Advantage (${rollPreview.advReasons.join(', ')}) & Disadvantage (${rollPreview.disadvReasons.join(', ')})`}
+                            >
+                                <span>⚖️</span>
+                                <span>CANCELED</span>
+                            </div>
+                        )}
+                        {rollPreview.state === 'normal' && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-900 border border-stone-700/60 text-stone-300 font-semibold text-[10px]">
+                                <span>⚔️</span>
+                                <span>NORMAL (1d20)</span>
+                            </div>
+                        )}
+
+                        {/* Heroic Inspiration Button */}
+                        <button
+                            type="button"
+                            onClick={() => setUseInspiration(prev => !prev)}
+                            title={useInspiration ? "Heroic Inspiration active (+Advantage)" : "Spend Heroic Inspiration for Advantage on this roll"}
+                            className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded flex items-center gap-1 transition-all cursor-pointer ${
+                                useInspiration
+                                    ? 'bg-amber-500 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.6)] font-bold'
+                                    : 'text-amber-400/70 hover:text-amber-300 hover:bg-amber-950/40 border border-amber-500/30'
+                            }`}
+                        >
+                            <span>⭐</span>
+                            <span className="hidden sm:inline">Inspiration</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Right: 5e Resource Status Pips (Action, Bonus Action, Reaction) */}
                 <div className="flex items-center gap-3 font-cinzel text-[11px] text-[#d1cdb8]/80">
@@ -284,10 +484,11 @@ export function ActionDock({
                                     {currentParticipant.enemy_actions.map((act: any) => {
                                         const isRecharging = act.has_recharge && (currentParticipant.recharge_state?.[act.name] === false);
                                         const disabled = isActionDisabled || isRecharging;
+                                        const isMelee = act.attack_type !== 'ranged_weapon';
                                         return (
                                             <button
                                                 key={act.id}
-                                                onClick={() => onAttack(act.name, act.attack_bonus || 0, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' })}
+                                                onClick={() => onAttack(act.name, act.attack_bonus || 0, getAttackOptions(isMelee))}
                                                 disabled={disabled}
                                                 className={`flex-shrink-0 px-3 py-2 rounded border text-left transition-all duration-150 w-48 ${
                                                     disabled
@@ -317,21 +518,24 @@ export function ActionDock({
                                 </div>
                             ) : enemyAttacks.length > 0 ? (
                                 <div className="flex items-center gap-2.5 overflow-x-auto py-1">
-                                    {enemyAttacks.map((atk, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => onAttack(atk.name, atk.bonus, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' })}
-                                            disabled={isActionDisabled}
-                                            className={`flex-shrink-0 px-3 py-2 rounded border text-left transition-all duration-150 w-44 ${
-                                                isActionDisabled
-                                                    ? 'bg-[#181a21]/40 border-slate-800 opacity-40 cursor-not-allowed'
-                                                    : 'bg-[#1a1518] border-red-800/60 hover:border-red-500 hover:bg-[#28151b] cursor-pointer'
-                                            }`}
-                                        >
-                                            <p className="font-cinzel text-xs font-bold text-red-200 truncate">{atk.name}</p>
-                                            <p className="text-[10px] font-fira-sans text-red-300 mt-1">+{atk.bonus} to hit • {atk.damage}</p>
-                                        </button>
-                                    ))}
+                                    {enemyAttacks.map((atk, i) => {
+                                        const isMelee = !atk.type?.includes('ranged');
+                                        return (
+                                            <button
+                                                key={i}
+                                                onClick={() => onAttack(atk.name, atk.bonus, getAttackOptions(isMelee))}
+                                                disabled={isActionDisabled}
+                                                className={`flex-shrink-0 px-3 py-2 rounded border text-left transition-all duration-150 w-44 ${
+                                                    isActionDisabled
+                                                        ? 'bg-[#181a21]/40 border-slate-800 opacity-40 cursor-not-allowed'
+                                                        : 'bg-[#1a1518] border-red-800/60 hover:border-red-500 hover:bg-[#28151b] cursor-pointer'
+                                                }`}
+                                            >
+                                                <p className="font-cinzel text-xs font-bold text-red-200 truncate">{atk.name}</p>
+                                                <p className="text-[10px] font-fira-sans text-red-300 mt-1">+{atk.bonus} to hit • {atk.damage}</p>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-xs text-[#d1cdb8]/50 italic py-2 font-lora">No monster actions available</p>
@@ -340,31 +544,34 @@ export function ActionDock({
                             /* Player Character Weapons */
                             characterWeapons.length > 0 ? (
                                 <div className="flex items-center gap-2.5 overflow-x-auto py-1">
-                                    {characterWeapons.map((wp, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => onAttack(wp.name, wp.bonus, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' })}
-                                            disabled={isActionDisabled}
-                                            className={`flex-shrink-0 px-3.5 py-2 rounded border text-left transition-all duration-150 w-52 ${
-                                                isActionDisabled
-                                                    ? 'bg-[#181a21]/40 border-slate-800 opacity-40 cursor-not-allowed'
-                                                    : 'bg-[#181a24] border-[#c5a059]/40 hover:border-[#c5a059] hover:bg-[#222536] hover:shadow-[0_0_15px_rgba(197,160,89,0.2)] cursor-pointer'
-                                            }`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-cinzel text-xs font-bold text-[#e0bc75] truncate">{wp.name}</span>
-                                                <span className="text-[10px] font-fira-sans font-bold text-emerald-400">
-                                                    +{wp.bonus} to hit
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-1 text-[11px] font-fira-sans">
-                                                <span className="text-red-300 font-bold">{wp.damage} + {wp.abilityMod}</span>
-                                                {wp.damageType && (
-                                                    <span className="text-[10px] text-[#d1cdb8]/60 font-lora italic">{wp.damageType}</span>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
+                                    {characterWeapons.map((wp, idx) => {
+                                        const isMelee = !wp.properties?.some((p: string) => p.toLowerCase().includes('ranged'));
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => onAttack(wp.name, wp.bonus, getAttackOptions(isMelee))}
+                                                disabled={isActionDisabled}
+                                                className={`flex-shrink-0 px-3.5 py-2 rounded border text-left transition-all duration-150 w-52 ${
+                                                    isActionDisabled
+                                                        ? 'bg-[#181a21]/40 border-slate-800 opacity-40 cursor-not-allowed'
+                                                        : 'bg-[#181a24] border-[#c5a059]/40 hover:border-[#c5a059] hover:bg-[#222536] hover:shadow-[0_0_15px_rgba(197,160,89,0.2)] cursor-pointer'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-cinzel text-xs font-bold text-[#e0bc75] truncate">{wp.name}</span>
+                                                    <span className="text-[10px] font-fira-sans font-bold text-emerald-400">
+                                                        +{wp.bonus} to hit
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1 text-[11px] font-fira-sans">
+                                                    <span className="text-red-300 font-bold">{wp.damage} + {wp.abilityMod}</span>
+                                                    {wp.damageType && (
+                                                        <span className="text-[10px] text-[#d1cdb8]/60 font-lora italic">{wp.damageType}</span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="text-center py-3 text-xs text-[#d1cdb8]/60 font-lora">
@@ -403,7 +610,7 @@ export function ActionDock({
                                                             if (onSelectSpell) {
                                                                 onSelectSpell(spell);
                                                             } else {
-                                                                onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0, { advantage: rollMode === 'advantage', disadvantage: rollMode === 'disadvantage' });
+                                                                onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0, getAttackOptions(false));
                                                             }
                                                         }}
                                                         disabled={disabled}
@@ -548,6 +755,146 @@ export function ActionDock({
                             </div>
                         )}
 
+                        {/* Barbarian: Rage */}
+                        {isBarbarian && (
+                            <div className={`flex-shrink-0 flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                                isRaging
+                                    ? 'bg-gradient-to-r from-rose-950/80 via-[#221015] to-[#181a24] border-rose-500 shadow-[0_0_18px_rgba(244,63,94,0.3)]'
+                                    : 'bg-[#181a24] border-rose-800/40 hover:border-rose-600/60'
+                            }`}>
+                                <div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm">🔥</span>
+                                        <span className="font-cinzel text-xs font-bold text-rose-200">
+                                            {isRaging ? 'Active Rage' : 'Rage'}
+                                        </span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 font-fira-sans font-semibold border border-rose-800/50">
+                                            Bonus Action
+                                        </span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#10121a] text-amber-300 font-fira-sans font-bold border border-slate-700">
+                                            {maxRageUses >= 900 ? 'Uses: ∞' : `Uses: ${rageUses}/${maxRageUses}`}
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-[#d1cdb8]/70 font-lora italic mt-0.5">
+                                        {isRaging
+                                            ? `Resist Bludgeoning, Piercing, Slashing • +${currentParticipant?.rage_damage_bonus || 2} melee STR dmg`
+                                            : `Halve physical damage • +${currentParticipant?.rage_damage_bonus || 2} melee STR dmg`}
+                                    </p>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    disabled={
+                                        currentIsIncapacitated || isAttacking || isOperating ||
+                                        (!isRaging && (currentParticipant?.bonus_action_used || rageUses <= 0))
+                                    }
+                                    onClick={async () => {
+                                        if (!onUseFeature) return;
+                                        setIsOperating(true);
+                                        try {
+                                            await onUseFeature('Rage', 0, currentParticipant?.id, false, { end_rage: isRaging });
+                                        } finally {
+                                            setIsOperating(false);
+                                        }
+                                    }}
+                                    className={`h-7 px-3 font-cinzel font-bold text-xs cursor-pointer ${
+                                        isRaging
+                                            ? 'bg-zinc-800 hover:bg-zinc-700 text-rose-200 border border-rose-500/40 shadow-sm'
+                                            : 'bg-rose-700 hover:bg-rose-600 text-white shadow-[0_0_12px_rgba(225,29,72,0.4)]'
+                                    }`}
+                                >
+                                    {isRaging ? 'End Rage' : 'Enter Rage'}
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Barbarian: Reckless Attack */}
+                        {canReckless && (
+                            <div className={`flex-shrink-0 flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                                recklessActive
+                                    ? 'bg-gradient-to-r from-amber-950/70 via-[#241a10] to-[#181a24] border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.25)]'
+                                    : 'bg-[#181a24] border-amber-700/40 hover:border-amber-500/60'
+                            }`}>
+                                <div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm">⚡</span>
+                                        <span className="font-cinzel text-xs font-bold text-amber-200">Reckless Attack</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 font-fira-sans font-semibold border border-amber-800/50">
+                                            On Turn
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-[#d1cdb8]/70 font-lora italic mt-0.5">
+                                        {recklessActive
+                                            ? 'ACTIVE: You have Advantage on melee STR attacks. Attacks against you have Advantage.'
+                                            : 'Advantage on melee STR attacks this turn; incoming attacks gain Advantage.'}
+                                    </p>
+                                </div>
+                                {recklessActive ? (
+                                    <span className="h-7 px-2.5 flex items-center bg-amber-950/80 border border-amber-500/60 text-amber-300 font-cinzel font-bold text-[11px] rounded">
+                                        Active
+                                    </span>
+                                ) : (
+                                    <Button
+                                        size="sm"
+                                        disabled={currentIsIncapacitated || isAttacking || isOperating}
+                                        onClick={async () => {
+                                            if (!onUseFeature) return;
+                                            setIsOperating(true);
+                                            try {
+                                                await onUseFeature('Reckless Attack', 0, currentParticipant?.id);
+                                            } finally {
+                                                setIsOperating(false);
+                                            }
+                                        }}
+                                        className="h-7 px-3 bg-amber-600 hover:bg-amber-500 text-black font-cinzel font-bold text-xs shadow-[0_0_10px_rgba(217,119,6,0.35)] cursor-pointer"
+                                    >
+                                        Go Reckless
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Fighter: Action Surge */}
+                        {isFighter && (
+                            <div className={`flex-shrink-0 flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                                !actionSurgeUsed
+                                    ? 'bg-[#181a24] border-yellow-500/40 hover:border-yellow-400/60 shadow-[0_0_12px_rgba(234,179,8,0.12)]'
+                                    : 'bg-[#12131b] border-slate-800 opacity-60'
+                            }`}>
+                                <div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm">⚡</span>
+                                        <span className="font-cinzel text-xs font-bold text-yellow-200">Action Surge</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-950 text-yellow-300 font-fira-sans font-semibold border border-yellow-800/50">
+                                            1/Rest
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-[#d1cdb8]/70 font-lora italic mt-0.5">
+                                        {actionSurgeUsed ? 'Used (regained after rest)' : 'Take 1 additional Action immediately this turn'}
+                                    </p>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    disabled={currentIsIncapacitated || isAttacking || isOperating || actionSurgeUsed}
+                                    onClick={async () => {
+                                        if (!onUseFeature) return;
+                                        setIsOperating(true);
+                                        try {
+                                            await onUseFeature('Action Surge', 0, currentParticipant?.id);
+                                        } finally {
+                                            setIsOperating(false);
+                                        }
+                                    }}
+                                    className={`h-7 px-3 font-cinzel font-bold text-xs ${
+                                        actionSurgeUsed
+                                            ? 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                                            : 'bg-yellow-600 hover:bg-yellow-500 text-black shadow-[0_0_12px_rgba(202,138,4,0.4)] cursor-pointer'
+                                    }`}
+                                >
+                                    {actionSurgeUsed ? 'Used' : 'Surge Action'}
+                                </Button>
+                            </div>
+                        )}
+
                         {/* Fighter: Second Wind */}
                         {isFighter && (
                             <div className="flex-shrink-0 flex items-center gap-3 p-2 rounded-lg bg-[#181a24] border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
@@ -557,11 +904,13 @@ export function ActionDock({
                                         <span className="font-cinzel text-xs font-bold text-amber-200">Second Wind</span>
                                         <span className="text-[10px] px-1 rounded bg-amber-950 text-amber-300 font-fira-sans">Bonus Action</span>
                                     </div>
-                                    <p className="text-[10px] text-[#d1cdb8]/60 font-lora italic">Regain 1d10 + {charData?.level || 1} HP (1/rest)</p>
+                                    <p className="text-[10px] text-[#d1cdb8]/60 font-lora italic">
+                                        {secondWindUsed ? 'Used (regained after rest)' : `Regain 1d10 + ${charData?.level || 1} HP (1/rest)`}
+                                    </p>
                                 </div>
                                 <Button
                                     size="sm"
-                                    disabled={currentIsIncapacitated || isAttacking || isOperating || currentParticipant?.bonus_action_used || currentParticipant?.feature_uses?.second_wind_used}
+                                    disabled={currentIsIncapacitated || isAttacking || isOperating || currentParticipant?.bonus_action_used || secondWindUsed}
                                     onClick={async () => {
                                         if (!onUseFeature) return;
                                         setIsOperating(true);
@@ -571,16 +920,58 @@ export function ActionDock({
                                             setIsOperating(false);
                                         }
                                     }}
-                                    className="h-7 px-3 bg-amber-700 hover:bg-amber-600 text-white font-cinzel font-bold text-xs cursor-pointer"
+                                    className={`h-7 px-3 font-cinzel font-bold text-xs ${
+                                        secondWindUsed
+                                            ? 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                                            : 'bg-amber-700 hover:bg-amber-600 text-white cursor-pointer'
+                                    }`}
                                 >
-                                    Catch Breath
+                                    {secondWindUsed ? 'Used' : 'Catch Breath'}
                                 </Button>
+                            </div>
+                        )}
+
+                        {/* Rogue: Cunning Action */}
+                        {canCunningAction && (
+                            <div className="flex-shrink-0 flex items-center gap-3 p-2.5 rounded-lg bg-[#181a24] border border-violet-500/40 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
+                                <div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm">🗡️</span>
+                                        <span className="font-cinzel text-xs font-bold text-violet-200">Cunning Action</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-950 text-violet-300 font-fira-sans font-semibold border border-violet-800/50">
+                                            Bonus Action
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-[#d1cdb8]/70 font-lora italic mt-0.5">
+                                        Dash, Disengage, or Hide as a Bonus Action
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    {(['dash', 'disengage', 'hide'] as const).map(sub => (
+                                        <button
+                                            key={sub}
+                                            disabled={currentIsIncapacitated || isAttacking || isOperating || currentParticipant?.bonus_action_used}
+                                            onClick={async () => {
+                                                if (!onUseFeature) return;
+                                                setIsOperating(true);
+                                                try {
+                                                    await onUseFeature('Cunning Action', 0, currentParticipant?.id, false, { subaction: sub });
+                                                } finally {
+                                                    setIsOperating(false);
+                                                }
+                                            }}
+                                            className="h-7 px-2 rounded bg-[#10121a] hover:bg-violet-900/50 text-violet-200 border border-violet-700/50 text-[10px] font-cinzel font-semibold uppercase tracking-wider cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            {sub}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
                         {/* Other Class / Racial Features Cards */}
                         {charFeatures
-                            .filter((f: any) => !['lay on hands', 'second wind'].includes(f.name?.toLowerCase()))
+                            .filter((f: any) => !['lay on hands', 'second wind', 'rage', 'reckless attack', 'action surge', 'cunning action'].includes(f.name?.toLowerCase()))
                             .slice(0, 4)
                             .map((f: any) => (
                                 <div key={f.id} className="flex-shrink-0 max-w-[220px] p-2 rounded border border-slate-800 bg-[#141620] text-left">

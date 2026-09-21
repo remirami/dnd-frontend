@@ -166,39 +166,38 @@ export function InitiativeRibbon({
 
             {/* Right: Turn Controls */}
             <div className="flex items-center gap-2 flex-shrink-0">
-                {isEnemyTurn && (
-                    gauntletRunId ? (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-red-950/70 border border-red-500/60 text-red-200 font-cinzel text-xs font-semibold shadow-[0_0_15px_rgba(239,68,68,0.25)] animate-pulse">
-                            <span className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                            <span className="hidden sm:inline">AI Turn...</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1.5">
+                {isEnemyTurn ? (
+                    <div className="flex items-center gap-1.5">
+                        {aiProcessing ? (
+                            <div className="flex items-center gap-2 px-3 py-1 rounded bg-red-950/80 border border-red-500/70 text-red-200 font-cinzel text-xs font-semibold shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse">
+                                <span className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                <span className="hidden sm:inline">AI Turn...</span>
+                            </div>
+                        ) : (
                             <Button
                                 size="sm"
                                 onClick={onAiTurn}
-                                disabled={aiProcessing}
-                                className="bg-red-950/60 hover:bg-red-900 border border-red-500/50 text-red-200 text-xs h-8 px-3"
+                                className="bg-red-900 hover:bg-red-800 border border-red-500 text-white font-cinzel text-xs h-8 px-3 cursor-pointer shadow-[0_0_10px_rgba(239,68,68,0.3)]"
                             >
-                                {aiProcessing ? '...' : '🤖 AI'}
+                                🤖 AI Turn
                             </Button>
-                            <Button
-                                size="sm"
-                                onClick={onAutoEnemyTurns}
-                                disabled={aiProcessing}
-                                className="bg-[#181a21] hover:bg-red-950/40 border border-red-500/40 text-red-300 text-xs h-8 px-2.5"
-                            >
-                                ⚡ All
-                            </Button>
-                        </div>
-                    )
-                )}
-
-                {(!isEnemyTurn || !gauntletRunId) && (
+                        )}
+                        <Button
+                            size="sm"
+                            onClick={onNextTurn}
+                            disabled={aiProcessing}
+                            className="bg-[#181a21] hover:bg-[#222638] border border-slate-700 text-slate-300 font-cinzel text-xs h-8 px-3 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Skip to next participant"
+                        >
+                            Skip →
+                        </Button>
+                    </div>
+                ) : (
                     <Button
                         size="sm"
                         onClick={onNextTurn}
-                        className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs uppercase tracking-wider h-8 px-4 rounded shadow-[0_0_15px_rgba(197,160,89,0.3)] hover:shadow-[0_0_20px_rgba(197,160,89,0.5)] transition-all cursor-pointer"
+                        disabled={aiProcessing}
+                        className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs uppercase tracking-wider h-8 px-4 rounded shadow-[0_0_15px_rgba(197,160,89,0.3)] hover:shadow-[0_0_20px_rgba(197,160,89,0.5)] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         End Turn →
                     </Button>

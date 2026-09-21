@@ -210,6 +210,20 @@ export interface CombatParticipant {
     reaction_used?: boolean;
     lay_on_hands_pool?: number;
     max_lay_on_hands_pool?: number;
+    is_paladin?: boolean;
+    is_barbarian?: boolean;
+    is_raging?: boolean;
+    rage_uses_remaining?: number;
+    max_rage_uses?: number;
+    rage_damage_bonus?: number;
+    reckless_attack_active?: boolean;
+    has_reckless_attack?: boolean;
+    is_fighter?: boolean;
+    second_wind_used?: boolean;
+    action_surge_used?: boolean;
+    action_surge_available?: boolean;
+    is_rogue?: boolean;
+    cunning_action_available?: boolean;
     feature_uses?: Record<string, any>;
     death_save_status?: {
         successes: number;
