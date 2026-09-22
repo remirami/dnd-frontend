@@ -9,7 +9,7 @@ export const combatApi = {
     getById: (id: number) => apiClient.get<CombatSession>(`/combat/sessions/${id}/`),
 
     // Create a new combat session
-    create: (data: { campaign?: number; encounter?: number }) =>
+    create: (data: { campaign?: number; encounter?: number; auto_delete_oldest?: boolean }) =>
         apiClient.post<CombatSession>('/combat/sessions/', data),
 
     // Start combat

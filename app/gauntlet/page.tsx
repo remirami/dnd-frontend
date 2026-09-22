@@ -6,12 +6,22 @@ import Link from 'next/link';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { charactersApi } from '@/lib/api/characters';
 import { gauntletApi } from '@/lib/api/gauntlet';
+import { combatApi } from '@/lib/api/combat';
 import { Character } from '@/lib/types/character';
 import { GauntletRun, GauntletTheme } from '@/lib/types/gauntlet';
+import { CombatSession } from '@/lib/types/combat';
 import Navbar from '@/components/layout/Navbar';
 import FancyHeaderLogo from '@/components/ui/FancyHeaderLogo';
 import FantasyCard from '@/components/ui/FantasyCard';
-import { Trophy, Swords, Shield, Skull, Flame, TreePine, Castle, Users, Play, Award, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Trophy, Swords, Shield, Skull, Flame, TreePine, Castle, Users, Play, Award, Check, ShieldAlert } from 'lucide-react';
 
 interface ThemeOption {
     id: GauntletTheme;
@@ -31,6 +41,11 @@ export default function GauntletLobbyPage() {
     const [loading, setLoading] = useState(true);
     const [launching, setLaunching] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Combat limits state
+    const [combatSessions, setCombatSessions] = useState<CombatSession[]>([]);
+    const [limitModalOpen, setLimitModalOpen] = useState(false);
+    const [limitModalInfo, setLimitModalInfo] = useState({ title: '', description: '' });
 
     // Leaderboard state
     const [leaderboard, setLeaderboard] = useState<GauntletRun[]>([]);
@@ -52,9 +67,10 @@ export default function GauntletLobbyPage() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [charsResp, lbResp] = await Promise.all([
+            const [charsResp, lbResp, sessionsResp] = await Promise.all([
                 charactersApi.getAll(),
                 gauntletApi.getLeaderboard(),
+                combatApi.getAll().catch(() => ({ data: [] as CombatSession[] })),
             ]);
 
             const charList: Character[] = Array.isArray(charsResp.data)
@@ -67,6 +83,13 @@ export default function GauntletLobbyPage() {
             }
 
             setLeaderboard(Array.isArray(lbResp.data) ? lbResp.data : []);
+
+            const rawSessions: CombatSession[] = Array.isArray(sessionsResp.data)
+                ? sessionsResp.data
+                : (sessionsResp.data as any)?.results || [];
+            setCombatSessions(rawSessions.filter(
+                s => !(s.status === 'preparing' && (!s.participants || s.participants.length === 0))
+            ));
         } catch (err) {
             console.error('Failed to load gauntlet staging data:', err);
         } finally {
@@ -89,20 +112,46 @@ export default function GauntletLobbyPage() {
         ? Math.max(1, Math.round(selectedHeroes.reduce((acc, c) => acc + (c.level || 1), 0) / selectedHeroes.length))
         : 1;
 
-    const handleStartGauntlet = async () => {
+    const activeCombatCount = combatSessions.filter(
+        s => (s.is_active || s.status === 'active' || s.status === 'preparing') &&
+             !(s.status === 'preparing' && (!s.participants || s.participants.length === 0))
+    ).length;
+    const totalCombatCount = combatSessions.length;
+    const isAtActiveLimit = activeCombatCount >= 2;
+    const isAtTotalLimit = totalCombatCount >= 10;
+    const isAtCombatLimit = isAtActiveLimit || isAtTotalLimit;
+
+    const handleStartGauntlet = async (autoDelete: boolean = false) => {
         if (selectedCharIds.length === 0) {
             setError('Please select at least 1 hero for the Gauntlet.');
             return;
         }
 
+        if (!autoDelete && isAtCombatLimit) {
+            let title = 'Battle Limit Reached';
+            let description = '';
+            if (isAtActiveLimit && isAtTotalLimit) {
+                description = 'You have reached both your active skirmish limit (2 / 2) and war archives capacity (10 / 10). Please delete a battle from your history, or click below to start this new trial right now (which will delete the oldest combat).';
+            } else if (isAtActiveLimit) {
+                description = 'You have reached the maximum number of active skirmishes (2 / 2). Please delete an ongoing battle, or click below to start this new trial right now (which will remove the oldest active combat).';
+            } else {
+                description = 'Your war archives have reached the limit of 10 total battles. Please delete an older battle from your history, or click below to start this new trial right now (which will delete the oldest combat).';
+            }
+            setLimitModalInfo({ title, description });
+            setLimitModalOpen(true);
+            return;
+        }
+
         setLaunching(true);
         setError(null);
+        setLimitModalOpen(false);
 
         try {
             const resp = await gauntletApi.createRun({
                 name: runName || `${selectedTheme.toUpperCase()} Trial`,
                 theme: selectedTheme,
                 character_ids: selectedCharIds,
+                auto_delete_oldest: autoDelete,
             });
 
             const run = resp.data;
@@ -112,7 +161,17 @@ export default function GauntletLobbyPage() {
                 router.push('/combat');
             }
         } catch (err: any) {
-            setError(err?.response?.data?.error || err?.response?.data?.detail || 'Failed to initialize Gauntlet run.');
+            const code = err?.response?.data?.code;
+            const errorMsg = err?.response?.data?.error || err?.response?.data?.detail || 'Failed to initialize Gauntlet run.';
+            if (code === 'ACTIVE_LIMIT_REACHED' || code === 'TOTAL_LIMIT_REACHED') {
+                setLimitModalInfo({
+                    title: 'Battle Limit Reached',
+                    description: errorMsg.includes('delete') ? errorMsg : `${errorMsg} Would you like to delete the oldest combat and start now?`
+                });
+                setLimitModalOpen(true);
+            } else {
+                setError(errorMsg);
+            }
             setLaunching(false);
         }
     };
@@ -367,7 +426,7 @@ export default function GauntletLobbyPage() {
 
                                 <button
                                     disabled={selectedCharIds.length === 0 || launching}
-                                    onClick={handleStartGauntlet}
+                                    onClick={() => handleStartGauntlet(false)}
                                     className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 text-slate-950 font-cinzel font-bold text-sm tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.35)] transition-all cursor-pointer"
                                 >
                                     <Play className="w-4 h-4 fill-current" />
@@ -442,6 +501,45 @@ export default function GauntletLobbyPage() {
                         )}
                     </FantasyCard>
                 )}
+
+                {/* Battle Limit Confirmation Modal */}
+                <Dialog open={limitModalOpen} onOpenChange={setLimitModalOpen}>
+                    <DialogContent className="max-w-md bg-[#10121a] border border-[#c5a059]/40 text-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.8)] p-6">
+                        <DialogHeader className="space-y-2">
+                            <div className="flex items-center gap-3 text-amber-400">
+                                <ShieldAlert className="w-6 h-6 shrink-0" />
+                                <DialogTitle className="font-cinzel-decorative text-xl text-[#c5a059]">
+                                    {limitModalInfo.title || 'Battle Limit Reached'}
+                                </DialogTitle>
+                            </div>
+                            <DialogDescription className="font-lora text-sm text-[#d1cdb8]/85 leading-relaxed pt-2">
+                                {limitModalInfo.description}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 mt-6 pt-4 border-t border-[#c5a059]/20 font-lora">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setLimitModalOpen(false);
+                                    router.push('/combat');
+                                }}
+                                className="w-full sm:w-auto bg-[#181a24] border-[#c5a059]/40 text-[#d1cdb8] hover:bg-[#202330] hover:text-white"
+                            >
+                                Review War Archives
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => handleStartGauntlet(true)}
+                                disabled={launching}
+                                className="w-full sm:w-auto bg-gradient-to-r from-[#c5a059] to-[#d6b16a] text-[#0c0d12] hover:brightness-110 font-bold shadow-[0_0_15px_rgba(197,160,89,0.3)]"
+                            >
+                                {launching ? 'Deploying...' : 'Delete Oldest & Start'}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );

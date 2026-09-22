@@ -32,6 +32,10 @@ export default function CombatListPage() {
   const [startOpen, setStartOpen] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState<number | null>(null);
 
+  // Dialog state for battle limit confirmation prompt
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [limitModalInfo, setLimitModalInfo] = useState({ title: "", description: "" });
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login");
@@ -79,25 +83,42 @@ export default function CombatListPage() {
     ? "Total combat limit reached (10/10). Delete an older session from your history before starting a new encounter."
     : "";
 
-  const handleCreateSession = async () => {
-    if (activeLimitReached) {
-      alert(createDisabledReason);
+  const handleCreateSession = async (autoDelete: boolean = false) => {
+    if (!autoDelete && cannotCreateCombat) {
+      const title = activeLimitReached
+        ? "Active Combat Limit Reached (2 / 2)"
+        : "Combat Archive Limit Reached (10 / 10)";
+      const description = activeLimitReached
+        ? "You have reached the maximum number of active skirmishes (2 / 2). Finish or delete an ongoing battle, or click below to start a new encounter right now (deleting the oldest active combat)."
+        : "Your war archives have reached the limit of 10 total sessions. Delete an older battle from your history, or click below to start a new encounter right now (deleting the oldest combat).";
+      setLimitModalInfo({ title, description });
+      setLimitModalOpen(true);
       return;
     }
-    if (totalLimitReached) {
-      alert(createDisabledReason);
-      return;
-    }
+
+    setLimitModalOpen(false);
+
     try {
-      const response = await combatApi.create({});
+      const response = await combatApi.create({ auto_delete_oldest: autoDelete });
       router.push(`/combat/${response.data.id}/setup`);
     } catch (error: any) {
       console.error("Failed to create combat session:", error);
+      const code = error?.response?.data?.code;
       const errorMsg =
         error?.response?.data?.error ||
         error?.response?.data?.detail ||
         "Failed to create combat session";
-      alert(errorMsg);
+      if (code === "ACTIVE_LIMIT_REACHED" || code === "TOTAL_LIMIT_REACHED") {
+        setLimitModalInfo({
+          title: "Battle Limit Reached",
+          description: errorMsg.includes("delete")
+            ? errorMsg
+            : `${errorMsg} Would you like to delete the oldest combat and start now?`,
+        });
+        setLimitModalOpen(true);
+      } else {
+        alert(errorMsg);
+      }
     }
   };
 
@@ -197,20 +218,29 @@ export default function CombatListPage() {
 
           {/* Limit Warning Banner */}
           {cannotCreateCombat && (
-            <div className="mt-5 max-w-2xl mx-auto p-4 rounded bg-[#181a21] border border-amber-500/50 flex items-start gap-3 text-amber-200 text-sm font-lora shadow-[0_0_15px_rgba(245,158,11,0.15)] text-left">
-              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-amber-300">
-                  {activeLimitReached
-                    ? "Active Combat Limit Reached (2 / 2)"
-                    : "Combat Archive Limit Reached (10 / 10)"}
-                </p>
-                <p className="text-xs text-amber-200/80 mt-0.5 leading-relaxed">
-                  {activeLimitReached
-                    ? "You have 2 active or preparing skirmishes in progress. Finish or delete an ongoing battle before commencing a new encounter."
-                    : "Your war archives have reached the limit of 10 total sessions. Delete an older battle from your history to liberate capacity."}
-                </p>
+            <div className="mt-5 max-w-2xl mx-auto p-4 rounded bg-[#181a21] border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-200 text-sm font-lora shadow-[0_0_15px_rgba(245,158,11,0.15)] text-left">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-300">
+                    {activeLimitReached
+                      ? "Active Combat Limit Reached (2 / 2)"
+                      : "Combat Archive Limit Reached (10 / 10)"}
+                  </p>
+                  <p className="text-xs text-amber-200/80 mt-0.5 leading-relaxed">
+                    {activeLimitReached
+                      ? "You have 2 active or preparing skirmishes in progress. Finish or delete an ongoing battle, or replace the oldest combat to start now."
+                      : "Your war archives have reached the limit of 10 total sessions. Delete an older battle from your history, or replace the oldest combat to start now."}
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => handleCreateSession(true)}
+                className="shrink-0 px-3.5 py-1.5 rounded bg-gradient-to-r from-[#c5a059] to-[#d6b16a] text-[#0c0d12] font-bold text-xs hover:brightness-110 shadow-[0_0_12px_rgba(197,160,89,0.3)] transition-all cursor-pointer whitespace-nowrap self-end sm:self-center"
+              >
+                Replace Oldest & Start
+              </button>
             </div>
           )}
         </div>
@@ -228,14 +258,9 @@ export default function CombatListPage() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={cannotCreateCombat ? undefined : handleCreateSession}
-              disabled={cannotCreateCombat}
-              title={createDisabledReason || "Start a new tactical skirmish"}
-              className={`px-5 py-2.5 font-bold text-xs rounded transition-all flex items-center gap-2 ${
-                cannotCreateCombat
-                  ? "bg-[#181a21] border border-[#c5a059]/20 text-[#d1cdb8]/40 cursor-not-allowed opacity-60"
-                  : "bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] shadow-[0_0_20px_rgba(197,160,89,0.3)] cursor-pointer"
-              }`}
+              onClick={() => handleCreateSession(false)}
+              title={cannotCreateCombat ? "Battle limit reached — click to replace oldest or delete an existing battle" : "Start a new tactical skirmish"}
+              className="px-5 py-2.5 font-bold text-xs rounded transition-all flex items-center gap-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] shadow-[0_0_20px_rgba(197,160,89,0.3)] cursor-pointer"
             >
               <Swords className="w-4 h-4" />
               <span>New Encounter</span>
@@ -399,7 +424,7 @@ export default function CombatListPage() {
             </div>
 
             <button
-              onClick={handleCreateSession}
+              onClick={() => handleCreateSession(false)}
               className="px-6 py-2.5 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_20px_rgba(197,160,89,0.3)] inline-flex items-center gap-2 cursor-pointer font-lora"
             >
               <Plus className="w-4 h-4" />
@@ -496,6 +521,41 @@ export default function CombatListPage() {
                   onClearFilter={() => setSelectedParticipantId(null)}
                 />
               ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Battle Limit Confirmation Modal */}
+        <Dialog open={limitModalOpen} onOpenChange={setLimitModalOpen}>
+          <DialogContent className="max-w-md bg-[#10121a] border border-[#c5a059]/40 text-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.8)] p-6">
+            <DialogHeader className="space-y-2">
+              <div className="flex items-center gap-3 text-amber-400">
+                <ShieldAlert className="w-6 h-6 shrink-0" />
+                <DialogTitle className="font-cinzel-decorative text-xl text-[#c5a059]">
+                  {limitModalInfo.title || "Battle Limit Reached"}
+                </DialogTitle>
+              </div>
+              <DialogDescription className="font-lora text-sm text-[#d1cdb8]/85 leading-relaxed pt-2">
+                {limitModalInfo.description}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 mt-6 pt-4 border-t border-[#c5a059]/20 font-lora">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLimitModalOpen(false)}
+                className="w-full sm:w-auto bg-[#181a24] border-[#c5a059]/40 text-[#d1cdb8] hover:bg-[#202330] hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleCreateSession(true)}
+                className="w-full sm:w-auto bg-gradient-to-r from-[#c5a059] to-[#d6b16a] text-[#0c0d12] hover:brightness-110 font-bold shadow-[0_0_15px_rgba(197,160,89,0.3)]"
+              >
+                Delete Oldest & Start
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

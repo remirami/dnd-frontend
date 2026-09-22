@@ -56,6 +56,7 @@ export interface GauntletRunCreateRequest {
     name?: string;
     theme: GauntletTheme;
     character_ids: number[];
+    auto_delete_oldest?: boolean;
 }
 
 export type RespiteChoiceType = 'breather' | 'arcane_surge' | 'supply_drop' | 'tactical_boon';
