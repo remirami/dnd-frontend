@@ -161,8 +161,23 @@ export default function GauntletLobbyPage() {
                 router.push('/combat');
             }
         } catch (err: any) {
-            const code = err?.response?.data?.code;
-            const errorMsg = err?.response?.data?.error || err?.response?.data?.detail || 'Failed to initialize Gauntlet run.';
+            const data = err?.response?.data;
+            const code = data?.code;
+
+            // Extract specific error details if DRF returned field-level or object validation errors
+            let errorMsg = data?.error || data?.detail;
+            if (!errorMsg && data && typeof data === 'object') {
+                const messages = Object.entries(data)
+                    .filter(([k]) => k !== 'code' && k !== 'limit_type')
+                    .map(([k, v]) => `${k !== 'non_field_errors' ? `${k}: ` : ''}${Array.isArray(v) ? v.join(', ') : v}`);
+                if (messages.length > 0) {
+                    errorMsg = messages.join(' | ');
+                }
+            }
+            if (!errorMsg) {
+                errorMsg = 'Failed to initialize Gauntlet run.';
+            }
+
             if (code === 'ACTIVE_LIMIT_REACHED' || code === 'TOTAL_LIMIT_REACHED') {
                 setLimitModalInfo({
                     title: 'Battle Limit Reached',
