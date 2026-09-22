@@ -19,6 +19,8 @@ interface SpellMechanic {
     requiresConcentration?: boolean;
     range?: string;
     castingTime?: string;
+    isAoE?: boolean;
+    isBonusAction?: boolean;
 }
 
 // Authoritative 5e SRD spell mechanics
@@ -31,18 +33,18 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "sacred flame": { saveType: "DEX", damageDice: "1d8", damageType: "radiant", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
     "toll the dead": { saveType: "WIS", damageDice: "1d8", damageType: "necrotic", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
     "vicious mockery": { saveType: "WIS", damageDice: "1d4", damageType: "psychic", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
-    "acid splash": { saveType: "DEX", damageDice: "1d6", damageType: "acid", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
+    "acid splash": { saveType: "DEX", damageDice: "1d6", damageType: "acid", halfOnSave: false, range: "60 ft", castingTime: "1 action", isAoE: true },
     "poison spray": { saveType: "CON", damageDice: "1d12", damageType: "poison", condition: "poisoned", halfOnSave: false, range: "10 ft", castingTime: "1 action" },
 
     // Level 1
     "cure wounds": { isHealing: true, healingBaseDice: "1d8", upcastDiceCount: 1, range: "Touch", castingTime: "1 action" },
-    "healing word": { isHealing: true, healingBaseDice: "1d4", upcastDiceCount: 1, range: "60 ft", castingTime: "1 bonus action" },
+    "healing word": { isHealing: true, healingBaseDice: "1d4", upcastDiceCount: 1, range: "60 ft", castingTime: "1 bonus action", isBonusAction: true },
     "magic missile": { damageDice: "3d4+3", damageType: "force", upcastDiceCount: 1, range: "120 ft", castingTime: "1 action" },
-    "burning hands": { saveType: "DEX", damageDice: "3d6", damageType: "fire", upcastDiceCount: 1, halfOnSave: true, range: "Self (15-ft cone)", castingTime: "1 action" },
+    "burning hands": { saveType: "DEX", damageDice: "3d6", damageType: "fire", upcastDiceCount: 1, halfOnSave: true, range: "Self (15-ft cone)", castingTime: "1 action", isAoE: true },
     "guiding bolt": { isAttackRoll: true, damageDice: "4d6", damageType: "radiant", upcastDiceCount: 1, range: "120 ft", castingTime: "1 action" },
     "inflict wounds": { isAttackRoll: true, damageDice: "3d10", damageType: "necrotic", upcastDiceCount: 1, range: "Touch", castingTime: "1 action" },
-    "thunderwave": { saveType: "CON", damageDice: "2d8", damageType: "thunder", upcastDiceCount: 1, halfOnSave: true, range: "Self (15-ft cube)", castingTime: "1 action" },
-    "sleep": { damageDice: "5d8", condition: "unconscious", upcastDiceCount: 2, range: "90 ft", castingTime: "1 action" },
+    "thunderwave": { saveType: "CON", damageDice: "2d8", damageType: "thunder", upcastDiceCount: 1, halfOnSave: true, range: "Self (15-ft cube)", castingTime: "1 action", isAoE: true },
+    "sleep": { damageDice: "5d8", condition: "unconscious", upcastDiceCount: 2, range: "90 ft", castingTime: "1 action", isAoE: true },
     "charm person": { saveType: "WIS", condition: "charmed", requiresConcentration: false, range: "30 ft", castingTime: "1 action" },
     "cause fear": { saveType: "WIS", condition: "frightened", requiresConcentration: true, range: "60 ft", castingTime: "1 action" },
     "witch bolt": { isAttackRoll: true, damageDice: "1d12", damageType: "lightning", upcastDiceCount: 1, requiresConcentration: true, range: "30 ft", castingTime: "1 action" },
@@ -51,16 +53,16 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "hold person": { saveType: "WIS", condition: "paralyzed", requiresConcentration: true, range: "60 ft", castingTime: "1 action" },
     "blindness/deafness": { saveType: "CON", condition: "blinded", range: "30 ft", castingTime: "1 action" },
     "scorching ray": { isAttackRoll: true, damageDice: "6d6", damageType: "fire", upcastDiceCount: 2, range: "120 ft", castingTime: "1 action" },
-    "shatter": { saveType: "CON", damageDice: "3d8", damageType: "thunder", upcastDiceCount: 1, halfOnSave: true, range: "60 ft", castingTime: "1 action" },
+    "shatter": { saveType: "CON", damageDice: "3d8", damageType: "thunder", upcastDiceCount: 1, halfOnSave: true, range: "60 ft (10-ft radius)", castingTime: "1 action", isAoE: true },
     "prayer of healing": { isHealing: true, healingBaseDice: "2d8", upcastDiceCount: 1, range: "30 ft", castingTime: "10 minutes" },
-    "spiritual weapon": { isAttackRoll: true, damageDice: "1d8", damageType: "force", upcastDiceCount: 1, range: "60 ft", castingTime: "1 bonus action" },
+    "spiritual weapon": { isAttackRoll: true, damageDice: "1d8", damageType: "force", upcastDiceCount: 1, range: "60 ft", castingTime: "1 bonus action", isBonusAction: true },
     "ray of enfeeblement": { saveType: "CON", condition: "poisoned", requiresConcentration: true, range: "60 ft", castingTime: "1 action" },
     "acid arrow": { isAttackRoll: true, damageDice: "4d4", damageType: "acid", upcastDiceCount: 1, range: "90 ft", castingTime: "1 action" },
 
     // Level 3
-    "fireball": { saveType: "DEX", damageDice: "8d6", damageType: "fire", upcastDiceCount: 1, halfOnSave: true, range: "150 ft", castingTime: "1 action" },
-    "lightning bolt": { saveType: "DEX", damageDice: "8d6", damageType: "lightning", upcastDiceCount: 1, halfOnSave: true, range: "Self (100-ft line)", castingTime: "1 action" },
-    "mass healing word": { isHealing: true, healingBaseDice: "1d4", upcastDiceCount: 1, range: "60 ft", castingTime: "1 bonus action" },
+    "fireball": { saveType: "DEX", damageDice: "8d6", damageType: "fire", upcastDiceCount: 1, halfOnSave: true, range: "150 ft (20-ft radius)", castingTime: "1 action", isAoE: true },
+    "lightning bolt": { saveType: "DEX", damageDice: "8d6", damageType: "lightning", upcastDiceCount: 1, halfOnSave: true, range: "Self (100-ft line)", castingTime: "1 action", isAoE: true },
+    "mass healing word": { isHealing: true, healingBaseDice: "1d4", upcastDiceCount: 1, range: "60 ft", castingTime: "1 bonus action", isBonusAction: true, isAoE: true },
     "hold monster": { saveType: "WIS", condition: "paralyzed", requiresConcentration: true, range: "90 ft", castingTime: "1 action" },
 };
 
@@ -76,6 +78,7 @@ export interface SpellCastModalProps {
     onCast: (data: {
         casterId: number;
         targetId: number | null;
+        targetIds?: number[];
         spellName: string;
         spellLevel: number;
         saveType?: string;
@@ -84,6 +87,9 @@ export interface SpellCastModalProps {
         isHealing?: boolean;
         isRitual?: boolean;
         requiresConcentration?: boolean;
+        isBonusAction?: boolean;
+        castingTime?: string;
+        halfOnSave?: boolean;
     }) => Promise<void>;
 }
 
@@ -145,9 +151,17 @@ function SpellCastModalContent({
 
     // Target selection state
     const isHealingSpell = !!mechanics.isHealing;
+    const isAoE = !!mechanics.isAoE;
+    const isBonusAction = !!mechanics.isBonusAction || (mechanics.castingTime?.toLowerCase().includes("bonus") ?? false);
+
     const [targetType, setTargetType] = useState<"enemies" | "allies">(
         isHealingSpell ? "allies" : "enemies"
     );
+
+    // Target arrays
+    const enemyParticipants = useMemo(() => allParticipants.filter((p) => p.participant_type === "enemy" && p.is_active), [allParticipants]);
+    const allyParticipants = useMemo(() => allParticipants.filter((p) => p.participant_type === "character" && p.is_active), [allParticipants]);
+    const displayedParticipants = targetType === "enemies" ? enemyParticipants : allyParticipants;
 
     const [selectedTargetId, setSelectedTargetId] = useState<number | null>(() => {
         if (isHealingSpell) {
@@ -159,6 +173,30 @@ function SpellCastModalContent({
         const enemy = allParticipants.find((p) => p.participant_type === "enemy" && p.is_active);
         return enemy ? enemy.id : null;
     });
+
+    const [selectedTargetIds, setSelectedTargetIds] = useState<number[]>(() => {
+        if (!isAoE) return [];
+        if (isHealingSpell) {
+            return allyParticipants.map((a) => a.id);
+        }
+        return enemyParticipants.map((e) => e.id);
+    });
+
+    const toggleTargetId = (id: number) => {
+        setSelectedTargetIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        );
+    };
+
+    const selectAllDisplayed = () => {
+        const ids = displayedParticipants.map((p) => p.id);
+        setSelectedTargetIds((prev) => Array.from(new Set([...prev, ...ids])));
+    };
+
+    const deselectAllDisplayed = () => {
+        const idSet = new Set(displayedParticipants.map((p) => p.id));
+        setSelectedTargetIds((prev) => prev.filter((id) => !idSet.has(id)));
+    };
 
     // Available spell slots
     const availableSlots = useMemo(() => {
@@ -213,20 +251,21 @@ function SpellCastModalContent({
     const currentSlotInfo = selectedLevel > 0 ? getSpellSlots(selectedLevel) : null;
     const hasSlotsRemaining = baseLevel === 0 || isRitual || (currentSlotInfo ? currentSlotInfo.remaining > 0 : true);
 
-    // Target arrays
-    const enemyParticipants = allParticipants.filter((p) => p.participant_type === "enemy" && p.is_active);
-    const allyParticipants = allParticipants.filter((p) => p.participant_type === "character" && p.is_active);
-    const displayedParticipants = targetType === "enemies" ? enemyParticipants : allyParticipants;
     const selectedTarget = allParticipants.find((p) => p.id === selectedTargetId) || null;
-
     const requiresConcentration = spell.spell_details?.concentration ?? (mechanics.requiresConcentration || false);
 
     const handleExecuteCast = async () => {
-        if (!hasSlotsRemaining || isCasting || !selectedTargetId) return;
+        const targetsToCast = isAoE
+            ? selectedTargetIds
+            : selectedTargetId
+            ? [selectedTargetId]
+            : [];
+        if (!hasSlotsRemaining || isCasting || targetsToCast.length === 0) return;
 
         await onCast({
             casterId: caster.id,
-            targetId: selectedTargetId,
+            targetId: targetsToCast[0] || null,
+            targetIds: targetsToCast,
             spellName: spell.name,
             spellLevel: isRitual ? 0 : selectedLevel,
             saveType: mechanics.saveType || undefined,
@@ -235,6 +274,9 @@ function SpellCastModalContent({
             isHealing: isHealingSpell,
             isRitual,
             requiresConcentration,
+            isBonusAction,
+            castingTime: mechanics.castingTime || spell.spell_details?.casting_time || (isBonusAction ? "1 bonus action" : "1 action"),
+            halfOnSave: mechanics.halfOnSave ?? true,
         });
         onClose();
     };
@@ -353,53 +395,93 @@ function SpellCastModalContent({
 
                     {/* Target Selection */}
                     <div className="space-y-2 bg-[#141620] p-3 rounded-lg border border-slate-800">
-                        <div className="flex items-center justify-between">
-                            <label className="font-cinzel font-bold text-[#c5a059] uppercase tracking-wider text-[11px]">
-                                Target Selection
-                            </label>
-                            <div className="flex items-center gap-1 bg-[#0c0d12] p-0.5 rounded border border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setTargetType("enemies")}
-                                    className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
-                                        targetType === "enemies"
-                                            ? "bg-red-950 text-red-300 border border-red-800/60"
-                                            : "text-slate-400 hover:text-white"
-                                    }`}
-                                >
-                                    Hostiles ({enemyParticipants.length})
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setTargetType("allies")}
-                                    className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
-                                        targetType === "allies"
-                                            ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
-                                            : "text-slate-400 hover:text-white"
-                                    }`}
-                                >
-                                    Allies & Self ({allyParticipants.length})
-                                </button>
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                                <label className="font-cinzel font-bold text-[#c5a059] uppercase tracking-wider text-[11px]">
+                                    {isAoE ? "AoE Target Selection" : "Target Selection"}
+                                </label>
+                                {isAoE && (
+                                    <Badge className="bg-purple-950 text-purple-300 border-purple-800 text-[9px] font-mono">
+                                        Multi-Target ({selectedTargetIds.length})
+                                    </Badge>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {isAoE && (
+                                    <div className="flex items-center gap-1 mr-1">
+                                        <button
+                                            type="button"
+                                            onClick={selectAllDisplayed}
+                                            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#181a24] hover:bg-[#252838] text-amber-300 border border-amber-600/40 cursor-pointer transition-colors"
+                                        >
+                                            Select All ({displayedParticipants.length})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={deselectAllDisplayed}
+                                            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#181a24] hover:bg-[#252838] text-slate-400 border border-slate-700 cursor-pointer transition-colors"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-1 bg-[#0c0d12] p-0.5 rounded border border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTargetType("enemies")}
+                                        className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
+                                            targetType === "enemies"
+                                                ? "bg-red-950 text-red-300 border border-red-800/60"
+                                                : "text-slate-400 hover:text-white"
+                                        }`}
+                                    >
+                                        Hostiles ({enemyParticipants.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTargetType("allies")}
+                                        className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer ${
+                                            targetType === "allies"
+                                                ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
+                                                : "text-slate-400 hover:text-white"
+                                        }`}
+                                    >
+                                        Allies & Self ({allyParticipants.length})
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         {/* Target Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
                             {displayedParticipants.map((p) => {
-                                const isSelected = selectedTargetId === p.id;
+                                const isSelected = isAoE
+                                    ? selectedTargetIds.includes(p.id)
+                                    : selectedTargetId === p.id;
                                 const isSelf = p.id === caster.id;
                                 const hpPct = Math.max(0, Math.min(100, (p.current_hp / p.max_hp) * 100));
                                 return (
                                     <button
                                         key={p.id}
                                         type="button"
-                                        onClick={() => setSelectedTargetId(p.id)}
+                                        onClick={() => isAoE ? toggleTargetId(p.id) : setSelectedTargetId(p.id)}
                                         className={`p-2 rounded border text-left flex items-center gap-2 transition-all cursor-pointer ${
                                             isSelected
-                                                ? "bg-[#25201b] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                                                ? isAoE
+                                                    ? "bg-[#241a29] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                                                    : "bg-[#25201b] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
                                                 : "bg-[#181a24] border-slate-800 hover:border-slate-600"
                                         }`}
                                     >
+                                        {isAoE && (
+                                            <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border flex-shrink-0 transition-colors ${
+                                                isSelected
+                                                    ? "bg-purple-600 border-purple-400 text-white"
+                                                    : "border-slate-700 bg-slate-900 text-transparent"
+                                            }`}>
+                                                ✓
+                                            </div>
+                                        )}
                                         <CombatantPortrait participant={p} size="sm" showAc={false} />
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
@@ -433,7 +515,7 @@ function SpellCastModalContent({
                                 5e Ruleset Mechanics
                             </span>
                             <span className="text-[10px] text-slate-400 font-fira-sans">
-                                Action Cost: <strong className="text-amber-300">1 Action</strong>
+                                Action Cost: <strong className={isBonusAction ? "text-amber-400" : "text-emerald-400"}>{isBonusAction ? "1 Bonus Action" : "1 Action"}</strong>
                             </span>
                         </div>
 
@@ -527,7 +609,9 @@ function SpellCastModalContent({
                     <div className="text-[11px] text-slate-400 flex items-center gap-2">
                         <span>Target:</span>
                         <span className="font-bold text-[#e0bc75] font-cinzel">
-                            {selectedTarget ? selectedTarget.name : "None selected"}
+                            {isAoE
+                                ? `${selectedTargetIds.length} Target${selectedTargetIds.length !== 1 ? 's' : ''} in AoE`
+                                : (selectedTarget ? selectedTarget.name : "None selected")}
                         </span>
                     </div>
 
@@ -544,9 +628,9 @@ function SpellCastModalContent({
                         <Button
                             type="button"
                             onClick={handleExecuteCast}
-                            disabled={!hasSlotsRemaining || isCasting || !selectedTargetId}
+                            disabled={!hasSlotsRemaining || isCasting || (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId)}
                             className={`h-9 px-5 font-cinzel font-bold text-xs uppercase tracking-wider rounded transition-all shadow-md cursor-pointer flex items-center gap-1.5 ${
-                                !hasSlotsRemaining || isCasting || !selectedTargetId
+                                !hasSlotsRemaining || isCasting || (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId)
                                     ? "bg-slate-800 text-slate-500 opacity-60 cursor-not-allowed"
                                     : "bg-gradient-to-r from-[#c5a059] to-[#d6b16a] hover:from-[#d6b16a] hover:to-[#e5c27d] text-[#0c0d12] shadow-[0_0_15px_rgba(197,160,89,0.35)]"
                             }`}
@@ -559,7 +643,7 @@ function SpellCastModalContent({
                             ) : (
                                 <>
                                     <span>⚡</span>
-                                    <span>Cast {spell.name}</span>
+                                    <span>Cast {spell.name} {isAoE && selectedTargetIds.length > 0 ? `(${selectedTargetIds.length})` : ''}</span>
                                 </>
                             )}
                         </Button>

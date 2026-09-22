@@ -52,13 +52,31 @@ export function computeRollPrediction(
     attacker?: CombatParticipant | null,
     target?: CombatParticipant | null,
     isMelee: boolean = true,
-    useInspiration: boolean = false
+    useInspiration: boolean = false,
+    allParticipants: CombatParticipant[] = []
 ): { state: 'normal' | 'advantage' | 'disadvantage' | 'canceled'; advReasons: string[]; disadvReasons: string[] } {
     const advReasons: string[] = [];
     const disadvReasons: string[] = [];
 
     const atkConds = getConditionNames(attacker);
     const tgtConds = getConditionNames(target);
+
+    // Flanking check for melee attacks (5e rules)
+    if (isMelee && attacker && target && allParticipants && allParticipants.length > 0) {
+        const allies = allParticipants.filter(p =>
+            p.participant_type === attacker.participant_type &&
+            p.id !== attacker.id &&
+            p.is_active &&
+            p.current_hp > 0
+        );
+        const activeAllies = allies.filter(a => {
+            const conds = getConditionNames(a);
+            return !conds.some(c => ['incapacitated', 'paralyzed', 'petrified', 'stunned', 'unconscious'].includes(c));
+        });
+        if (activeAllies.length > 0) {
+            advReasons.push('Flanking');
+        }
+    }
 
     // Attacker conditions
     if (atkConds.includes('blinded')) disadvReasons.push('Attacker Blinded');
@@ -233,17 +251,17 @@ export function ActionDock({
     );
 
     const targetParticipant = allParticipants?.find(p => p.id === parseInt(targetId));
-    const rollPreview = computeRollPrediction(currentParticipant, targetParticipant, true, useInspiration);
+    const rollPreview = computeRollPrediction(currentParticipant, targetParticipant, true, useInspiration, allParticipants);
 
     const getAttackOptions = (isMelee: boolean = true) => {
-        if (activeTab === 'test' && dmOverrideMode !== 'auto') {
+        if (activeTab === 'test' && !gauntletRunId && dmOverrideMode !== 'auto') {
             return {
                 dm_override: true,
                 advantage: dmOverrideMode === 'advantage',
                 disadvantage: dmOverrideMode === 'disadvantage',
             };
         }
-        const pred = computeRollPrediction(currentParticipant, targetParticipant, isMelee, useInspiration);
+        const pred = computeRollPrediction(currentParticipant, targetParticipant, isMelee, useInspiration, allParticipants);
         const opts = {
             dm_override: false,
             inspiration: useInspiration,
@@ -485,17 +503,23 @@ export function ActionDock({
 
                 {/* Right: 5e Resource Status Pips (Action, Bonus Action, Reaction) */}
                 <div className="flex items-center gap-3 font-cinzel text-[11px] text-[#d1cdb8]/80">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5" title={hasAttacksLeft ? `${currentParticipant?.attacks_remaining} attack(s) available` : "Action used this turn"}>
                         <span className={`w-2.5 h-2.5 rounded-full ${hasAttacksLeft ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-stone-700'}`} />
-                        <span>Action ({currentParticipant?.attacks_remaining ?? 0})</span>
+                        <span className={hasAttacksLeft ? "text-emerald-300 font-semibold" : "text-stone-500 line-through"}>
+                            Action ({currentParticipant?.attacks_remaining ?? 0})
+                        </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
-                        <span>Bonus Action</span>
+                    <div className="flex items-center gap-1.5" title={!currentParticipant?.bonus_action_used ? "Bonus Action available" : "Bonus Action used this turn"}>
+                        <span className={`w-2.5 h-2.5 rounded-full ${!currentParticipant?.bonus_action_used ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]' : 'bg-stone-700'}`} />
+                        <span className={!currentParticipant?.bonus_action_used ? "text-amber-300 font-semibold" : "text-stone-500 line-through"}>
+                            Bonus Action
+                        </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
-                        <span>Reaction</span>
+                    <div className="flex items-center gap-1.5" title={!currentParticipant?.reaction_used ? "Reaction available" : "Reaction expended this round"}>
+                        <span className={`w-2.5 h-2.5 rounded-full ${!currentParticipant?.reaction_used ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]' : 'bg-stone-700'}`} />
+                        <span className={!currentParticipant?.reaction_used ? "text-blue-300 font-semibold" : "text-stone-500 line-through"}>
+                            Reaction
+                        </span>
                     </div>
                 </div>
             </div>

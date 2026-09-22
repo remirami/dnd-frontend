@@ -52,6 +52,7 @@ export const combatApi = {
     castSpell: (sessionId: number, data: {
         caster_id: number;
         target_id?: number | null;
+        target_ids?: number[];
         spell_name: string;
         spell_level?: number;
         save_type?: string;
@@ -61,14 +62,29 @@ export const combatApi = {
         is_healing?: boolean;
         is_ritual?: boolean;
         requires_concentration?: boolean;
+        is_bonus_action?: boolean;
+        casting_time?: string;
+        half_on_save?: boolean;
     }) =>
         apiClient.post<{
             message: string;
             spell_name: string;
             spell_level?: number;
+            is_bonus_action?: boolean;
             target?: string;
             target_id?: number;
             target_hp?: number;
+            target_results?: Array<{
+                target_id: number;
+                target_name: string;
+                target_hp: number;
+                save_roll?: number;
+                save_total?: number;
+                save_success?: boolean;
+                damage: number;
+                healing?: number;
+                condition_applied?: string | null;
+            }>;
             is_healing?: boolean;
             healing_amount?: number;
             save_type?: string;

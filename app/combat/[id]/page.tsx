@@ -510,6 +510,7 @@ export default function CombatPage() {
     const handleCastSpell = async (data: {
         casterId: number;
         targetId: number | null;
+        targetIds?: number[];
         spellName: string;
         spellLevel: number;
         saveType?: string;
@@ -518,6 +519,9 @@ export default function CombatPage() {
         isHealing?: boolean;
         isRitual?: boolean;
         requiresConcentration?: boolean;
+        isBonusAction?: boolean;
+        castingTime?: string;
+        halfOnSave?: boolean;
     }) => {
         const current = getCurrentParticipant();
         if (!current) return;
@@ -525,9 +529,16 @@ export default function CombatPage() {
             alert(`${current.name} is ${incapacitatingName} and cannot take actions.`);
             return;
         }
-        if (current.attacks_remaining <= 0 || current.action_used) {
-            alert(`${current.name} has no actions remaining this turn. Please end your turn.`);
-            return;
+        if (data.isBonusAction) {
+            if (current.bonus_action_used) {
+                alert(`${current.name} has already used their bonus action this turn.`);
+                return;
+            }
+        } else {
+            if (current.attacks_remaining <= 0 || current.action_used) {
+                alert(`${current.name} has no actions remaining this turn. Please end your turn.`);
+                return;
+            }
         }
         if (isCastingSpell) return;
         setIsCastingSpell(true);
@@ -535,6 +546,7 @@ export default function CombatPage() {
             const res = await combatApi.castSpell(sessionId, {
                 caster_id: data.casterId,
                 target_id: data.targetId,
+                target_ids: data.targetIds,
                 spell_name: data.spellName,
                 spell_level: data.spellLevel,
                 save_type: data.saveType,
@@ -543,10 +555,16 @@ export default function CombatPage() {
                 is_healing: data.isHealing,
                 is_ritual: data.isRitual,
                 requires_concentration: data.requiresConcentration,
+                is_bonus_action: data.isBonusAction,
+                casting_time: data.castingTime,
+                half_on_save: data.halfOnSave,
             });
 
             if (res.data) {
+                const targetResults = res.data.target_results || [];
                 const resolvedTargetId = res.data.target_id || data.targetId;
+
+                // Handle feedback for single or primary target
                 if (resolvedTargetId) {
                     setLastAttackFeedback({
                         targetId: resolvedTargetId,
@@ -560,26 +578,42 @@ export default function CombatPage() {
                         saveSuccess: res.data.save_success,
                         conditionApplied: res.data.condition_applied,
                     });
+                }
 
-                    if (res.data.damage && res.data.damage > 0) {
-                        setDamagedParticipantIds(prev => new Set([...prev, resolvedTargetId]));
-                        setTimeout(() => {
-                            setDamagedParticipantIds(prev => {
-                                const next = new Set(prev);
-                                next.delete(resolvedTargetId);
-                                return next;
-                            });
-                        }, 1200);
+                // Handle damage flashes for all affected targets
+                const newlyDamagedIds: number[] = [];
+                if (targetResults.length > 0) {
+                    for (const tr of targetResults) {
+                        if (tr.damage > 0) newlyDamagedIds.push(tr.target_id);
                     }
+                } else if (res.data.damage && res.data.damage > 0 && resolvedTargetId) {
+                    newlyDamagedIds.push(resolvedTargetId);
+                }
+
+                if (newlyDamagedIds.length > 0) {
+                    setDamagedParticipantIds(prev => new Set([...prev, ...newlyDamagedIds]));
+                    setTimeout(() => {
+                        setDamagedParticipantIds(prev => {
+                            const next = new Set(prev);
+                            for (const id of newlyDamagedIds) next.delete(id);
+                            return next;
+                        });
+                    }, 1200);
                 }
 
                 if (res.data.session) {
                     const freshSession = { ...res.data.session };
-                    const newSpellTargetHp = res.data.target_hp;
-                    if (newSpellTargetHp !== undefined && data.targetId && freshSession.participants) {
-                        freshSession.participants = freshSession.participants.map((p: CombatParticipant) => 
-                            p.id === data.targetId ? { ...p, current_hp: newSpellTargetHp as number } : p
-                        );
+                    if (freshSession.participants) {
+                        if (targetResults.length > 0) {
+                            const hpMap = new Map(targetResults.map(tr => [tr.target_id, tr.target_hp]));
+                            freshSession.participants = freshSession.participants.map((p: CombatParticipant) =>
+                                hpMap.has(p.id) ? { ...p, current_hp: hpMap.get(p.id)! } : p
+                            );
+                        } else if (res.data.target_hp !== undefined && data.targetId) {
+                            freshSession.participants = freshSession.participants.map((p: CombatParticipant) =>
+                                p.id === data.targetId ? { ...p, current_hp: res.data.target_hp as number } : p
+                            );
+                        }
                     }
                     sessionRef.current = freshSession;
                     setSession(freshSession);
