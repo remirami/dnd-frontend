@@ -809,6 +809,23 @@ export default function CombatPage() {
         const current = getCurrentParticipant();
         if (!current || !sessionId) return;
         setIsMoving(true);
+
+        // Instant optimistic update on local state so the token moves with 0ms latency
+        setSession(prev => {
+            if (!prev) return prev;
+            const updatedParticipants = prev.participants.map(p =>
+                p.id === current.id ? { ...p, position_x: targetX, position_y: targetY } : p
+            );
+            const updatedCurrent = prev.current_participant?.id === current.id
+                ? { ...prev.current_participant, position_x: targetX, position_y: targetY }
+                : prev.current_participant;
+            return {
+                ...prev,
+                participants: updatedParticipants,
+                current_participant: updatedCurrent,
+            };
+        });
+
         try {
             const resp = await combatApi.move(sessionId, {
                 participant_id: current.id,
@@ -816,8 +833,17 @@ export default function CombatPage() {
                 target_y: targetY,
             });
             if (resp.data.session) {
-                setSession(resp.data.session);
-                checkCombatOutcome(resp.data.session.participants);
+                const freshSession = { ...resp.data.session };
+                if (resp.data.participant) {
+                    freshSession.participants = freshSession.participants.map(p =>
+                        p.id === resp.data.participant.id ? { ...p, ...resp.data.participant } : p
+                    );
+                    if (freshSession.current_participant?.id === resp.data.participant.id) {
+                        freshSession.current_participant = { ...freshSession.current_participant, ...resp.data.participant };
+                    }
+                }
+                setSession(freshSession);
+                checkCombatOutcome(freshSession.participants);
             } else {
                 await loadSession();
             }

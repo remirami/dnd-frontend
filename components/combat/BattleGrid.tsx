@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { CombatParticipant } from "@/lib/types/combat";
 import { isIncapacitating } from "@/lib/data/conditions";
 
@@ -33,11 +33,11 @@ function resolveParticipantCoords(
     participant: CombatParticipant,
     allParticipants: CombatParticipant[]
 ): { x: number; y: number; col: number; row: number } {
-    // If the participant already has valid non-zero coordinates, respect them
+    // If the participant already has valid non-zero coordinates or has used movement, respect them
     if (
         participant.position_x != null &&
         participant.position_y != null &&
-        (participant.position_x > 0 || participant.position_y > 0)
+        (participant.position_x > 0 || participant.position_y > 0 || (participant.movement_used ?? 0) > 0)
     ) {
         const col = Math.min(COLS - 1, Math.max(0, Math.round(participant.position_x / 5)));
         const row = Math.min(ROWS - 1, Math.max(0, Math.round(participant.position_y / 5)));
@@ -79,11 +79,33 @@ export function BattleGrid({
 }: BattleGridProps) {
     const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null);
 
-    // Current participant coordinates
+    // Instant optimistic coordinate tracking for zero-latency token movement
+    const [optimisticPos, setOptimisticPos] = useState<{ id: number; col: number; row: number } | null>(null);
+
+    // Clear optimistic position once server coordinates match
+    useEffect(() => {
+        if (optimisticPos && currentParticipant) {
+            const actualCol = Math.round((currentParticipant.position_x ?? 0) / 5);
+            const actualRow = Math.round((currentParticipant.position_y ?? 0) / 5);
+            if (actualCol === optimisticPos.col && actualRow === optimisticPos.row) {
+                setOptimisticPos(null);
+            }
+        }
+    }, [currentParticipant?.position_x, currentParticipant?.position_y, optimisticPos]);
+
+    // Current active participant coordinates
     const curCoords = useMemo(() => {
         if (!currentParticipant) return { x: 10, y: 15, col: 2, row: 3 };
+        if (optimisticPos && optimisticPos.id === currentParticipant.id) {
+            return {
+                x: optimisticPos.col * 5,
+                y: optimisticPos.row * 5,
+                col: optimisticPos.col,
+                row: optimisticPos.row,
+            };
+        }
         return resolveParticipantCoords(currentParticipant, allParticipants);
-    }, [currentParticipant, allParticipants]);
+    }, [currentParticipant, allParticipants, optimisticPos]);
 
     const curX = curCoords.x;
     const curY = curCoords.y;
@@ -99,17 +121,41 @@ export function BattleGrid({
     const dashedThisTurn = !!currentParticipant?.dashed_this_turn;
     const dashPotential = movementRemaining + baseSpeed;
 
-    // Map each cell to participants residing there
+    // Map each cell to living active participants (only living participants block squares)
     const cellOccupancy = useMemo(() => {
         const map = new Map<string, CombatParticipant>();
         allParticipants.forEach((p) => {
-            const coords = resolveParticipantCoords(p, allParticipants);
-            map.set(`${coords.col},${coords.row}`, p);
+            if (p.current_hp > 0 && p.is_active) {
+                let coords = resolveParticipantCoords(p, allParticipants);
+                if (optimisticPos && p.id === optimisticPos.id) {
+                    coords = {
+                        x: optimisticPos.col * 5,
+                        y: optimisticPos.row * 5,
+                        col: optimisticPos.col,
+                        row: optimisticPos.row,
+                    };
+                } else if (currentParticipant && p.id === currentParticipant.id) {
+                    coords = curCoords;
+                }
+                map.set(`${coords.col},${coords.row}`, (currentParticipant && p.id === currentParticipant.id) ? currentParticipant : p);
+            }
+        });
+        return map;
+    }, [allParticipants, currentParticipant, optimisticPos, curCoords]);
+
+    // Map fallen participants / corpses (rendered as non-blocking markers on the ground)
+    const corpseOccupancy = useMemo(() => {
+        const map = new Map<string, CombatParticipant>();
+        allParticipants.forEach((p) => {
+            if (p.current_hp <= 0 || !p.is_active) {
+                const coords = resolveParticipantCoords(p, allParticipants);
+                map.set(`${coords.col},${coords.row}`, p);
+            }
         });
         return map;
     }, [allParticipants]);
 
-    // Active hostile enemies for the radar and threat zones
+    // Active living hostile enemies for the radar and threat zones
     const activeEnemies = useMemo(() => {
         if (!currentParticipant) return [];
         const oppType = currentParticipant.participant_type === "character" ? "enemy" : "character";
@@ -153,40 +199,6 @@ export function BattleGrid({
         ? getChebyshevDist(curX, curY, targetCoords.x, targetCoords.y)
         : null;
 
-    // Find the best adjacent square to the targeted enemy to "Close In"
-    const approachTile = useMemo(() => {
-        if (!targetCoords || !targetParticipant || targetDist === null || targetDist <= 5) return null;
-
-        let bestTile: { x: number; y: number; dist: number } | null = null;
-        let minStepDist = Infinity;
-
-        for (let dc = -1; dc <= 1; dc++) {
-            for (let dr = -1; dr <= 1; dr++) {
-                if (dc === 0 && dr === 0) continue;
-                const tc = targetCoords.col + dc;
-                const tr = targetCoords.row + dr;
-
-                if (tc < 0 || tc >= COLS || tr < 0 || tr >= ROWS) continue;
-
-                // Must be unoccupied or occupied by self
-                const occupant = cellOccupancy.get(`${tc},${tr}`);
-                if (occupant && occupant.id !== currentParticipant?.id) continue;
-
-                const tileX = tc * 5;
-                const tileY = tr * 5;
-                const distFromSelf = getChebyshevDist(curX, curY, tileX, tileY);
-
-                if (distFromSelf > 0 && distFromSelf <= movementRemaining) {
-                    if (distFromSelf < minStepDist) {
-                        minStepDist = distFromSelf;
-                        bestTile = { x: tileX, y: tileY, dist: distFromSelf };
-                    }
-                }
-            }
-        }
-        return bestTile;
-    }, [targetCoords, targetParticipant, targetDist, cellOccupancy, currentParticipant, curX, curY, movementRemaining]);
-
     // Check if the current participant is currently in an enemy's reach
     const currentlyInThreat = threatCells.has(`${curCol},${curRow}`);
 
@@ -217,8 +229,8 @@ export function BattleGrid({
     const handleCellClick = (x: number, y: number, occupant?: CombatParticipant) => {
         if (isMoving || isOperating) return;
 
-        // If clicking a participant, select as target or inspect
-        if (occupant) {
+        // If clicking a living active participant, select as target or inspect
+        if (occupant && occupant.current_hp > 0 && occupant.is_active) {
             if (occupant.id === currentParticipant?.id) {
                 onInspectParticipant(occupant);
                 return;
@@ -231,14 +243,24 @@ export function BattleGrid({
             return;
         }
 
-        // Empty tile: Move
+        // Empty tile or tile with corpse: Move there
         const dist = getChebyshevDist(curX, curY, x, y);
         if (dist === 0) return;
 
+        const targetCol = Math.round(x / 5);
+        const targetRow = Math.round(y / 5);
+
         if (dist <= movementRemaining) {
+            // Immediate optimistic token placement
+            if (currentParticipant) {
+                setOptimisticPos({ id: currentParticipant.id, col: targetCol, row: targetRow });
+            }
             onMove(x, y);
         } else if (dist <= dashPotential && onDash && !dashedThisTurn) {
             if (confirm(`Move is ${dist} ft (exceeds ${movementRemaining} ft). Use Dash action to extend movement?`)) {
+                if (currentParticipant) {
+                    setOptimisticPos({ id: currentParticipant.id, col: targetCol, row: targetRow });
+                }
                 onDash().then(() => onMove(x, y));
             }
         }
@@ -254,8 +276,11 @@ export function BattleGrid({
 
         if (nextCol < 0 || nextCol >= COLS || nextRow < 0 || nextRow >= ROWS) return;
         const occupant = cellOccupancy.get(`${nextCol},${nextRow}`);
-        if (occupant && occupant.id !== currentParticipant?.id) return;
+        if (occupant && occupant.id !== currentParticipant?.id && occupant.current_hp > 0) return;
 
+        if (currentParticipant) {
+            setOptimisticPos({ id: currentParticipant.id, col: nextCol, row: nextRow });
+        }
         onMove(nextX, nextY);
     };
 
@@ -450,20 +475,8 @@ export function BattleGrid({
                     )}
                 </div>
 
-                {/* 1-Click "Close In" Approach Button */}
+                {/* Quick Action Buttons (Dash & Disengage) */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    {approachTile && targetParticipant && (
-                        <button
-                            type="button"
-                            disabled={isMoving || isOperating}
-                            onClick={() => onMove(approachTile.x, approachTile.y)}
-                            className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-black font-cinzel font-bold text-xs shadow-[0_0_12px_rgba(245,158,11,0.4)] transition-all cursor-pointer flex items-center gap-1 animate-pulse"
-                        >
-                            <span>⚔️</span>
-                            <span>Close into Melee ({approachTile.dist} ft)</span>
-                        </button>
-                    )}
-
                     {onDash && (
                         <button
                             type="button"
@@ -505,7 +518,7 @@ export function BattleGrid({
                         <div
                             key={col}
                             className={`text-[10px] font-fira-sans font-semibold uppercase tracking-wider ${
-                                idx === 2 ? "text-cyan-400" : idx === 7 ? "text-red-400" : "text-slate-500"
+                                idx === curCol ? "text-cyan-400 font-bold" : "text-slate-500"
                             }`}
                         >
                             {col}{" "}
@@ -523,7 +536,9 @@ export function BattleGrid({
                         {Array.from({ length: ROWS }).map((_, rIdx) => (
                             <div
                                 key={rIdx}
-                                className="h-12 sm:h-14 md:h-16 flex items-center justify-end text-[10px] font-fira-sans font-semibold text-slate-500 w-5"
+                                className={`h-12 sm:h-14 md:h-16 flex items-center justify-end text-[10px] font-fira-sans font-semibold w-5 ${
+                                    rIdx === curRow ? "text-cyan-400 font-bold" : "text-slate-500"
+                                }`}
                             >
                                 {rIdx + 1}
                             </div>
@@ -541,6 +556,7 @@ export function BattleGrid({
                                 const tileY = row * 5;
                                 const isCurrentPos = col === curCol && row === curRow;
                                 const occupant = cellOccupancy.get(`${col},${row}`);
+                                const corpse = corpseOccupancy.get(`${col},${row}`);
                                 const isThreat = threatCells.has(`${col},${row}`);
 
                                 const distFromCur = getChebyshevDist(curX, curY, tileX, tileY);
@@ -584,7 +600,7 @@ export function BattleGrid({
                                         {/* Stone Tile Texture */}
                                         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:8px_8px] pointer-events-none rounded-md" />
 
-                                        {/* Occupant Token */}
+                                        {/* Living Occupant Token */}
                                         {occupant && (
                                             <div
                                                 className={`relative w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-xs shadow-md transition-transform duration-200 ${
@@ -596,9 +612,7 @@ export function BattleGrid({
                                                         ? "ring-4 ring-red-500 shadow-[0_0_22px_rgba(239,68,68,0.85)] scale-108"
                                                         : ""
                                                 } ${
-                                                    occupant.current_hp <= 0
-                                                        ? "grayscale opacity-50 bg-stone-900 border border-stone-700 text-stone-400"
-                                                        : occupant.participant_type === "character"
+                                                    occupant.participant_type === "character"
                                                         ? "bg-gradient-to-b from-[#2a2416] to-[#14120f] border-2 border-[#c5a059] text-amber-200"
                                                         : "bg-gradient-to-b from-[#2e1215] to-[#15090a] border-2 border-red-600 text-red-200"
                                                 }`}
@@ -639,10 +653,8 @@ export function BattleGrid({
                                                     </svg>
                                                 )}
 
-                                                {/* Token Icon / Initial */}
-                                                {occupant.current_hp <= 0 ? (
-                                                    <span className="text-sm">💀</span>
-                                                ) : occupant.participant_type === "character" ? (
+                                                {/* Token Icon */}
+                                                {occupant.participant_type === "character" ? (
                                                     <span className="text-sm">🛡️</span>
                                                 ) : (
                                                     <span className="text-sm">👹</span>
@@ -669,6 +681,16 @@ export function BattleGrid({
                                             <span className="text-[8px] font-fira-sans font-bold truncate max-w-full text-center px-0.5 mt-0.5 text-slate-300 leading-none">
                                                 {occupant.name.split(" ")[0]}
                                             </span>
+                                        )}
+
+                                        {/* Non-blocking Fallen Corpse Marker */}
+                                        {!occupant && corpse && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-30 grayscale">
+                                                <span className="text-xs">💀</span>
+                                                <span className="text-[7px] font-fira-sans text-slate-500 truncate max-w-full">
+                                                    {corpse.name.split(" ")[0]}
+                                                </span>
+                                            </div>
                                         )}
 
                                         {/* Empty Reachable Indicator Pip */}
@@ -772,7 +794,7 @@ export function BattleGrid({
                     <span>Threat Zone (5 ft Reach)</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-400 italic">
-                    <span>💡 Click any enemy to target • Click highlighted tile or use D-Pad to move</span>
+                    <span>💡 Click any enemy in radar or grid to target • Click highlighted tile or use D-Pad to move</span>
                 </div>
             </div>
         </div>
