@@ -17,14 +17,80 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.8.0";
+export const CURRENT_VERSION = "v1.9.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.9.0",
+        date: "September 23, 2026",
+        title: "The Gauntlet Arena, 5E Turn Skipping & Cloud Realm Launch",
+        tag: "Latest",
+        summary: "Introduced Pillar 1: The Gauntlet procedural wave survival arena with snapshot heroes and inter-wave respite boons. Resolved combat initiative to automatically skip fallen/unconscious combatants while preserving 5E healing revival mechanics. Launched the entire realm live to the internet on Neon PostgreSQL, Vercel, and Render.",
+        items: [
+            {
+                id: "1.9.0-1",
+                title: "🏆 Pillar 1: The Gauntlet Procedural Wave Survival",
+                description: "Venture into high-intensity arcade wave combat. Battle through 10 escalating procedural waves of monsters dynamically scaled to your party's average level.",
+                category: "feature",
+                details: [
+                    "Snapshot Hero System: Characters enter the arena as isolated copies—damage taken, deaths, and expended spell slots never alter or harm your main character roster.",
+                    "5 Thematic Arenas: Colosseum of Blades, Crypt of the Undead, Infernal Pit, Savage Wilds, and Sunken Dungeon.",
+                    "Wave 10 Apex Boss Climax: Defeat the final boss encounter to claim victory, or push onward into infinite Endless Overtime for top leaderboard glory.",
+                    "Global Hall of Fame: Track Waves Cleared, Enemies Vanquished, Total Damage Dealt, and Turns Survived."
+                ]
+            },
+            {
+                id: "1.9.0-2",
+                title: "🩹 Inter-Wave Tactical Respite System",
+                description: "Between cleared waves, commanders choose one of four tactical recovery boons to preserve party resources.",
+                category: "combat",
+                details: [
+                    "Take a Breather: Spend available Hit Dice to heal wounded adventurers between battles.",
+                    "Arcane Surge: Restore an expended spell slot to keep your casters firing.",
+                    "Supply Drop: Acquire emergency Potions of Healing and tactical combat scrolls.",
+                    "Battle Boons: Secure temporary combat blessings (+2 Armor Class or Advantage on opening strikes)."
+                ]
+            },
+            {
+                id: "1.9.0-3",
+                title: "⚔️ 5E Turn-Skipping for Fallen Combatants & Revival Mechanics",
+                description: "Combatants reduced to 0 HP are now smoothly skipped in the initiative order sequence, eliminating phantom turns and AI stalls.",
+                category: "combat",
+                details: [
+                    "Synchronized initiative progression: Both backend next_turn() and frontend client loops immediately bypass unconscious or defeated participants.",
+                    "5E Revival Integrity: Downed heroes retain their place in the initiative rotation; healing spells (Cure Wounds, Healing Word) or potions restore their positive HP and seamlessly re-activate their turns.",
+                    "Graceful turn transitions: Return turn focus cleanly to living combatants without skipping active heroes."
+                ]
+            },
+            {
+                id: "1.9.0-4",
+                title: "🌐 Live Production Cloud Architecture",
+                description: "Successfully deployed the entire application to the global web on a modern, decoupled serverless cloud stack.",
+                category: "feature",
+                details: [
+                    "Vercel Edge Network: Next.js 16 frontend delivered with sub-second global CDN caching and automatic HTTPS.",
+                    "Render Cloud Web Service: Django 5 REST backend powered by Gunicorn WSGI and WhiteNoise static asset compression.",
+                    "Neon Serverless PostgreSQL: Production database with connection pooling and instant branching for zero-risk schema migrations.",
+                    "Zero-Downtime Rolling Deploys: Automated continuous deployment triggered directly from GitHub main and master branches."
+                ]
+            },
+            {
+                id: "1.9.0-5",
+                title: "🚧 Campaign Realm Preparation & Feature Flagging",
+                description: "Prepared the home portal for upcoming Pillar 2 story adventures with intelligent feature flagging and visual feedback.",
+                category: "ui",
+                details: [
+                    "NEXT_PUBLIC_ENABLE_CAMPAIGN feature flag cleanly gates development access.",
+                    "Atmospheric 'Under Construction' card styling with glowing amber badge and lore tooltip informing adventurers of the upcoming realm expansion."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.8.0",
         date: "September 16, 2026",
         title: "Tabletop Visual Overhaul & Class Heraldry",
-        tag: "Latest",
+        tag: "Major",
         summary: "Transformed the realm into an authentic dark-and-gold tabletop aesthetic featuring 12 core class heraldic crests, layered fantasy card framing, responsive 2-column character rosters, and the Adventurer's Charter parchment scroll.",
         items: [
             {
