@@ -141,4 +141,46 @@ export const combatApi = {
     // AI: Resolve all consecutive enemy turns
     autoEnemyTurns: (sessionId: number) =>
         apiClient.post<AutoEnemyTurnsResponse>(`/combat/sessions/${sessionId}/auto_enemy_turns/`),
+
+    // 5E Tactical Grid Movement
+    move: (sessionId: number, data: { participant_id: number; target_x: number; target_y: number }) =>
+        apiClient.post<{
+            message: string;
+            distance_ft: number;
+            target_x: number;
+            target_y: number;
+            participant: any;
+            opportunity_attacks?: Array<{
+                reactor_name: string;
+                attack_roll: number;
+                hit: boolean;
+                damage: number;
+                target_hp_after: number;
+            }>;
+            session?: CombatSession;
+        }>(`/combat/sessions/${sessionId}/move/`, data),
+
+    dash: (sessionId: number, data: { participant_id: number; bonus_action?: boolean }) =>
+        apiClient.post<{
+            message: string;
+            speed_added: number;
+            total_speed: number;
+            movement_remaining: number;
+            participant: any;
+            session?: CombatSession;
+        }>(`/combat/sessions/${sessionId}/dash/`, data),
+
+    disengage: (sessionId: number, data: { participant_id: number; bonus_action?: boolean }) =>
+        apiClient.post<{
+            message: string;
+            participant: any;
+            session?: CombatSession;
+        }>(`/combat/sessions/${sessionId}/disengage/`, data),
+
+    dodge: (sessionId: number, data: { participant_id: number; bonus_action?: boolean }) =>
+        apiClient.post<{
+            message: string;
+            participant: any;
+            session?: CombatSession;
+        }>(`/combat/sessions/${sessionId}/dodge/`, data),
 };

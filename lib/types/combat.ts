@@ -256,6 +256,15 @@ export interface CombatParticipant {
         trait_type: string;
     }>;
     recharge_state?: Record<string, boolean>;
+    // 5E Tactical Grid & Movement fields
+    position_x?: number;
+    position_y?: number;
+    speed?: number;
+    movement_used?: number;
+    movement_remaining?: number;
+    is_disengaged?: boolean;
+    is_dodging?: boolean;
+    dashed_this_turn?: boolean;
 }
 
 export interface CombatSession {

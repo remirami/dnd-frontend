@@ -41,6 +41,9 @@ interface ActionDockProps {
     onUseFeature?: (featureName: string, amount?: number, targetId?: number, curePoison?: boolean, extraData?: Record<string, any>) => Promise<void>;
     onForceAiTurn?: () => void;
     onNextTurn?: () => void;
+    onDash?: (bonusAction?: boolean) => Promise<void>;
+    onDisengage?: (bonusAction?: boolean) => Promise<void>;
+    onDodge?: (bonusAction?: boolean) => Promise<void>;
 }
 
 function getConditionNames(p?: CombatParticipant | null): string[] {
@@ -159,6 +162,9 @@ export function ActionDock({
     onUseFeature,
     onForceAiTurn,
     onNextTurn,
+    onDash,
+    onDisengage,
+    onDodge,
 }: ActionDockProps) {
     const [activeTab, setActiveTab] = useState<'weapons' | 'spells' | 'features' | 'maneuvers' | 'consumables' | 'test'>('weapons');
     const [selectedSpellLevel, setSelectedSpellLevel] = useState<number | null>(null);
@@ -235,6 +241,10 @@ export function ActionDock({
     const secondWindUsed = !!currentParticipant?.second_wind_used || !!currentParticipant?.feature_uses?.second_wind_used;
 
     const canCunningAction = isRogue && ((charData?.level || 1) >= 2 || !!currentParticipant?.cunning_action_available);
+
+    const baseSpeed = currentParticipant?.speed ?? 30;
+    const movementUsed = currentParticipant?.movement_used ?? 0;
+    const movementRemaining = currentParticipant?.movement_remaining ?? Math.max(0, baseSpeed - movementUsed);
 
     const paladinLevel = charData?.level || 1;
     const lohMax = currentParticipant?.max_lay_on_hands_pool ?? (paladinLevel * 5);
@@ -519,6 +529,12 @@ export function ActionDock({
                         <span className={`w-2.5 h-2.5 rounded-full ${!currentParticipant?.reaction_used ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]' : 'bg-stone-700'}`} />
                         <span className={!currentParticipant?.reaction_used ? "text-blue-300 font-semibold" : "text-stone-500 line-through"}>
                             Reaction
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5" title={`Speed: ${baseSpeed} ft | Remaining: ${movementRemaining} ft`}>
+                        <span className={`w-2.5 h-2.5 rounded-full ${movementRemaining > 0 ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]' : 'bg-stone-700'}`} />
+                        <span className={movementRemaining > 0 ? "text-cyan-300 font-semibold" : "text-stone-500 line-through"}>
+                            Move ({movementRemaining} ft)
                         </span>
                     </div>
                 </div>
@@ -1004,10 +1020,15 @@ export function ActionDock({
                                             key={sub}
                                             disabled={currentIsIncapacitated || isAttacking || isOperating || currentParticipant?.bonus_action_used}
                                             onClick={async () => {
-                                                if (!onUseFeature) return;
                                                 setIsOperating(true);
                                                 try {
-                                                    await onUseFeature('Cunning Action', 0, currentParticipant?.id, false, { subaction: sub });
+                                                    if (sub === 'dash' && onDash) {
+                                                        await onDash(true);
+                                                    } else if (sub === 'disengage' && onDisengage) {
+                                                        await onDisengage(true);
+                                                    } else if (onUseFeature) {
+                                                        await onUseFeature('Cunning Action', 0, currentParticipant?.id, false, { subaction: sub });
+                                                    }
                                                 } finally {
                                                     setIsOperating(false);
                                                 }
@@ -1041,28 +1062,55 @@ export function ActionDock({
                 {activeTab === 'maneuvers' && (
                     <div className="flex items-center gap-2.5 py-1 font-lora text-xs">
                         <button
-                            onClick={() => alert("Dash activated: Your movement speed is doubled for this turn.")}
-                            className="px-3 py-2 rounded bg-[#181a24] border border-blue-800/50 hover:border-blue-400 text-blue-200 transition-all cursor-pointer flex items-center gap-1.5"
+                            disabled={currentIsIncapacitated || isAttacking || isOperating || currentParticipant?.action_used || currentParticipant?.dashed_this_turn}
+                            onClick={async () => {
+                                if (!onDash) return;
+                                setIsOperating(true);
+                                try {
+                                    await onDash(false);
+                                } finally {
+                                    setIsOperating(false);
+                                }
+                            }}
+                            className="px-3 py-2 rounded bg-[#181a24] border border-blue-800/50 hover:border-blue-400 text-blue-200 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                             <span>🏃</span>
                             <span className="font-semibold">Dash</span>
-                            <span className="text-[10px] text-blue-300/70">(2x Speed)</span>
+                            <span className="text-[10px] text-blue-300/70">(Action • +{baseSpeed} ft)</span>
                         </button>
                         <button
-                            onClick={() => alert("Disengage activated: Movement does not provoke opportunity attacks for the rest of this turn.")}
-                            className="px-3 py-2 rounded bg-[#181a24] border border-emerald-800/50 hover:border-emerald-400 text-emerald-200 transition-all cursor-pointer flex items-center gap-1.5"
+                            disabled={currentIsIncapacitated || isAttacking || isOperating || currentParticipant?.action_used || currentParticipant?.is_disengaged}
+                            onClick={async () => {
+                                if (!onDisengage) return;
+                                setIsOperating(true);
+                                try {
+                                    await onDisengage(false);
+                                } finally {
+                                    setIsOperating(false);
+                                }
+                            }}
+                            className="px-3 py-2 rounded bg-[#181a24] border border-emerald-800/50 hover:border-emerald-400 text-emerald-200 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                             <span>🕊️</span>
                             <span className="font-semibold">Disengage</span>
-                            <span className="text-[10px] text-emerald-300/70">(No OA)</span>
+                            <span className="text-[10px] text-emerald-300/70">(Action • No OA)</span>
                         </button>
                         <button
-                            onClick={() => alert("Dodge activated: Attack rolls against you have disadvantage until the start of your next turn.")}
-                            className="px-3 py-2 rounded bg-[#181a24] border border-amber-800/50 hover:border-amber-400 text-amber-200 transition-all cursor-pointer flex items-center gap-1.5"
+                            disabled={currentIsIncapacitated || isAttacking || isOperating || currentParticipant?.action_used || currentParticipant?.is_dodging}
+                            onClick={async () => {
+                                if (!onDodge) return;
+                                setIsOperating(true);
+                                try {
+                                    await onDodge(false);
+                                } finally {
+                                    setIsOperating(false);
+                                }
+                            }}
+                            className="px-3 py-2 rounded bg-[#181a24] border border-amber-800/50 hover:border-amber-400 text-amber-200 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                             <span>🛡️</span>
                             <span className="font-semibold">Dodge</span>
-                            <span className="text-[10px] text-amber-300/70">(Disadvantage)</span>
+                            <span className="text-[10px] text-amber-300/70">(Action • Disadvantage)</span>
                         </button>
                         <button
                             onClick={() => alert("Hide action taken: Make a Dexterity (Stealth) check.")}

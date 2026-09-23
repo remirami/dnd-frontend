@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
 import { GauntletArenaHud } from "@/components/gauntlet/GauntletArenaHud";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
+import { BattleGrid } from "@/components/combat/BattleGrid";
 import { isIncapacitating } from "@/lib/data/conditions";
 import type { CombatParticipant } from "@/lib/types/combat";
 import type { GauntletRun } from "@/lib/types/gauntlet";
@@ -41,6 +42,12 @@ interface BattlefieldArenaProps {
     isEnemyTurn: boolean;
     onOpenRespite?: () => void;
     lastAttackFeedback?: AttackFeedback | null;
+    onMove?: (targetX: number, targetY: number) => Promise<void>;
+    onDash?: () => Promise<void>;
+    onDisengage?: () => Promise<void>;
+    onDodge?: () => Promise<void>;
+    isMoving?: boolean;
+    isOperating?: boolean;
 }
 
 const hpBarGradient = (cur: number, max: number) => {
@@ -223,7 +230,14 @@ export function BattlefieldArena({
     isEnemyTurn,
     onOpenRespite,
     lastAttackFeedback,
+    onMove,
+    onDash,
+    onDisengage,
+    onDodge,
+    isMoving,
+    isOperating,
 }: BattlefieldArenaProps) {
+    const [viewMode, setViewMode] = useState<"grid" | "duel">("grid");
     // Active floating combat text state
     const [floatingText, setFloatingText] = useState<AttackFeedback | null>(null);
 
@@ -315,8 +329,55 @@ export function BattlefieldArena({
                 </div>
             )}
 
-            {/* Central Clash Stage: Attacker vs Defender */}
-            <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-11 gap-3 sm:gap-4 items-center my-auto">
+            {/* Mode Switcher: Tactical Grid vs Duel Focus */}
+            {onMove && (
+                <div className="flex items-center gap-1.5 bg-[#12141c]/90 p-1 rounded-lg border border-[#c5a059]/30 shadow-md">
+                    <button
+                        type="button"
+                        onClick={() => setViewMode("grid")}
+                        className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            viewMode === "grid"
+                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
+                                : "text-slate-400 hover:text-slate-200"
+                        }`}
+                    >
+                        <span>🗺️</span>
+                        <span>Tactical Grid</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode("duel")}
+                        className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            viewMode === "duel"
+                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
+                                : "text-slate-400 hover:text-slate-200"
+                        }`}
+                    >
+                        <span>⚔️</span>
+                        <span>Duel Focus</span>
+                    </button>
+                </div>
+            )}
+
+            {/* View Mode 1: 2D Tactical Battle Grid */}
+            {viewMode === "grid" && onMove ? (
+                <BattleGrid
+                    currentParticipant={currentParticipant}
+                    targetParticipant={targetParticipant}
+                    allParticipants={allParticipants}
+                    targetId={targetId}
+                    onSelectTarget={onSelectTarget}
+                    onInspectParticipant={onInspectParticipant}
+                    onMove={onMove}
+                    onDash={onDash}
+                    onDisengage={onDisengage}
+                    onDodge={onDodge}
+                    isMoving={isMoving}
+                    isOperating={isOperating}
+                />
+            ) : (
+                /* View Mode 2: Central Clash Stage: Attacker vs Defender */
+                <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-11 gap-3 sm:gap-4 items-center my-auto">
                 {/* Attacker Card (Col 1-5) */}
                 <div
                     className={`md:col-span-5 rounded-xl border p-4 transition-all duration-300 relative shadow-xl ${
@@ -635,6 +696,7 @@ export function BattlefieldArena({
                     )}
                 </div>
             </div>
+            )}
         </div>
     );
 }

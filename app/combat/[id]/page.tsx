@@ -54,6 +54,8 @@ export default function CombatPage() {
     const [lastAttackFeedback, setLastAttackFeedback] = useState<AttackFeedback | null>(null);
     const [selectedSpellForCast, setSelectedSpellForCast] = useState<CharacterSpell | null>(null);
     const [isCastingSpell, setIsCastingSpell] = useState(false);
+    const [isMoving, setIsMoving] = useState(false);
+    const [isMovementOperating, setIsMovementOperating] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
     const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
@@ -802,6 +804,113 @@ export default function CombatPage() {
         }
     };
 
+    // 5E Tactical Movement Handlers
+    const handleMove = async (targetX: number, targetY: number) => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMoving(true);
+        try {
+            const resp = await combatApi.move(sessionId, {
+                participant_id: current.id,
+                target_x: targetX,
+                target_y: targetY,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+                checkCombatOutcome(resp.data.session.participants);
+            } else {
+                await loadSession();
+            }
+
+            // Check if opportunity attacks were triggered
+            if (resp.data.opportunity_attacks && resp.data.opportunity_attacks.length > 0) {
+                for (const oa of resp.data.opportunity_attacks) {
+                    setLastAttackFeedback({
+                        targetId: current.id,
+                        hit: oa.hit,
+                        damage: oa.damage,
+                        timestamp: Date.now(),
+                    });
+                }
+                setAiActionBanner({
+                    message: resp.data.message,
+                    isHit: resp.data.opportunity_attacks.some(oa => oa.hit),
+                });
+            }
+        } catch (err: any) {
+            console.error("Failed to move:", err);
+            alert(err.response?.data?.error || "Movement failed.");
+        } finally {
+            setIsMoving(false);
+        }
+    };
+
+    const handleDash = async (bonusAction: boolean = false) => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.dash(sessionId, {
+                participant_id: current.id,
+                bonus_action: bonusAction,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to dash:", err);
+            alert(err.response?.data?.error || "Dash failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
+    const handleDisengage = async (bonusAction: boolean = false) => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.disengage(sessionId, {
+                participant_id: current.id,
+                bonus_action: bonusAction,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to disengage:", err);
+            alert(err.response?.data?.error || "Disengage failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
+    const handleDodge = async (bonusAction: boolean = false) => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.dodge(sessionId, {
+                participant_id: current.id,
+                bonus_action: bonusAction,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to dodge:", err);
+            alert(err.response?.data?.error || "Dodge failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-[#0c0d12] flex items-center justify-center">
@@ -1085,6 +1194,12 @@ export default function CombatPage() {
                 isEnemyTurn={isEnemyTurn}
                 onOpenRespite={() => setIsRespiteOpen(true)}
                 lastAttackFeedback={lastAttackFeedback}
+                onMove={handleMove}
+                onDash={handleDash}
+                onDisengage={handleDisengage}
+                onDodge={handleDodge}
+                isMoving={isMoving}
+                isOperating={isMovementOperating}
             />
 
             {/* 4. Bottom Tactical Action Dock */}
@@ -1113,6 +1228,9 @@ export default function CombatPage() {
                 onUseFeature={handleUseFeature}
                 onForceAiTurn={handleAiTurn}
                 onNextTurn={handleNextTurn}
+                onDash={handleDash}
+                onDisengage={handleDisengage}
+                onDodge={handleDodge}
             />
 
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}
