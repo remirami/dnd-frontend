@@ -281,7 +281,11 @@ export default function CombatPage() {
     const getCurrentParticipant = (): CombatParticipant | undefined => {
         if (!session) return undefined;
         const participants = session.participants || [];
-        return (session as any).current_participant || participants.find(p => p.is_active);
+        const current = (session as any).current_participant;
+        if (current && current.is_active && current.current_hp > 0) {
+            return current;
+        }
+        return participants.find(p => p.is_active && p.current_hp > 0);
     };
 
     const handleViewParticipant = (participantId: number) => {
@@ -308,7 +312,7 @@ export default function CombatPage() {
                 const currentSession = sessionRef.current;
                 if (!currentSession || currentSession.status === 'ended' || combatOutcome) break;
 
-                const active = currentSession.current_participant || (currentSession.participants || []).find(p => p.is_active);
+                const active = currentSession.current_participant || (currentSession.participants || []).find(p => p.is_active && p.current_hp > 0);
                 if (!active || active.participant_type !== 'enemy' || active.current_hp <= 0) break;
 
                 try {

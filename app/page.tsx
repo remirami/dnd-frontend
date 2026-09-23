@@ -18,6 +18,8 @@ interface PillarItem {
   href: string;
   tooltipHeader: string;
   tooltipText: string;
+  disabled?: boolean;
+  statusBadge?: string;
 }
 
 export default function Home() {
@@ -52,6 +54,9 @@ export default function Home() {
 
   const displayName = user?.username ? user.username.toUpperCase() : "ADVENTURER";
 
+  // In production (or unless NEXT_PUBLIC_ENABLE_CAMPAIGN is explicitly 'true'), Campaign mode is under construction
+  const isCampaignEnabled = process.env.NEXT_PUBLIC_ENABLE_CAMPAIGN === "true";
+
   const pillars: PillarItem[] = [
     {
       id: "characters",
@@ -64,11 +69,20 @@ export default function Home() {
     {
       id: "campaign",
       title: "CAMPAIGN",
-      icon: <CampaignPillarIcon className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059]" />,
+      icon: (
+        <CampaignPillarIcon
+          className={`w-16 h-16 md:w-20 md:h-20 ${
+            isCampaignEnabled ? "text-[#c5a059]" : "text-slate-500"
+          }`}
+        />
+      ),
       href: "/combat",
-      tooltipHeader: "✦ ENTER THE ARENA ✦",
-      tooltipText:
-        "Initiate the combat simulator. Track initiative order, manage hit points, and roll the dice to determine the fates of battle.",
+      disabled: !isCampaignEnabled,
+      statusBadge: "UNDER CONSTRUCTION",
+      tooltipHeader: isCampaignEnabled ? "✦ ENTER THE ARENA ✦" : "✦ CAMPAIGN REALM ✦",
+      tooltipText: isCampaignEnabled
+        ? "Initiate the combat simulator. Track initiative order, manage hit points, and roll the dice to determine the fates of battle."
+        : "Story campaigns and dungeon master tools are currently under construction for an upcoming realm expansion. Venture into The Gauntlet to battle fierce monsters in the meantime!",
     },
     {
       id: "gauntlet",
@@ -173,40 +187,84 @@ export default function Home() {
 
             return (
               <div key={pillar.id} className="relative group">
-                <Link
-                  href={pillar.href}
-                  onClick={(e) => {
-                    // On mobile, first tap opens tooltip, second tap navigates
-                    if (window.innerWidth < 768 && !isMobileTooltipOpen) {
-                      e.preventDefault();
-                      setActiveMobileTooltip(pillar.id);
-                    }
-                  }}
-                  className="block focus:outline-none"
-                >
-                  <FantasyCard className="p-8 md:p-10 flex flex-col items-center justify-between min-h-[260px] md:min-h-[290px] cursor-pointer group">
-                    <div className="my-auto flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(197,160,89,0.4)]">
-                      {pillar.icon}
-                    </div>
-
-                    <div className="w-full pt-3 text-center">
-                      {/* Filigree Divider */}
-                      <div className="flex items-center justify-center gap-2 mb-2 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-[#c5a059]" />
-                        <span className="text-[9px] text-[#c5a059]">✦</span>
-                        <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-[#c5a059]" />
+                {pillar.disabled ? (
+                  <div
+                    onClick={() => {
+                      if (window.innerWidth < 768) {
+                        setActiveMobileTooltip(isMobileTooltipOpen ? null : pillar.id);
+                      }
+                    }}
+                    className="block focus:outline-none cursor-not-allowed select-none"
+                  >
+                    <FantasyCard
+                      className="p-8 md:p-10 flex flex-col items-center justify-between min-h-[260px] md:min-h-[290px] border-slate-800/80 bg-[#0a0c12]/75 opacity-65 grayscale-[35%] hover:border-slate-700 relative overflow-hidden transition-all duration-300"
+                      glowOnHover={false}
+                    >
+                      {/* Under Construction Pill Badge */}
+                      <div className="absolute top-3.5 right-3.5 px-2.5 py-0.5 rounded-full text-[9px] font-cinzel font-bold tracking-wider bg-amber-950/70 text-amber-300 border border-amber-600/50 shadow-[0_0_10px_rgba(217,119,6,0.25)] flex items-center gap-1">
+                        <span>🚧</span>
+                        <span>{pillar.statusBadge || "UNDER CONSTRUCTION"}</span>
                       </div>
 
-                      <h2 className="font-cinzel-decorative text-xl md:text-2xl font-bold tracking-widest text-[#c5a059] group-hover:text-[#e0bc75] transition-colors">
-                        {pillar.title}
-                      </h2>
-                    </div>
-                  </FantasyCard>
-                </Link>
+                      <div className="my-auto flex items-center justify-center opacity-50">
+                        {pillar.icon}
+                      </div>
 
-                {/* Option A: Hover / Touch Sub-box Tooltip (Styled as in Image 3) */}
+                      <div className="w-full pt-3 text-center">
+                        {/* Muted Filigree Divider */}
+                        <div className="flex items-center justify-center gap-2 mb-2 opacity-40">
+                          <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-slate-500" />
+                          <span className="text-[9px] text-slate-400">✦</span>
+                          <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-slate-500" />
+                        </div>
+
+                        <h2 className="font-cinzel-decorative text-xl md:text-2xl font-bold tracking-widest text-slate-400">
+                          {pillar.title}
+                        </h2>
+                        <span className="text-[10px] font-lora italic text-amber-400/80 block mt-1 tracking-wide">
+                          Under Construction
+                        </span>
+                      </div>
+                    </FantasyCard>
+                  </div>
+                ) : (
+                  <Link
+                    href={pillar.href}
+                    onClick={(e) => {
+                      // On mobile, first tap opens tooltip, second tap navigates
+                      if (window.innerWidth < 768 && !isMobileTooltipOpen) {
+                        e.preventDefault();
+                        setActiveMobileTooltip(pillar.id);
+                      }
+                    }}
+                    className="block focus:outline-none"
+                  >
+                    <FantasyCard className="p-8 md:p-10 flex flex-col items-center justify-between min-h-[260px] md:min-h-[290px] cursor-pointer group">
+                      <div className="my-auto flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(197,160,89,0.4)]">
+                        {pillar.icon}
+                      </div>
+
+                      <div className="w-full pt-3 text-center">
+                        {/* Filigree Divider */}
+                        <div className="flex items-center justify-center gap-2 mb-2 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-[#c5a059]" />
+                          <span className="text-[9px] text-[#c5a059]">✦</span>
+                          <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-[#c5a059]" />
+                        </div>
+
+                        <h2 className="font-cinzel-decorative text-xl md:text-2xl font-bold tracking-widest text-[#c5a059] group-hover:text-[#e0bc75] transition-colors">
+                          {pillar.title}
+                        </h2>
+                      </div>
+                    </FantasyCard>
+                  </Link>
+                )}
+
+                {/* Hover / Touch Sub-box Tooltip */}
                 <div
-                  className={`mt-3 bg-[#181a21] bg-[radial-gradient(ellipse_at_top,#1f232e_0%,#15171e_100%)] border border-[#a63a3a] rounded p-4 font-lora shadow-xl transition-all duration-200 z-30 relative ${
+                  className={`mt-3 bg-[#181a21] bg-[radial-gradient(ellipse_at_top,#1f232e_0%,#15171e_100%)] border ${
+                    pillar.disabled ? "border-amber-600/40" : "border-[#a63a3a]"
+                  } rounded p-4 font-lora shadow-xl transition-all duration-200 z-30 relative ${
                     // Desktop: show on hover. Mobile: show when tapped
                     isMobileTooltipOpen
                       ? "block"
@@ -214,16 +272,24 @@ export default function Home() {
                   }`}
                 >
                   {/* Subtle top indicator arrow */}
-                  <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#181a21] border-t border-l border-[#a63a3a] rotate-45" />
+                  <div
+                    className={`absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#181a21] border-t border-l ${
+                      pillar.disabled ? "border-amber-600/40" : "border-[#a63a3a]"
+                    } rotate-45`}
+                  />
 
                   <div className="text-center relative z-10">
-                    <h3 className="text-xs tracking-wider text-[#d1cdb8] font-bold pb-1.5">
+                    <h3
+                      className={`text-xs tracking-wider font-bold pb-1.5 ${
+                        pillar.disabled ? "text-amber-300" : "text-[#d1cdb8]"
+                      }`}
+                    >
                       {pillar.tooltipHeader}
                     </h3>
                     <p className="text-xs text-[#d1cdb8]/90 leading-relaxed font-normal">
                       {pillar.tooltipText}
                     </p>
-                    {isMobileTooltipOpen && (
+                    {!pillar.disabled && isMobileTooltipOpen && (
                       <Link
                         href={pillar.href}
                         className="inline-block mt-2 text-[11px] text-[#c5a059] underline font-semibold"
