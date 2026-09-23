@@ -13,7 +13,7 @@ interface ActionDockProps {
     gauntletRunId: number | null;
     isAttacking: boolean;
     currentIsIncapacitated: boolean;
-    onAttack: (attackName: string, attackBonus: number, options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean }) => void;
+    onAttack: (attackName: string, attackBonus: number, options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean; is_ranged?: boolean }) => void;
     // Weapon & Spell data
     characterWeapons: Array<{
         name: string;
@@ -22,6 +22,8 @@ interface ActionDockProps {
         damageType?: string;
         abilityMod: number;
         properties: string[];
+        isEquipped?: boolean;
+        isRanged?: boolean;
     }>;
     characterSpells: Map<number, CharacterSpell[]>;
     charData: any;
@@ -64,20 +66,62 @@ export function computeRollPrediction(
     const atkConds = getConditionNames(attacker);
     const tgtConds = getConditionNames(target);
 
-    // Flanking check for melee attacks (5e rules)
+    // Flanking check for melee attacks (5e optional tactical rule)
     if (isMelee && attacker && target && allParticipants && allParticipants.length > 0) {
-        const allies = allParticipants.filter(p =>
-            p.participant_type === attacker.participant_type &&
-            p.id !== attacker.id &&
-            p.is_active &&
-            p.current_hp > 0
+        const hasCoords = (
+            attacker.position_x != null && attacker.position_y != null &&
+            target.position_x != null && target.position_y != null &&
+            (attacker.position_x !== 0 || attacker.position_y !== 0 || target.position_x !== 0 || target.position_y !== 0)
         );
-        const activeAllies = allies.filter(a => {
-            const conds = getConditionNames(a);
-            return !conds.some(c => ['incapacitated', 'paralyzed', 'petrified', 'stunned', 'unconscious'].includes(c));
-        });
-        if (activeAllies.length > 0) {
-            advReasons.push('Flanking');
+        if (hasCoords) {
+            // Attacker must be within melee reach (5 ft)
+            const attackerDist = Math.max(Math.abs(attacker.position_x! - target.position_x!), Math.abs(attacker.position_y! - target.position_y!));
+            if (attackerDist <= 5) {
+                const allies = allParticipants.filter(p =>
+                    p.participant_type === attacker.participant_type &&
+                    p.id !== attacker.id &&
+                    p.is_active &&
+                    p.current_hp > 0
+                );
+                const activeAllies = allies.filter(a => {
+                    const conds = getConditionNames(a);
+                    return !conds.some(c => ['incapacitated', 'paralyzed', 'petrified', 'stunned', 'unconscious'].includes(c));
+                });
+                const flankingAlly = activeAllies.find(a => {
+                    if (a.position_x == null || a.position_y == null) return false;
+                    const allyDist = Math.max(Math.abs(a.position_x - target.position_x!), Math.abs(a.position_y - target.position_y!));
+                    return allyDist <= 5;
+                });
+                if (flankingAlly) {
+                    advReasons.push('Flanking');
+                }
+            }
+        }
+    }
+
+    // 5e Close Quarters: Ranged attack while a hostile is within 5 ft incurs disadvantage
+    if (!isMelee && attacker && allParticipants && allParticipants.length > 0) {
+        const hasCoords = (
+            attacker.position_x != null && attacker.position_y != null &&
+            (attacker.position_x !== 0 || attacker.position_y !== 0)
+        );
+        if (hasCoords) {
+            const hostiles = allParticipants.filter(p =>
+                p.participant_type !== attacker.participant_type &&
+                p.is_active &&
+                p.current_hp > 0
+            );
+            const adjacentHostile = hostiles.find(h => {
+                const conds = getConditionNames(h);
+                if (conds.some(c => ['incapacitated', 'paralyzed', 'petrified', 'stunned', 'unconscious'].includes(c))) return false;
+                if (h.position_x != null && h.position_y != null) {
+                    return Math.max(Math.abs(attacker.position_x! - h.position_x), Math.abs(attacker.position_y! - h.position_y)) <= 5;
+                }
+                return false;
+            });
+            if (adjacentHostile) {
+                disadvReasons.push('Close Quarters (Hostile within 5 ft)');
+            }
         }
     }
 
@@ -261,7 +305,10 @@ export function ActionDock({
     );
 
     const targetParticipant = allParticipants?.find(p => p.id === parseInt(targetId));
-    const rollPreview = computeRollPrediction(currentParticipant, targetParticipant, true, useInspiration, allParticipants);
+    // Determine active weapon for roll preview
+    const activeWeapon = characterWeapons?.find((w: any) => w.isEquipped) || characterWeapons?.[0];
+    const previewIsMelee = activeWeapon ? (activeWeapon.isRanged !== undefined ? !activeWeapon.isRanged : !activeWeapon.properties?.some((p: string) => p.toLowerCase().includes('ranged'))) : true;
+    const rollPreview = computeRollPrediction(currentParticipant, targetParticipant, previewIsMelee, useInspiration, allParticipants);
 
     const getAttackOptions = (isMelee: boolean = true) => {
         if (activeTab === 'test' && !gauntletRunId && dmOverrideMode !== 'auto') {
@@ -269,6 +316,7 @@ export function ActionDock({
                 dm_override: true,
                 advantage: dmOverrideMode === 'advantage',
                 disadvantage: dmOverrideMode === 'disadvantage',
+                is_ranged: !isMelee,
             };
         }
         const pred = computeRollPrediction(currentParticipant, targetParticipant, isMelee, useInspiration, allParticipants);
@@ -277,6 +325,7 @@ export function ActionDock({
             inspiration: useInspiration,
             advantage: pred.state === 'advantage',
             disadvantage: pred.state === 'disadvantage',
+            is_ranged: !isMelee,
         };
         if (useInspiration) {
             setUseInspiration(false);
@@ -612,8 +661,8 @@ export function ActionDock({
                             /* Player Character Weapons */
                             characterWeapons.length > 0 ? (
                                 <div className="flex items-center gap-2.5 overflow-x-auto py-1">
-                                    {characterWeapons.map((wp, idx) => {
-                                        const isMelee = !wp.properties?.some((p: string) => p.toLowerCase().includes('ranged'));
+                                    {characterWeapons.map((wp: any, idx) => {
+                                        const isMelee = wp.isRanged !== undefined ? !wp.isRanged : !wp.properties?.some((p: string) => p.toLowerCase().includes('ranged'));
                                         return (
                                             <button
                                                 key={idx}

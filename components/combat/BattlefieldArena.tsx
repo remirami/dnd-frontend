@@ -282,7 +282,7 @@ export function BattlefieldArena({
     const defenderIsTargetOfAttack = floatingText && targetParticipant?.id === floatingText.targetId;
 
     return (
-        <div className="w-full flex flex-col items-center justify-between gap-3 px-4 py-2 relative flex-1 min-h-0 overflow-y-auto">
+        <div className="w-full flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
             {/* Gauntlet HUD if in Gauntlet Mode */}
             {gauntletRun && gauntletRunId && (
                 <div className="w-full max-w-5xl mx-auto">

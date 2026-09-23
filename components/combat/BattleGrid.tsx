@@ -285,25 +285,25 @@ export function BattleGrid({
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-2.5 select-none font-lora">
+        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto flex flex-col items-center gap-1.5 sm:gap-2 select-none font-lora">
             {/* 1. Hostile Target Radar: Click Any Enemy to Lock On */}
             {activeEnemies.length > 0 && (
-                <div className="w-full bg-[#12141c]/95 border border-red-950/70 p-2.5 rounded-xl shadow-lg backdrop-blur-md">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-1.5 text-xs font-cinzel font-bold text-red-300">
+                <div className="w-full bg-[#12141c]/95 border border-red-950/70 py-1.5 px-2.5 rounded-lg shadow-md backdrop-blur-md">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5 text-[11px] font-cinzel font-bold text-red-300">
                             <span>🎯</span>
-                            <span className="uppercase tracking-wider">Hostile Targets on Field:</span>
-                            <span className="text-[10px] text-slate-400 font-fira-sans font-normal">
-                                (Click enemy card to target / lock-on)
+                            <span className="uppercase tracking-wider">Hostile Targets:</span>
+                            <span className="text-[9px] text-slate-400 font-fira-sans font-normal hidden sm:inline">
+                                (Click card to target)
                             </span>
                         </div>
                         {targetParticipant && (
-                            <div className="flex items-center gap-1.5 text-xs text-amber-300 font-cinzel font-semibold">
+                            <div className="flex items-center gap-1 text-[11px] text-amber-300 font-cinzel font-semibold">
                                 <span>Target:</span>
                                 <span className="font-bold underline text-amber-200">{targetParticipant.name}</span>
                                 {targetDist !== null && (
-                                    <span className="text-[11px] font-fira-sans text-slate-300">
-                                        ({targetDist} ft away)
+                                    <span className="text-[10px] font-fira-sans text-slate-300">
+                                        ({targetDist} ft)
                                     </span>
                                 )}
                             </div>
@@ -311,7 +311,7 @@ export function BattleGrid({
                     </div>
 
                     {/* Enemy Quick Chips */}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                         {activeEnemies.map((enemy) => {
                             const ecoords = resolveParticipantCoords(enemy, allParticipants);
                             const dist = getChebyshevDist(curX, curY, ecoords.x, ecoords.y);
@@ -325,32 +325,32 @@ export function BattleGrid({
                                     key={enemy.id}
                                     type="button"
                                     onClick={() => onSelectTarget(enemy.id.toString())}
-                                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border text-left transition-all cursor-pointer ${
+                                    className={`flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md border text-left transition-all cursor-pointer ${
                                         isSelected
-                                            ? "bg-red-950/90 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] scale-102 ring-1 ring-red-400"
+                                            ? "bg-red-950/90 border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)] ring-1 ring-red-400"
                                             : "bg-[#161822] border-slate-800 hover:border-red-800/80 hover:bg-[#1f1a22]"
                                     }`}
                                 >
                                     <div className="relative">
-                                        <div className="w-7 h-7 rounded-full bg-red-950 border border-red-600 flex items-center justify-center text-xs font-bold text-red-200">
+                                        <div className="w-5 h-5 rounded-full bg-red-950 border border-red-600 flex items-center justify-center text-[10px] font-bold text-red-200">
                                             👹
                                         </div>
                                         {isSelected && (
-                                            <span className="absolute -bottom-1 -right-1 text-[10px]">🎯</span>
+                                            <span className="absolute -bottom-1 -right-1 text-[8px]">🎯</span>
                                         )}
                                     </div>
                                     <div className="flex flex-col min-w-0">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="font-cinzel text-xs font-bold text-white truncate max-w-[120px]">
+                                        <div className="flex items-center gap-1">
+                                            <span className="font-cinzel text-[11px] font-bold text-white truncate max-w-[90px] sm:max-w-[120px]">
                                                 {enemy.name}
                                             </span>
-                                            <span className="text-[10px] font-fira-sans px-1 rounded bg-black/50 text-slate-400">
+                                            <span className="text-[9px] font-fira-sans px-1 rounded bg-black/50 text-slate-400">
                                                 {gridPosLabel}
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-[10px] font-fira-sans mt-0.5">
+                                        <div className="flex items-center gap-1 text-[9px] font-fira-sans">
                                             <span className="text-red-300 font-bold">
-                                                {enemy.current_hp}/{enemy.max_hp} HP
+                                                {enemy.current_hp}/{enemy.max_hp}
                                             </span>
                                             <span>•</span>
                                             <span
@@ -362,7 +362,7 @@ export function BattleGrid({
                                                         : "text-slate-400"
                                                 }`}
                                             >
-                                                {isMelee ? "⚔️ In Reach (5′)" : `${dist} ft away`}
+                                                {isMelee ? "⚔️ 5′" : `${dist}′`}
                                             </span>
                                         </div>
                                     </div>
@@ -374,36 +374,36 @@ export function BattleGrid({
             )}
 
             {/* 2. Top Tactical Status Bar & Quick-Step Movement Controls */}
-            <div className="w-full flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#12141c]/90 border border-[#c5a059]/30 backdrop-blur-md shadow-lg">
-                <div className="flex items-center gap-3 flex-wrap">
+            <div className="w-full flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-lg bg-[#12141c]/90 border border-[#c5a059]/30 backdrop-blur-md shadow-md">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Active Character Identity Badge */}
-                    <div className="flex items-center gap-2 bg-[#181d2c] px-2.5 py-1 rounded-lg border border-cyan-500/40 shadow-inner">
-                        <span className="text-xs">👑</span>
+                    <div className="flex items-center gap-1.5 bg-[#181d2c] px-2 py-0.5 rounded-md border border-cyan-500/40 shadow-inner">
+                        <span className="text-[11px]">👑</span>
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-cinzel uppercase tracking-wider text-cyan-300/80 font-bold">
+                            <span className="text-[8px] font-cinzel uppercase tracking-wider text-cyan-300/80 font-bold">
                                 Active Turn
                             </span>
-                            <span className="text-xs font-cinzel font-bold text-white leading-tight">
+                            <span className="text-[11px] font-cinzel font-bold text-white leading-tight">
                                 {currentParticipant?.name || "Player"}
                             </span>
                         </div>
-                        <span className="text-[10px] font-fira-sans text-cyan-300 px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40">
-                            Square {COL_LABELS[curCol]}{curRow + 1}
+                        <span className="text-[9px] font-fira-sans text-cyan-300 px-1 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40">
+                            {COL_LABELS[curCol]}{curRow + 1}
                         </span>
                     </div>
 
                     {/* Movement Budget Gauge */}
-                    <div className="flex items-center gap-2 bg-[#0a0c10] px-3 py-1 rounded-md border border-cyan-800/40">
-                        <span className="text-sm">🏃</span>
+                    <div className="flex items-center gap-1.5 bg-[#0a0c10] px-2 py-0.5 rounded-md border border-cyan-800/40">
+                        <span className="text-xs">🏃</span>
                         <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5 text-[11px] font-fira-sans font-bold">
+                            <div className="flex items-center gap-1 text-[10px] font-fira-sans font-bold">
                                 <span className={movementRemaining > 0 ? "text-cyan-300" : "text-slate-500"}>
                                     {movementRemaining} ft
                                 </span>
                                 <span className="text-slate-500">/</span>
-                                <span className="text-slate-400">{baseSpeed} ft remaining</span>
+                                <span className="text-slate-400">{baseSpeed} ft</span>
                             </div>
-                            <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden mt-0.5">
+                            <div className="w-16 sm:w-20 h-1 bg-slate-800 rounded-full overflow-hidden mt-0.5">
                                 <div
                                     className="h-full bg-gradient-to-r from-cyan-500 to-blue-400 transition-all duration-300"
                                     style={{
@@ -418,8 +418,8 @@ export function BattleGrid({
                     </div>
 
                     {/* Quick Directional Step Compass / D-Pad (5 ft steps) */}
-                    <div className="flex items-center gap-1 bg-[#090b10] p-1 rounded-lg border border-slate-800 shadow-inner">
-                        <span className="text-[10px] font-cinzel text-slate-400 px-1 hidden sm:inline">
+                    <div className="flex items-center gap-0.5 bg-[#090b10] p-0.5 rounded-md border border-slate-800 shadow-inner">
+                        <span className="text-[9px] font-cinzel text-slate-400 px-1 hidden sm:inline">
                             Step:
                         </span>
                         <button
@@ -427,17 +427,17 @@ export function BattleGrid({
                             title="Step West (5 ft)"
                             disabled={isMoving || isOperating || movementRemaining < 5 || curCol <= 0}
                             onClick={() => handleStep(-1, 0)}
-                            className="w-7 h-7 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                            className="w-6 h-6 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
                         >
                             ◀
                         </button>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-0.5">
                             <button
                                 type="button"
                                 title="Step North (5 ft)"
                                 disabled={isMoving || isOperating || movementRemaining < 5 || curRow <= 0}
                                 onClick={() => handleStep(0, -1)}
-                                className="w-7 h-3.5 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                                className="w-6 h-2.5 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-[8px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
                             >
                                 ▲
                             </button>
@@ -446,7 +446,7 @@ export function BattleGrid({
                                 title="Step South (5 ft)"
                                 disabled={isMoving || isOperating || movementRemaining < 5 || curRow >= ROWS - 1}
                                 onClick={() => handleStep(0, 1)}
-                                className="w-7 h-3.5 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                                className="w-6 h-2.5 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-[8px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
                             >
                                 ▼
                             </button>
@@ -456,7 +456,7 @@ export function BattleGrid({
                             title="Step East (5 ft)"
                             disabled={isMoving || isOperating || movementRemaining < 5 || curCol >= COLS - 1}
                             onClick={() => handleStep(1, 0)}
-                            className="w-7 h-7 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                            className="w-6 h-6 rounded bg-[#181a24] hover:bg-cyan-950 border border-slate-700 hover:border-cyan-500 text-cyan-200 text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
                         >
                             ▶
                         </button>
@@ -464,26 +464,26 @@ export function BattleGrid({
 
                     {/* Stance Badges */}
                     {isDisengaged && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-cinzel font-bold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 animate-pulse">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-cinzel font-bold bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 animate-pulse">
                             🕊️ Disengaged
                         </span>
                     )}
                     {isDodging && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-cinzel font-bold bg-amber-950/80 border border-amber-500/60 text-amber-300 animate-pulse">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-cinzel font-bold bg-amber-950/80 border border-amber-500/60 text-amber-300 animate-pulse">
                             🛡️ Dodging
                         </span>
                     )}
                 </div>
 
                 {/* Quick Action Buttons (Dash & Disengage) */}
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1 flex-wrap">
                     {onDash && (
                         <button
                             type="button"
                             disabled={isMoving || isOperating || dashedThisTurn}
                             onClick={() => onDash()}
                             title="Use Action to double movement speed"
-                            className="px-2.5 py-1 rounded bg-[#181a24] hover:bg-blue-950/70 border border-blue-600/40 hover:border-blue-400 text-blue-200 text-xs font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            className="px-2 py-0.5 rounded bg-[#181a24] hover:bg-blue-950/70 border border-blue-600/40 hover:border-blue-400 text-blue-200 text-[11px] font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                         >
                             <span>🏃</span>
                             <span>Dash</span>
@@ -495,7 +495,7 @@ export function BattleGrid({
                             disabled={isMoving || isOperating || isDisengaged}
                             onClick={() => onDisengage()}
                             title="Move without provoking opportunity attacks this turn"
-                            className="px-2.5 py-1 rounded bg-[#181a24] hover:bg-emerald-950/70 border border-emerald-600/40 hover:border-emerald-400 text-emerald-200 text-xs font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            className="px-2 py-0.5 rounded bg-[#181a24] hover:bg-emerald-950/70 border border-emerald-600/40 hover:border-emerald-400 text-emerald-200 text-[11px] font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                         >
                             <span>🕊️</span>
                             <span>Disengage</span>
@@ -505,26 +505,23 @@ export function BattleGrid({
             </div>
 
             {/* 3. The 10×8 Tactical Grid Matrix */}
-            <div className="relative p-3 rounded-2xl bg-gradient-to-b from-[#141620] via-[#0d0e15] to-[#08090d] border-2 border-[#c5a059]/40 shadow-[0_0_40px_rgba(0,0,0,0.9)]">
+            <div className="relative p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-[#141620] via-[#0d0e15] to-[#08090d] border-2 border-[#c5a059]/40 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
                 {/* Dungeon Corner Ornaments */}
-                <div className="absolute top-1.5 left-1.5 w-3.5 h-3.5 border-t-2 border-l-2 border-[#c5a059]" />
-                <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 border-t-2 border-r-2 border-[#c5a059]" />
-                <div className="absolute bottom-1.5 left-1.5 w-3.5 h-3.5 border-b-2 border-l-2 border-[#c5a059]" />
-                <div className="absolute bottom-1.5 right-1.5 w-3.5 h-3.5 border-b-2 border-r-2 border-[#c5a059]" />
+                <div className="absolute top-1 left-1 w-2.5 h-2.5 border-t border-l border-[#c5a059]" />
+                <div className="absolute top-1 right-1 w-2.5 h-2.5 border-t border-r border-[#c5a059]" />
+                <div className="absolute bottom-1 left-1 w-2.5 h-2.5 border-b border-l border-[#c5a059]" />
+                <div className="absolute bottom-1 right-1 w-2.5 h-2.5 border-b border-r border-[#c5a059]" />
 
                 {/* Column Headers (A-J with footage) */}
-                <div className="grid grid-cols-10 gap-1 ml-7 mb-1 text-center">
+                <div className="grid grid-cols-10 gap-0.5 sm:gap-1 ml-5 sm:ml-6 mb-0.5 text-center">
                     {COL_LABELS.map((col, idx) => (
                         <div
                             key={col}
-                            className={`text-[10px] font-fira-sans font-semibold uppercase tracking-wider ${
+                            className={`text-[9px] sm:text-[10px] font-fira-sans font-semibold uppercase tracking-wider ${
                                 idx === curCol ? "text-cyan-400 font-bold" : "text-slate-500"
                             }`}
                         >
-                            {col}{" "}
-                            <span className="text-[8px] opacity-40 hidden sm:inline">
-                                ({idx * 5}′)
-                            </span>
+                            {col}
                         </div>
                     ))}
                 </div>
@@ -532,11 +529,11 @@ export function BattleGrid({
                 {/* Grid Rows with Row Headers */}
                 <div className="flex">
                     {/* Row Numbers (1-8) */}
-                    <div className="flex flex-col justify-around mr-2 text-right">
+                    <div className="flex flex-col justify-around mr-1 sm:mr-1.5 text-right">
                         {Array.from({ length: ROWS }).map((_, rIdx) => (
                             <div
                                 key={rIdx}
-                                className={`h-12 sm:h-14 md:h-16 flex items-center justify-end text-[10px] font-fira-sans font-semibold w-5 ${
+                                className={`h-8 sm:h-9 md:h-10 lg:h-11 flex items-center justify-end text-[9px] sm:text-[10px] font-fira-sans font-semibold w-4 sm:w-5 ${
                                     rIdx === curRow ? "text-cyan-400 font-bold" : "text-slate-500"
                                 }`}
                             >
@@ -547,7 +544,7 @@ export function BattleGrid({
 
                     {/* Main Tile Matrix */}
                     <div
-                        className="relative grid grid-cols-10 gap-1 bg-[#090b10] p-1.5 rounded-lg border border-slate-800 shadow-inner"
+                        className="relative grid grid-cols-10 gap-0.5 sm:gap-1 bg-[#090b10] p-1 sm:p-1.5 rounded-lg border border-slate-800 shadow-inner"
                         onMouseLeave={() => setHoveredCell(null)}
                     >
                         {Array.from({ length: ROWS }).map((_, row) =>
@@ -579,16 +576,16 @@ export function BattleGrid({
                                         onMouseEnter={() =>
                                             setHoveredCell({ x: tileX, y: tileY })
                                         }
-                                        className={`w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 rounded-md relative flex flex-col items-center justify-center transition-all duration-150 cursor-pointer overflow-visible ${
+                                        className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 rounded relative flex flex-col items-center justify-center transition-all duration-150 cursor-pointer overflow-visible ${
                                             isCurrentPos
-                                                ? "bg-[#182030]/90 border-2 border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]"
+                                                ? "bg-[#182030]/90 border-2 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.4)]"
                                                 : isReachable
                                                 ? isHovered
-                                                    ? "bg-cyan-500/30 border-2 border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.5)]"
+                                                    ? "bg-cyan-500/30 border-2 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.5)]"
                                                     : "bg-cyan-950/25 border border-cyan-600/40 hover:bg-cyan-900/40"
                                                 : isDashReachable
                                                 ? isHovered
-                                                    ? "bg-amber-500/30 border-2 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)]"
+                                                    ? "bg-amber-500/30 border-2 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
                                                     : "bg-amber-950/20 border border-amber-700/30 hover:bg-amber-900/30"
                                                 : "bg-[#10121a]/90 border border-slate-800/80 hover:border-slate-600/60 hover:bg-[#151722]"
                                         } ${
@@ -603,13 +600,13 @@ export function BattleGrid({
                                         {/* Living Occupant Token */}
                                         {occupant && (
                                             <div
-                                                className={`relative w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-xs shadow-md transition-transform duration-200 ${
+                                                className={`relative w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs shadow-md transition-transform duration-200 ${
                                                     occupant.id === currentParticipant?.id
-                                                        ? "scale-108 ring-2 ring-cyan-400 shadow-[0_0_18px_rgba(34,211,238,0.7)]"
+                                                        ? "scale-105 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]"
                                                         : ""
                                                 } ${
                                                     isTarget
-                                                        ? "ring-4 ring-red-500 shadow-[0_0_22px_rgba(239,68,68,0.85)] scale-108"
+                                                        ? "ring-3 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.85)] scale-105"
                                                         : ""
                                                 } ${
                                                     occupant.participant_type === "character"
@@ -626,7 +623,7 @@ export function BattleGrid({
                                                             r="46%"
                                                             fill="none"
                                                             stroke="#1e2230"
-                                                            strokeWidth="2.5"
+                                                            strokeWidth="2"
                                                         />
                                                         <circle
                                                             cx="50%"
@@ -640,7 +637,7 @@ export function BattleGrid({
                                                                     ? "#f59e0b"
                                                                     : "#ef4444"
                                                             }
-                                                            strokeWidth="2.5"
+                                                            strokeWidth="2"
                                                             strokeDasharray="100"
                                                             strokeDashoffset={
                                                                 100 -
@@ -655,21 +652,21 @@ export function BattleGrid({
 
                                                 {/* Token Icon */}
                                                 {occupant.participant_type === "character" ? (
-                                                    <span className="text-sm">🛡️</span>
+                                                    <span className="text-xs sm:text-sm">🛡️</span>
                                                 ) : (
-                                                    <span className="text-sm">👹</span>
+                                                    <span className="text-xs sm:text-sm">👹</span>
                                                 )}
 
                                                 {/* Active Crown Marker */}
                                                 {occupant.id === currentParticipant?.id && (
-                                                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[11px] drop-shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-bounce">
+                                                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] drop-shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-bounce">
                                                         👑
                                                     </span>
                                                 )}
 
                                                 {/* Target Crosshairs */}
                                                 {isTarget && (
-                                                    <span className="absolute -bottom-1 -right-1 text-[11px] drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse">
+                                                    <span className="absolute -bottom-1 -right-1 text-[10px] drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse">
                                                         🎯
                                                     </span>
                                                 )}
@@ -678,7 +675,7 @@ export function BattleGrid({
 
                                         {/* Token Name Label Beneath */}
                                         {occupant && (
-                                            <span className="text-[8px] font-fira-sans font-bold truncate max-w-full text-center px-0.5 mt-0.5 text-slate-300 leading-none">
+                                            <span className="text-[7px] sm:text-[8px] font-fira-sans font-bold truncate max-w-full text-center px-0.5 mt-0.5 text-slate-300 leading-none">
                                                 {occupant.name.split(" ")[0]}
                                             </span>
                                         )}
@@ -686,8 +683,8 @@ export function BattleGrid({
                                         {/* Non-blocking Fallen Corpse Marker */}
                                         {!occupant && corpse && (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-30 grayscale">
-                                                <span className="text-xs">💀</span>
-                                                <span className="text-[7px] font-fira-sans text-slate-500 truncate max-w-full">
+                                                <span className="text-[10px] sm:text-xs">💀</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans text-slate-500 truncate max-w-full">
                                                     {corpse.name.split(" ")[0]}
                                                 </span>
                                             </div>
@@ -695,14 +692,14 @@ export function BattleGrid({
 
                                         {/* Empty Reachable Indicator Pip */}
                                         {!occupant && isReachable && (
-                                            <div className="w-2 h-2 rounded-full bg-cyan-400/60 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
                                         )}
 
                                         {/* Trajectory Distance Callout on Hover */}
                                         {isHovered && !occupant && distFromCur > 0 && (
-                                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded bg-black/95 border border-cyan-400 text-cyan-200 text-[10px] font-fira-sans font-bold whitespace-nowrap shadow-xl pointer-events-none">
-                                                👣 {distFromCur} ft (Click to Move)
-                                                {distFromCur > movementRemaining ? " • Dash Needed" : ""}
+                                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 px-1.5 py-0.5 rounded bg-black/95 border border-cyan-400 text-cyan-200 text-[9px] font-fira-sans font-bold whitespace-nowrap shadow-xl pointer-events-none">
+                                                👣 {distFromCur} ft
+                                                {distFromCur > movementRemaining ? " • Dash" : ""}
                                             </div>
                                         )}
                                     </div>
@@ -719,14 +716,14 @@ export function BattleGrid({
                                     x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
                                     y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
                                     stroke={isHoveredReachable ? "#22d3ee" : "#f59e0b"}
-                                    strokeWidth="2.5"
-                                    strokeDasharray="6 4"
+                                    strokeWidth="2"
+                                    strokeDasharray="5 3"
                                     strokeLinecap="round"
                                 />
                                 <circle
                                     cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
                                     cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                    r="4"
+                                    r="3"
                                     fill={isHoveredReachable ? "#22d3ee" : "#f59e0b"}
                                 />
                             </svg>
@@ -741,7 +738,7 @@ export function BattleGrid({
                                     x2={`${((targetCoords.col + 0.5) / COLS) * 100}%`}
                                     y2={`${((targetCoords.row + 0.5) / ROWS) * 100}%`}
                                     stroke={targetDist !== null && targetDist <= 5 ? "#10b981" : "#ef4444"}
-                                    strokeWidth="2"
+                                    strokeWidth="1.5"
                                     strokeDasharray="4 4"
                                     strokeOpacity="0.75"
                                 />
@@ -752,9 +749,9 @@ export function BattleGrid({
 
                 {/* Threat / Opportunity Attack Warning Overlay */}
                 {hoveredOARisk && (
-                    <div className="mt-2.5 p-2 rounded-lg bg-red-950/90 border border-red-500 text-red-200 text-xs font-lora flex items-center justify-between shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-in fade-in duration-200">
-                        <div className="flex items-center gap-2">
-                            <span className="text-base">⚠️</span>
+                    <div className="mt-1.5 p-1.5 rounded-lg bg-red-950/90 border border-red-500 text-red-200 text-[11px] font-lora flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-in fade-in duration-200">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-sm">⚠️</span>
                             <div>
                                 <span className="font-cinzel font-bold text-red-300">
                                     Opportunity Attack Warning:
@@ -763,16 +760,16 @@ export function BattleGrid({
                                 <span className="font-semibold text-white">
                                     {hoveredOARisk.map((e) => e.name).join(", ")}
                                 </span>{" "}
-                                without Disengaging will provoke an immediate reaction strike!
+                                provokes a reaction strike!
                             </div>
                         </div>
                         {onDisengage && (
                             <button
                                 type="button"
                                 onClick={() => onDisengage()}
-                                className="px-2.5 py-1 rounded bg-red-800 hover:bg-red-700 text-white font-cinzel font-bold text-[11px] cursor-pointer flex-shrink-0"
+                                className="px-2 py-0.5 rounded bg-red-800 hover:bg-red-700 text-white font-cinzel font-bold text-[10px] cursor-pointer flex-shrink-0"
                             >
-                                Disengage First
+                                Disengage
                             </button>
                         )}
                     </div>
@@ -780,21 +777,21 @@ export function BattleGrid({
             </div>
 
             {/* 4. Tactical Grid Legend & Instructions */}
-            <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-[#d1cdb8]/70 font-lora">
-                <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-cyan-500/40 border border-cyan-400" />
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] text-[#d1cdb8]/70 font-lora py-0.5">
+                <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded bg-cyan-500/40 border border-cyan-400" />
                     <span>Reachable ({movementRemaining} ft)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-amber-500/30 border border-amber-400" />
-                    <span>Dash Range (+{baseSpeed} ft)</span>
+                <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded bg-amber-500/30 border border-amber-400" />
+                    <span>Dash (+{baseSpeed} ft)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded ring-1 ring-red-500 ring-inset bg-red-950/30" />
-                    <span>Threat Zone (5 ft Reach)</span>
+                <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded ring-1 ring-red-500 ring-inset bg-red-950/30" />
+                    <span>Threat (5 ft)</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-slate-400 italic">
-                    <span>💡 Click any enemy in radar or grid to target • Click highlighted tile or use D-Pad to move</span>
+                <div className="hidden lg:inline text-slate-400 italic">
+                    <span>💡 Click radar or grid to target • Click tile or D-Pad to move</span>
                 </div>
             </div>
         </div>

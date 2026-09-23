@@ -410,7 +410,7 @@ export default function CombatPage() {
     const handleAttack = async (
         attackName: string,
         attackBonus: number,
-        options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean }
+        options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean; is_ranged?: boolean }
     ) => {
         const current = getCurrentParticipant();
         if (!current || !targetId) {
@@ -437,6 +437,7 @@ export default function CombatPage() {
                 disadvantage: options?.disadvantage,
                 dm_override: options?.dm_override,
                 inspiration: options?.inspiration,
+                is_ranged: options?.is_ranged,
             });
             if (res.data) {
                 const dmgAmount = res.data.damage_amount || res.data.damage || 0;
@@ -999,7 +1000,7 @@ export default function CombatPage() {
                 .map(ci => {
                     const item = ci.item_details!;
                     const isFinesse = item.finesse || false;
-                    const isRanged = item.weapon_type?.includes('ranged') || false;
+                    const isRanged = item.weapon_type?.toLowerCase().includes('ranged') || (item.range_normal && item.range_normal > 5) || /bow|crossbow|dart|sling|blowgun/i.test(item.name || '');
                     let abilityMod = stats?.strength_modifier || 0;
                     if (isRanged) {
                         abilityMod = stats?.dexterity_modifier || 0;
@@ -1023,6 +1024,7 @@ export default function CombatPage() {
                         ].filter(Boolean) as string[],
                         abilityMod,
                         isEquipped: ci.is_equipped || ci.equipment_slot !== 'inventory',
+                        isRanged,
                     };
                 });
             if (weapons.length > 0) return weapons;
@@ -1031,15 +1033,17 @@ export default function CombatPage() {
         // Fallback: use the equipped_items computed field from the backend
         if (currentParticipant?.equipped_items?.weapon) {
             const weapon = currentParticipant.equipped_items.weapon;
-            const abilityMod = stats?.strength_modifier || 0;
+            const isRanged = (weapon as any).weapon_type?.toLowerCase().includes('ranged') || /bow|crossbow|dart|sling|blowgun/i.test(weapon.name || '');
+            const abilityMod = isRanged ? (stats?.dexterity_modifier || 0) : (stats?.strength_modifier || 0);
             return [{
                 name: weapon.name,
                 bonus: profBonus + abilityMod,
                 damage: weapon.damage_dice,
                 damageType: '',
-                properties: [] as string[],
+                properties: [isRanged && 'Ranged'].filter(Boolean) as string[],
                 abilityMod,
                 isEquipped: true,
+                isRanged,
             }];
         }
 
