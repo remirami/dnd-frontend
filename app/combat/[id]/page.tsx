@@ -292,10 +292,17 @@ export default function CombatPage() {
         return participants.find(p => p.is_active && p.current_hp > 0);
     };
 
-    // Reset view mode back to tactical grid whenever a character's turn ends, turn advances, or combat outcome is reached
+    // Reset view mode back to tactical grid whenever a character's turn ends or turn advances
     useEffect(() => {
         setViewMode("grid");
-    }, [session?.current_participant?.id, session?.current_round, session?.current_turn_index, combatOutcome]);
+    }, [session?.current_participant?.id, session?.current_round, session?.current_turn_index]);
+
+    // Reset view mode back to tactical grid if combat outcome is reached (victory or defeat)
+    useEffect(() => {
+        if (combatOutcome) {
+            setViewMode("grid");
+        }
+    }, [combatOutcome]);
 
     const handleViewParticipant = (participantId: number) => {
         setViewingParticipantId(participantId);
@@ -885,6 +892,10 @@ export default function CombatPage() {
     const handleDash = async (bonusAction: boolean = false) => {
         const current = getCurrentParticipant();
         if (!current || !sessionId) return;
+        if (!bonusAction && current.action_used) {
+            alert(`${current.name} has already used their action this turn.`);
+            return;
+        }
         setIsMovementOperating(true);
         try {
             const resp = await combatApi.dash(sessionId, {
@@ -899,7 +910,6 @@ export default function CombatPage() {
         } catch (err: any) {
             console.error("Failed to dash:", err);
             alert(err.response?.data?.error || "Dash failed.");
-            throw err;
         } finally {
             setIsMovementOperating(false);
         }
@@ -908,6 +918,10 @@ export default function CombatPage() {
     const handleDisengage = async (bonusAction: boolean = false) => {
         const current = getCurrentParticipant();
         if (!current || !sessionId) return;
+        if (!bonusAction && current.action_used) {
+            alert(`${current.name} has already used their action this turn.`);
+            return;
+        }
         setIsMovementOperating(true);
         try {
             const resp = await combatApi.disengage(sessionId, {
@@ -930,6 +944,10 @@ export default function CombatPage() {
     const handleDodge = async (bonusAction: boolean = false) => {
         const current = getCurrentParticipant();
         if (!current || !sessionId) return;
+        if (!bonusAction && current.action_used) {
+            alert(`${current.name} has already used their action this turn.`);
+            return;
+        }
         setIsMovementOperating(true);
         try {
             const resp = await combatApi.dodge(sessionId, {

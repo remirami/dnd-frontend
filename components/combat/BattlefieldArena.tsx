@@ -283,7 +283,7 @@ export function BattlefieldArena({
                 return () => clearTimeout(timer);
             }
         }
-    }, [targetParticipant, targetParticipant?.id, targetParticipant?.current_hp, viewMode, setViewMode, lastAttackFeedback]);
+    }, [targetParticipant?.id, targetParticipant?.current_hp, viewMode, setViewMode, lastAttackFeedback]);
 
     // Active floating combat text state
     const [floatingText, setFloatingText] = useState<AttackFeedback | null>(null);

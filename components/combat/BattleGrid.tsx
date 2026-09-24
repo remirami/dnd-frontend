@@ -368,7 +368,8 @@ export function BattleGrid({
     const isDisengaged = !!currentParticipant?.is_disengaged;
     const isDodging = !!currentParticipant?.is_dodging;
     const dashedThisTurn = !!currentParticipant?.dashed_this_turn;
-    const dashPotential = movementRemaining + baseSpeed;
+    const canDash = !dashedThisTurn && !currentParticipant?.action_used;
+    const dashPotential = canDash ? movementRemaining + baseSpeed : movementRemaining;
 
     // Map each cell to living active participants (only living participants block squares)
     const cellOccupancy = useMemo(() => {
@@ -583,7 +584,7 @@ export function BattleGrid({
             } catch (err) {
                 setOptimisticPos(null);
             }
-        } else if (dist <= dashPotential && onDash && !dashedThisTurn) {
+        } else if (dist <= dashPotential && onDash && canDash) {
             if (confirm(`Move is ${dist} ft (exceeds ${movementRemaining} ft). Use Dash action to extend movement?`)) {
                 try {
                     await onDash();
@@ -875,9 +876,15 @@ export function BattleGrid({
                     {onDash && (
                         <button
                             type="button"
-                            disabled={isMoving || isOperating || dashedThisTurn}
+                            disabled={isMoving || isOperating || !canDash}
                             onClick={() => onDash()}
-                            title="Use Action to double movement speed"
+                            title={
+                                currentParticipant?.action_used
+                                    ? "Action already used this turn"
+                                    : dashedThisTurn
+                                    ? "Already dashed this turn"
+                                    : "Use Action to double movement speed"
+                            }
                             className="px-2 py-0.5 rounded bg-[#181a24] hover:bg-blue-950/70 border border-blue-600/40 hover:border-blue-400 text-blue-200 text-[11px] font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                         >
                             <span>🏃</span>
@@ -887,9 +894,15 @@ export function BattleGrid({
                     {onDisengage && (
                         <button
                             type="button"
-                            disabled={isMoving || isOperating || isDisengaged}
+                            disabled={isMoving || isOperating || isDisengaged || !!currentParticipant?.action_used}
                             onClick={() => onDisengage()}
-                            title="Move without provoking opportunity attacks this turn"
+                            title={
+                                currentParticipant?.action_used
+                                    ? "Action already used this turn"
+                                    : isDisengaged
+                                    ? "Already disengaged"
+                                    : "Move without provoking opportunity attacks this turn"
+                            }
                             className={`px-2 py-0.5 rounded text-[11px] font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 ${
                                 hoveredOARisk
                                     ? "bg-amber-950 border border-amber-500 text-amber-200 ring-2 ring-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.5)] animate-pulse"
