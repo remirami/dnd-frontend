@@ -4,7 +4,105 @@ import React, { useState, useMemo, useEffect } from "react";
 import type { CombatParticipant } from "@/lib/types/combat";
 import { isIncapacitating } from "@/lib/data/conditions";
 
+export interface TerrainFeature {
+    col: number;
+    row: number;
+    name: string;
+    icon: string;
+    cover: "half" | "three-quarters" | "total" | "none";
+    blocksMovement: boolean;
+    difficultTerrain?: boolean;
+    description: string;
+}
+
+export interface BattlefieldLayout {
+    id: number;
+    name: string;
+    theme: string;
+    description: string;
+    features: TerrainFeature[];
+}
+
+export const BATTLEFIELD_LAYOUTS: BattlefieldLayout[] = [
+    {
+        id: 0,
+        name: "Forgotten Crypt",
+        theme: "Ancient Tomb Sanctuary",
+        description: "Four massive monolithic pillars and crumbled tombs provide full tactical cover in the chamber center.",
+        features: [
+            { col: 4, row: 2, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
+            { col: 4, row: 5, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
+            { col: 5, row: 2, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
+            { col: 5, row: 5, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
+            { col: 3, row: 1, name: "Stone Sarcophagus", icon: "🪨", cover: "half", blocksMovement: false, description: "Crumbled stone crypt providing half cover (+2 AC)." },
+            { col: 6, row: 6, name: "Crumbled Masonry", icon: "🪨", cover: "half", blocksMovement: false, description: "Scattered rubble providing half cover (+2 AC)." },
+        ],
+    },
+    {
+        id: 1,
+        name: "Ruined Watchtower",
+        theme: "Fortified Outpost Ruins",
+        description: "A ruined perimeter reinforced with timber barricades and a surviving stone watchtower footing.",
+        features: [
+            { col: 3, row: 5, name: "Watchtower Pylon", icon: "🏰", cover: "total", blocksMovement: true, description: "Reinforced masonry corner pillar blocking line-of-sight." },
+            { col: 4, row: 3, name: "Timber Barricade", icon: "🪵", cover: "half", blocksMovement: false, description: "Sturdy wooden barricade granting half cover (+2 AC)." },
+            { col: 4, row: 4, name: "Timber Barricade", icon: "🪵", cover: "half", blocksMovement: false, description: "Sturdy wooden barricade granting half cover (+2 AC)." },
+            { col: 5, row: 1, name: "Spiked Palisade", icon: "🪵", cover: "half", blocksMovement: false, description: "Sharpened stakes granting half cover (+2 AC)." },
+            { col: 5, row: 6, name: "Spiked Palisade", icon: "🪵", cover: "half", blocksMovement: false, description: "Sharpened stakes granting half cover (+2 AC)." },
+        ],
+    },
+    {
+        id: 2,
+        name: "Sunken Cavern",
+        theme: "Underground Bog & Stalagmites",
+        description: "A subterranean cavern floor submerged in murky mire with jagged mineral formations.",
+        features: [
+            { col: 5, row: 3, name: "Great Stalagmite", icon: "🗿", cover: "total", blocksMovement: true, description: "Massive natural rock spire blocking movement and missile attacks." },
+            { col: 3, row: 4, name: "Sunken Boulder", icon: "🪨", cover: "half", blocksMovement: false, description: "Wet limestone outcrop granting half cover (+2 AC)." },
+            { col: 6, row: 3, name: "Sunken Boulder", icon: "🪨", cover: "half", blocksMovement: false, description: "Wet limestone outcrop granting half cover (+2 AC)." },
+            { col: 4, row: 1, name: "Deep Bog", icon: "💧", cover: "none", blocksMovement: false, difficultTerrain: true, description: "Murky subterranean pool (Difficult Terrain)." },
+            { col: 4, row: 2, name: "Deep Bog", icon: "💧", cover: "none", blocksMovement: false, difficultTerrain: true, description: "Murky subterranean pool (Difficult Terrain)." },
+            { col: 5, row: 5, name: "Deep Bog", icon: "💧", cover: "none", blocksMovement: false, difficultTerrain: true, description: "Murky subterranean pool (Difficult Terrain)." },
+            { col: 5, row: 6, name: "Deep Bog", icon: "💧", cover: "none", blocksMovement: false, difficultTerrain: true, description: "Murky subterranean pool (Difficult Terrain)." },
+        ],
+    },
+    {
+        id: 3,
+        name: "Mountain Chokepoint",
+        theme: "Narrow Canyon Pass",
+        description: "Sheer rock bluffs channel combatants into a deadly natural funnel.",
+        features: [
+            { col: 4, row: 0, name: "Cliff Face", icon: "⛰️", cover: "total", blocksMovement: true, description: "Impassable granite wall flanking the pass." },
+            { col: 4, row: 1, name: "Cliff Face", icon: "⛰️", cover: "total", blocksMovement: true, description: "Impassable granite wall flanking the pass." },
+            { col: 5, row: 0, name: "Cliff Face", icon: "⛰️", cover: "total", blocksMovement: true, description: "Impassable granite wall flanking the pass." },
+            { col: 4, row: 6, name: "Cliff Face", icon: "⛰️", cover: "total", blocksMovement: true, description: "Impassable granite wall flanking the pass." },
+            { col: 4, row: 7, name: "Cliff Face", icon: "⛰️", cover: "total", blocksMovement: true, description: "Impassable granite wall flanking the pass." },
+            { col: 5, row: 7, name: "Cliff Face", icon: "⛰️", cover: "total", blocksMovement: true, description: "Impassable granite wall flanking the pass." },
+            { col: 5, row: 3, name: "Crag Outcrop", icon: "🪨", cover: "half", blocksMovement: false, description: "Jagged scree outcrop granting half cover (+2 AC)." },
+        ],
+    },
+    {
+        id: 4,
+        name: "Overgrown Glade",
+        theme: "Wildwood Crossroads",
+        description: "Ancient towering trees, tangled thorny brambles, and abandoned trade crates.",
+        features: [
+            { col: 4, row: 1, name: "Ancient Oak", icon: "🌲", cover: "total", blocksMovement: true, description: "Thick trunk offering total cover from projectile attacks." },
+            { col: 5, row: 6, name: "Ancient Oak", icon: "🌲", cover: "total", blocksMovement: true, description: "Thick trunk offering total cover from projectile attacks." },
+            { col: 3, row: 3, name: "Trade Crates", icon: "📦", cover: "half", blocksMovement: false, description: "Overturned merchant crates granting half cover (+2 AC)." },
+            { col: 4, row: 5, name: "Dense Brambles", icon: "🌿", cover: "none", blocksMovement: false, difficultTerrain: true, description: "Thick briars and roots (Difficult Terrain)." },
+            { col: 5, row: 2, name: "Dense Brambles", icon: "🌿", cover: "none", blocksMovement: false, difficultTerrain: true, description: "Thick briars and roots (Difficult Terrain)." },
+        ],
+    },
+];
+
+export function getBattlefieldLayout(sessionId: number = 0): BattlefieldLayout {
+    const idx = Math.abs(sessionId) % BATTLEFIELD_LAYOUTS.length;
+    return BATTLEFIELD_LAYOUTS[idx];
+}
+
 interface BattleGridProps {
+    sessionId?: number;
     currentParticipant?: CombatParticipant | null;
     targetParticipant?: CombatParticipant | null;
     allParticipants: CombatParticipant[];
@@ -28,6 +126,29 @@ function getChebyshevDist(x1: number, y1: number, x2: number, y2: number): numbe
     return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
 }
 
+// Tactical fallback clusters: organic, unaligned 20ft starting zones
+const HERO_CLUSTER = [
+    { col: 2, row: 3 }, // (10 ft, 15 ft) - front center
+    { col: 1, row: 2 }, // (5 ft, 10 ft) - flank high
+    { col: 2, row: 4 }, // (10 ft, 20 ft) - front low
+    { col: 3, row: 2 }, // (15 ft, 10 ft) - forward high
+    { col: 1, row: 4 }, // (5 ft, 20 ft) - rear low
+    { col: 3, row: 5 }, // (15 ft, 25 ft) - forward low
+    { col: 1, row: 3 }, // (5 ft, 15 ft) - rear mid
+    { col: 2, row: 2 }, // (10 ft, 10 ft) - mid high
+];
+
+const ENEMY_CLUSTER = [
+    { col: 7, row: 3 }, // (35 ft, 15 ft) - front center
+    { col: 6, row: 2 }, // (30 ft, 10 ft) - forward high
+    { col: 8, row: 4 }, // (40 ft, 20 ft) - rear low
+    { col: 7, row: 2 }, // (35 ft, 10 ft) - front high
+    { col: 6, row: 4 }, // (30 ft, 20 ft) - forward low
+    { col: 8, row: 2 }, // (40 ft, 10 ft) - rear high
+    { col: 7, row: 5 }, // (35 ft, 25 ft) - front low
+    { col: 6, row: 3 }, // (30 ft, 15 ft) - forward mid
+];
+
 // Deterministically resolve participant grid coordinates to avoid (0, 0) collisions
 function resolveParticipantCoords(
     participant: CombatParticipant,
@@ -44,26 +165,22 @@ function resolveParticipantCoords(
         return { x: col * 5, y: row * 5, col, row };
     }
 
-    // Default tactical line formation:
-    // Heroes on Left (Col C = 10 ft)
-    // Enemies on Right (Col H = 35 ft)
+    // Default tactical cluster: organic unaligned placement within 20ft area
     const isHero = participant.participant_type === "character";
     const peers = allParticipants.filter((p) => p.participant_type === participant.participant_type);
     const peerIdx = Math.max(0, peers.findIndex((p) => p.id === participant.id));
 
     if (isHero) {
-        const col = 2; // Col C (10 ft)
-        const row = Math.min(ROWS - 2, 1 + (peerIdx % 6)); // Rows 2..7 (5..30 ft)
-        return { x: col * 5, y: row * 5, col, row };
+        const slot = HERO_CLUSTER[peerIdx % HERO_CLUSTER.length];
+        return { x: slot.col * 5, y: slot.row * 5, col: slot.col, row: slot.row };
     } else {
-        const colOffset = Math.floor(peerIdx / 6);
-        const col = Math.min(COLS - 1, 7 + colOffset); // Col H (35 ft) or Col I (40 ft)
-        const row = Math.min(ROWS - 2, 1 + (peerIdx % 6)); // Rows 2..7 (5..30 ft)
-        return { x: col * 5, y: row * 5, col, row };
+        const slot = ENEMY_CLUSTER[peerIdx % ENEMY_CLUSTER.length];
+        return { x: slot.col * 5, y: slot.row * 5, col: slot.col, row: slot.row };
     }
 }
 
 export function BattleGrid({
+    sessionId = 0,
     currentParticipant,
     targetParticipant,
     allParticipants,
@@ -78,6 +195,16 @@ export function BattleGrid({
     isOperating = false,
 }: BattleGridProps) {
     const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null);
+
+    // Current procedural battlefield layout
+    const currentLayout = useMemo(() => getBattlefieldLayout(sessionId), [sessionId]);
+    const terrainMap = useMemo(() => {
+        const map = new Map<string, TerrainFeature>();
+        currentLayout.features.forEach((f) => {
+            map.set(`${f.col},${f.row}`, f);
+        });
+        return map;
+    }, [currentLayout]);
 
     // Instant optimistic coordinate tracking for zero-latency token movement
     const [optimisticPos, setOptimisticPos] = useState<{ id: number; col: number; row: number } | null>(null);
@@ -250,6 +377,10 @@ export function BattleGrid({
         const targetCol = Math.round(x / 5);
         const targetRow = Math.round(y / 5);
 
+        // Solid terrain features block movement
+        const targetTerrain = terrainMap.get(`${targetCol},${targetRow}`);
+        if (targetTerrain?.blocksMovement) return;
+
         if (dist <= movementRemaining) {
             // Immediate optimistic token placement
             if (currentParticipant) {
@@ -277,6 +408,10 @@ export function BattleGrid({
         if (nextCol < 0 || nextCol >= COLS || nextRow < 0 || nextRow >= ROWS) return;
         const occupant = cellOccupancy.get(`${nextCol},${nextRow}`);
         if (occupant && occupant.id !== currentParticipant?.id && occupant.current_hp > 0) return;
+
+        // Solid terrain features block stepping
+        const stepTerrain = terrainMap.get(`${nextCol},${nextRow}`);
+        if (stepTerrain?.blocksMovement) return;
 
         if (currentParticipant) {
             setOptimisticPos({ id: currentParticipant.id, col: nextCol, row: nextRow });
@@ -504,6 +639,26 @@ export function BattleGrid({
                 </div>
             </div>
 
+            {/* Arena Environment & Terrain Banner */}
+            <div className="w-full flex items-center justify-between px-2.5 py-1 rounded bg-[#10121a]/95 border border-[#c5a059]/30 text-[10px] shadow-sm">
+                <div className="flex items-center gap-1.5 font-cinzel font-semibold text-[#c5a059]">
+                    <span>🏟️</span>
+                    <span>{currentLayout.name}</span>
+                    <span className="text-slate-400 font-fira-sans text-[9px] hidden sm:inline">• {currentLayout.theme}</span>
+                </div>
+                {hoveredCell && terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`) ? (
+                    <div className="flex items-center gap-1.5 text-cyan-300 font-fira-sans">
+                        <span>{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.icon}</span>
+                        <span className="font-bold">{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.name}:</span>
+                        <span className="text-slate-300 text-[9px] truncate max-w-[200px] sm:max-w-none">{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.description}</span>
+                    </div>
+                ) : (
+                    <div className="text-[9px] text-slate-400 font-fira-sans hidden sm:block truncate">
+                        {currentLayout.description}
+                    </div>
+                )}
+            </div>
+
             {/* 3. The 10×8 Tactical Grid Matrix */}
             <div className="relative p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-[#141620] via-[#0d0e15] to-[#08090d] border-2 border-[#c5a059]/40 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
                 {/* Dungeon Corner Ornaments */}
@@ -555,12 +710,18 @@ export function BattleGrid({
                                 const occupant = cellOccupancy.get(`${col},${row}`);
                                 const corpse = corpseOccupancy.get(`${col},${row}`);
                                 const isThreat = threatCells.has(`${col},${row}`);
+                                const terrain = terrainMap.get(`${col},${row}`);
+                                const isSolidTerrain = terrain?.blocksMovement ?? false;
 
                                 const distFromCur = getChebyshevDist(curX, curY, tileX, tileY);
                                 const isReachable =
-                                    !occupant && distFromCur > 0 && distFromCur <= movementRemaining;
+                                    !occupant &&
+                                    !isSolidTerrain &&
+                                    distFromCur > 0 &&
+                                    distFromCur <= movementRemaining;
                                 const isDashReachable =
                                     !occupant &&
+                                    !isSolidTerrain &&
                                     distFromCur > movementRemaining &&
                                     distFromCur <= dashPotential;
 
@@ -587,6 +748,12 @@ export function BattleGrid({
                                                 ? isHovered
                                                     ? "bg-amber-500/30 border-2 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
                                                     : "bg-amber-950/20 border border-amber-700/30 hover:bg-amber-900/30"
+                                                : isSolidTerrain
+                                                ? "bg-[#0b0c10] border border-slate-700/80 shadow-inner"
+                                                : terrain?.cover === "half"
+                                                ? "bg-[#161413]/90 border border-amber-900/40 hover:border-amber-700/60"
+                                                : terrain?.difficultTerrain
+                                                ? "bg-[#0b1418]/90 border border-cyan-900/40 hover:border-cyan-700/60"
                                                 : "bg-[#10121a]/90 border border-slate-800/80 hover:border-slate-600/60 hover:bg-[#151722]"
                                         } ${
                                             isThreat && !occupant
@@ -680,6 +847,34 @@ export function BattleGrid({
                                             </span>
                                         )}
 
+                                        {/* Terrain Feature Icon & Cover Badge */}
+                                        {terrain && !occupant && (
+                                            <div
+                                                className={`relative z-1 flex flex-col items-center justify-center select-none pointer-events-none transition-transform duration-200 ${
+                                                    terrain.blocksMovement ? "opacity-95" : "opacity-85"
+                                                }`}
+                                            >
+                                                <span className="text-xs sm:text-sm md:text-base leading-none filter drop-shadow">
+                                                    {terrain.icon}
+                                                </span>
+                                                {terrain.cover === "total" && (
+                                                    <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-slate-300 bg-slate-900/90 px-1 rounded-sm mt-0.5 border border-slate-700 leading-tight">
+                                                        Solid
+                                                    </span>
+                                                )}
+                                                {terrain.cover === "half" && (
+                                                    <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-amber-300 bg-amber-950/90 px-0.5 rounded-sm mt-0.5 border border-amber-700/60 leading-tight">
+                                                        +2 AC
+                                                    </span>
+                                                )}
+                                                {terrain.difficultTerrain && (
+                                                    <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-cyan-300 bg-cyan-950/90 px-0.5 rounded-sm mt-0.5 border border-cyan-700/60 leading-tight">
+                                                        Slow
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
                                         {/* Non-blocking Fallen Corpse Marker */}
                                         {!occupant && corpse && (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-30 grayscale">
@@ -691,15 +886,25 @@ export function BattleGrid({
                                         )}
 
                                         {/* Empty Reachable Indicator Pip */}
-                                        {!occupant && isReachable && (
+                                        {!occupant && !terrain && isReachable && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
                                         )}
 
                                         {/* Trajectory Distance Callout on Hover */}
-                                        {isHovered && !occupant && distFromCur > 0 && (
+                                        {isHovered && !occupant && (
                                             <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 px-1.5 py-0.5 rounded bg-black/95 border border-cyan-400 text-cyan-200 text-[9px] font-fira-sans font-bold whitespace-nowrap shadow-xl pointer-events-none">
-                                                👣 {distFromCur} ft
-                                                {distFromCur > movementRemaining ? " • Dash" : ""}
+                                                {distFromCur > 0 && !isSolidTerrain && (
+                                                    <>
+                                                        👣 {distFromCur} ft
+                                                        {distFromCur > movementRemaining ? " • Dash" : ""}
+                                                    </>
+                                                )}
+                                                {isSolidTerrain && (
+                                                    <span className="text-red-300">⛔ {terrain?.name} (Blocked)</span>
+                                                )}
+                                                {!isSolidTerrain && terrain && distFromCur === 0 && (
+                                                    <span>{terrain.icon} {terrain.name}</span>
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -1210,6 +1210,7 @@ export default function CombatPage() {
 
             {/* 3. Central Battlefield Clash Arena */}
             <BattlefieldArena
+                sessionId={Number(sessionId)}
                 currentParticipant={currentParticipant}
                 targetParticipant={targetParticipant}
                 allParticipants={participants}

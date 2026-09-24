@@ -28,6 +28,7 @@ export interface AttackFeedback {
 }
 
 interface BattlefieldArenaProps {
+    sessionId?: number;
     currentParticipant?: CombatParticipant | null;
     targetParticipant?: CombatParticipant | null;
     allParticipants: CombatParticipant[];
@@ -216,6 +217,7 @@ function FloatingCombatText({ text }: { text: AttackFeedback }) {
 }
 
 export function BattlefieldArena({
+    sessionId,
     currentParticipant,
     targetParticipant,
     allParticipants,
@@ -362,6 +364,7 @@ export function BattlefieldArena({
             {/* View Mode 1: 2D Tactical Battle Grid */}
             {viewMode === "grid" && onMove ? (
                 <BattleGrid
+                    sessionId={sessionId}
                     currentParticipant={currentParticipant}
                     targetParticipant={targetParticipant}
                     allParticipants={allParticipants}
