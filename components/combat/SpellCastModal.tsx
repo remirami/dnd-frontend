@@ -157,6 +157,8 @@ function SpellCastModalContent({
     const isHealingSpell = !!mechanics.isHealing;
     const isAoE = !!mechanics.isAoE;
     const isBonusAction = !!mechanics.isBonusAction || (mechanics.castingTime?.toLowerCase().includes("bonus") ?? false);
+    const isMultiMissile = spellNameLower === "magic missile";
+    const totalDarts = 3 + Math.max(0, selectedLevel - 1);
 
     const [targetType, setTargetType] = useState<"enemies" | "allies">(
         isHealingSpell ? "allies" : "enemies"
@@ -185,6 +187,56 @@ function SpellCastModalContent({
         }
         return enemyParticipants.map((e) => e.id);
     });
+
+    // Magic Missile individual dart allocations (Target ID -> Dart Count)
+    const [dartAllocations, setDartAllocations] = useState<Record<number, number>>({});
+
+    useEffect(() => {
+        if (!isMultiMissile) return;
+        setDartAllocations((prev) => {
+            const currentSum = Object.values(prev).reduce((sum, n) => sum + n, 0);
+            if (currentSum === 0) {
+                const defaultTarget = selectedTargetId || enemyParticipants[0]?.id;
+                if (defaultTarget) return { [defaultTarget]: totalDarts };
+                return {};
+            }
+            if (currentSum !== totalDarts) {
+                const diff = totalDarts - currentSum;
+                const targetIds = Object.keys(prev).map(Number);
+                const primaryId = targetIds[0] || enemyParticipants[0]?.id;
+                if (primaryId) {
+                    const newCount = Math.max(0, (prev[primaryId] || 0) + diff);
+                    return { ...prev, [primaryId]: newCount };
+                }
+            }
+            return prev;
+        });
+    }, [isMultiMissile, totalDarts, selectedTargetId, enemyParticipants]);
+
+    const assignedDartsCount = Object.values(dartAllocations).reduce((sum, n) => sum + n, 0);
+    const unassignedDarts = Math.max(0, totalDarts - assignedDartsCount);
+
+    const handleAddDart = (targetId: number) => {
+        if (unassignedDarts <= 0) return;
+        setDartAllocations((prev) => ({
+            ...prev,
+            [targetId]: (prev[targetId] || 0) + 1,
+        }));
+    };
+
+    const handleRemoveDart = (targetId: number) => {
+        setDartAllocations((prev) => {
+            const cur = prev[targetId] || 0;
+            if (cur <= 0) return prev;
+            const next = { ...prev };
+            if (cur === 1) {
+                delete next[targetId];
+            } else {
+                next[targetId] = cur - 1;
+            }
+            return next;
+        });
+    };
 
     const toggleTargetId = (id: number) => {
         setSelectedTargetIds((prev) =>
@@ -219,6 +271,10 @@ function SpellCastModalContent({
 
     // Compute effective damage or healing dice based on slot level
     const computedFormula = useMemo(() => {
+        if (isMultiMissile) {
+            return `${totalDarts}x Darts (1d4+1 Force each)`;
+        }
+
         if (mechanics.isHealing && mechanics.healingBaseDice) {
             const extra = selectedLevel > baseLevel ? (selectedLevel - baseLevel) * (mechanics.upcastDiceCount || 1) : 0;
             const match = mechanics.healingBaseDice.match(/^(\d+)d(\d+)$/);
@@ -249,7 +305,7 @@ function SpellCastModalContent({
         }
 
         return "";
-    }, [mechanics, selectedLevel, baseLevel, spellcastingMod, spell.spell_details?.damage_progression]);
+    }, [isMultiMissile, totalDarts, mechanics, selectedLevel, baseLevel, spellcastingMod, spell.spell_details?.damage_progression]);
 
     // Check slot availability
     const currentSlotInfo = selectedLevel > 0 ? getSpellSlots(selectedLevel) : null;
@@ -259,11 +315,23 @@ function SpellCastModalContent({
     const requiresConcentration = spell.spell_details?.concentration ?? (mechanics.requiresConcentration || false);
 
     const handleExecuteCast = async () => {
-        const targetsToCast = isAoE
-            ? selectedTargetIds
-            : selectedTargetId
-            ? [selectedTargetId]
-            : [];
+        let targetsToCast: number[] = [];
+        let formula = computedFormula || undefined;
+
+        if (isMultiMissile) {
+            Object.entries(dartAllocations).forEach(([idStr, count]) => {
+                const id = Number(idStr);
+                for (let i = 0; i < count; i++) {
+                    targetsToCast.push(id);
+                }
+            });
+            formula = "1d4+1";
+        } else if (isAoE) {
+            targetsToCast = selectedTargetIds;
+        } else if (selectedTargetId) {
+            targetsToCast = [selectedTargetId];
+        }
+
         if (!hasSlotsRemaining || isCasting || targetsToCast.length === 0) return;
 
         await onCast({
@@ -274,7 +342,7 @@ function SpellCastModalContent({
             spellLevel: isRitual ? 0 : selectedLevel,
             saveType: mechanics.saveType || undefined,
             saveDc: mechanics.saveType ? spellSaveDc : undefined,
-            damageString: computedFormula || undefined,
+            damageString: formula,
             isHealing: isHealingSpell,
             isRitual,
             requiresConcentration,
@@ -457,9 +525,24 @@ function SpellCastModalContent({
                         </div>
 
                         {/* Target Grid */}
+                        {isMultiMissile && (
+                            <div className="flex items-center justify-between px-3 py-1.5 rounded bg-purple-950/70 border border-purple-600/50 mb-2">
+                                <div className="flex items-center gap-1.5 text-xs text-purple-200 font-cinzel font-bold">
+                                    <span>🎯</span>
+                                    <span>Divide Missiles: {totalDarts} Darts (1d4+1 Force each)</span>
+                                </div>
+                                <span className={`text-[11px] font-fira-sans font-bold px-2 py-0.5 rounded ${
+                                    unassignedDarts === 0 ? "bg-emerald-950 text-emerald-300 border border-emerald-600/60" : "bg-amber-950 text-amber-300 border border-amber-600/60 animate-pulse"
+                                }`}>
+                                    {unassignedDarts === 0 ? "✓ All Darts Assigned" : `${unassignedDarts} Remaining`}
+                                </span>
+                            </div>
+                        )}
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
                             {displayedParticipants.map((p) => {
-                                const isSelected = isAoE
+                                const isSelected = isMultiMissile
+                                    ? (dartAllocations[p.id] || 0) > 0
+                                    : isAoE
                                     ? selectedTargetIds.includes(p.id)
                                     : selectedTargetId === p.id;
                                 const isSelf = p.id === caster.id;
@@ -468,16 +551,36 @@ function SpellCastModalContent({
                                     <button
                                         key={p.id}
                                         type="button"
-                                        onClick={() => isAoE ? toggleTargetId(p.id) : setSelectedTargetId(p.id)}
+                                        onClick={() => {
+                                            if (isMultiMissile) {
+                                                if (unassignedDarts > 0) {
+                                                    handleAddDart(p.id);
+                                                } else if ((dartAllocations[p.id] || 0) > 0) {
+                                                    handleRemoveDart(p.id);
+                                                } else {
+                                                    const otherId = Object.keys(dartAllocations).map(Number).find(id => (dartAllocations[id] || 0) > 0);
+                                                    if (otherId) {
+                                                        handleRemoveDart(otherId);
+                                                        handleAddDart(p.id);
+                                                    }
+                                                }
+                                            } else if (isAoE) {
+                                                toggleTargetId(p.id);
+                                            } else {
+                                                setSelectedTargetId(p.id);
+                                            }
+                                        }}
                                         className={`p-2 rounded border text-left flex items-center gap-2 transition-all cursor-pointer ${
                                             isSelected
-                                                ? isAoE
+                                                ? isMultiMissile
+                                                    ? "bg-[#251b2e] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                                                    : isAoE
                                                     ? "bg-[#241a29] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
                                                     : "bg-[#25201b] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
                                                 : "bg-[#181a24] border-slate-800 hover:border-slate-600"
                                         }`}
                                     >
-                                        {isAoE && (
+                                        {isAoE && !isMultiMissile && (
                                             <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border flex-shrink-0 transition-colors ${
                                                 isSelected
                                                     ? "bg-purple-600 border-purple-400 text-white"
@@ -506,6 +609,30 @@ function SpellCastModalContent({
                                                 {p.current_hp}/{p.max_hp} HP
                                             </span>
                                         </div>
+
+                                        {isMultiMissile && (
+                                            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveDart(p.id)}
+                                                    disabled={!(dartAllocations[p.id] > 0)}
+                                                    className="w-5 h-5 rounded bg-purple-950 hover:bg-purple-800 border border-purple-600/70 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold flex items-center justify-center text-xs cursor-pointer"
+                                                >
+                                                    -
+                                                </button>
+                                                <span className="min-w-5 text-center font-fira-sans font-bold text-xs text-purple-200">
+                                                    {dartAllocations[p.id] || 0}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAddDart(p.id)}
+                                                    disabled={unassignedDarts <= 0}
+                                                    className="w-5 h-5 rounded bg-purple-950 hover:bg-purple-800 border border-purple-600/70 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold flex items-center justify-center text-xs cursor-pointer"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        )}
                                     </button>
                                 );
                             })}
@@ -613,7 +740,9 @@ function SpellCastModalContent({
                     <div className="text-[11px] text-slate-400 flex items-center gap-2">
                         <span>Target:</span>
                         <span className="font-bold text-[#e0bc75] font-cinzel">
-                            {isAoE
+                            {isMultiMissile
+                                ? `${assignedDartsCount}/${totalDarts} Darts Assigned`
+                                : isAoE
                                 ? `${selectedTargetIds.length} Target${selectedTargetIds.length !== 1 ? 's' : ''} in AoE`
                                 : (selectedTarget ? selectedTarget.name : "None selected")}
                         </span>
@@ -666,19 +795,19 @@ function SpellCastModalContent({
                                     });
                                     onClose();
                                 }}
-                                className="h-9 px-4 font-cinzel font-bold text-xs uppercase tracking-wider rounded bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-500/70 text-cyan-200 shadow-[0_0_15px_rgba(34,211,238,0.35)] cursor-pointer flex items-center gap-1.5 transition-all"
+                                className="h-9 px-4 font-cinzel font-bold text-xs uppercase tracking-wider rounded bg-cyan-600 hover:bg-cyan-500 border border-cyan-400 text-white shadow-[0_0_18px_rgba(6,182,212,0.5)] cursor-pointer flex items-center gap-1.5 transition-all"
                             >
                                 <span>🎯</span>
-                                <span>Aim on Grid</span>
+                                <span>Aim on Grid (Default)</span>
                             </Button>
                         )}
 
                         <Button
                             type="button"
                             onClick={handleExecuteCast}
-                            disabled={!hasSlotsRemaining || isCasting || (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId)}
+                            disabled={!hasSlotsRemaining || isCasting || (isMultiMissile ? assignedDartsCount === 0 : (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId))}
                             className={`h-9 px-5 font-cinzel font-bold text-xs uppercase tracking-wider rounded transition-all shadow-md cursor-pointer flex items-center gap-1.5 ${
-                                !hasSlotsRemaining || isCasting || (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId)
+                                !hasSlotsRemaining || isCasting || (isMultiMissile ? assignedDartsCount === 0 : (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId))
                                     ? "bg-slate-800 text-slate-500 opacity-60 cursor-not-allowed"
                                     : "bg-gradient-to-r from-[#c5a059] to-[#d6b16a] hover:from-[#d6b16a] hover:to-[#e5c27d] text-[#0c0d12] shadow-[0_0_15px_rgba(197,160,89,0.35)]"
                             }`}
@@ -690,8 +819,8 @@ function SpellCastModalContent({
                                 </>
                             ) : (
                                 <>
-                                    <span>⚡</span>
-                                    <span>Cast {spell.name} {isAoE && selectedTargetIds.length > 0 ? `(${selectedTargetIds.length})` : ''}</span>
+                                    <span>{isAoE ? "⚡" : "✨"}</span>
+                                    <span>{isAoE ? (selectedTargetIds.length > 0 ? `List Cast (${selectedTargetIds.length})` : "List Cast") : `Cast ${spell.name}`}</span>
                                 </>
                             )}
                         </Button>

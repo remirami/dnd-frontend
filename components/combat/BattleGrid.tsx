@@ -272,15 +272,14 @@ function resolveParticipantCoords(
     participant: CombatParticipant,
     allParticipants: CombatParticipant[]
 ): { x: number; y: number; col: number; row: number } {
-    // If the participant already has valid non-zero coordinates or has used movement, respect them
-    if (
-        participant.position_x != null &&
-        participant.position_y != null &&
-        (participant.position_x > 0 || participant.position_y > 0 || (participant.movement_used ?? 0) > 0)
-    ) {
-        const col = Math.min(COLS - 1, Math.max(0, Math.round(participant.position_x / 5)));
-        const row = Math.min(ROWS - 1, Math.max(0, Math.round(participant.position_y / 5)));
-        return { x: col * 5, y: row * 5, col, row };
+    // If the participant already has valid coordinates or any peer has placed coordinates, respect them
+    if (participant.position_x != null && participant.position_y != null) {
+        const anyPlaced = allParticipants.some((p) => (p.position_x ?? 0) > 0 || (p.position_y ?? 0) > 0);
+        if (anyPlaced || participant.position_x > 0 || participant.position_y > 0 || (participant.movement_used ?? 0) > 0) {
+            const col = Math.min(COLS - 1, Math.max(0, Math.round(participant.position_x / 5)));
+            const row = Math.min(ROWS - 1, Math.max(0, Math.round(participant.position_y / 5)));
+            return { x: col * 5, y: row * 5, col, row };
+        }
     }
 
     // Default tactical cluster: organic unaligned placement within 20ft area

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { CombatParticipant, CharacterSpell } from "@/lib/types/combat";
+import type { CombatParticipant, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
 
 interface ActionDockProps {
     currentParticipant?: CombatParticipant | null;
@@ -32,6 +32,7 @@ interface ActionDockProps {
     charData: any;
     getSpellSlots: (level: number) => { total: number; used: number; remaining: number };
     onSelectSpell?: (spell: CharacterSpell) => void;
+    onStartAoETargeting?: (config: AoETargetingConfig) => void;
     // Monster actions (practice mode)
     enemyAttacks: Array<{ name: string; bonus: number; damage: string; type?: string; description?: string }>;
     // Test mode damage/healing
@@ -197,6 +198,7 @@ export function ActionDock({
     charData,
     getSpellSlots,
     onSelectSpell,
+    onStartAoETargeting,
     enemyAttacks,
     damageAmount,
     setDamageAmount,
@@ -752,36 +754,109 @@ export function ActionDock({
                                                 const noSlots = slots !== null && slots.remaining <= 0;
                                                 const disabled = !hasAttacksLeft || currentIsIncapacitated || isAttacking || (noSlots && !spell.is_ritual);
                                                 const isAoE = /burning hands|thunderwave|shatter|sleep|fireball|lightning bolt|acid splash|grease|cone of cold/i.test(spell.name);
+
+                                                const handleAoECastDefault = () => {
+                                                    if (isAoE && onStartAoETargeting) {
+                                                        const nameLower = spell.name.toLowerCase();
+                                                        const shape = (
+                                                            nameLower.includes("cone of cold") || nameLower.includes("burning hands") ? "cone" :
+                                                            nameLower.includes("lightning bolt") ? "line" :
+                                                            nameLower.includes("thunderwave") || nameLower.includes("grease") ? "cube" : "sphere"
+                                                        ) as "sphere" | "cube" | "cone" | "line";
+                                                        const size = (
+                                                            nameLower.includes("cone of cold") ? 60 :
+                                                            nameLower.includes("burning hands") ? 15 :
+                                                            nameLower.includes("lightning bolt") ? 100 :
+                                                            nameLower.includes("thunderwave") ? 15 :
+                                                            nameLower.includes("grease") ? 10 :
+                                                            nameLower.includes("shatter") ? 10 :
+                                                            nameLower.includes("acid splash") ? 5 : 20
+                                                        );
+                                                        const saveType = (
+                                                            nameLower.includes("thunderwave") || nameLower.includes("shatter") ? "CON" : "DEX"
+                                                        ) as "DEX" | "CON" | "WIS" | "STR" | "INT" | "CHA";
+                                                        const damageFormula = (
+                                                            nameLower.includes("burning hands") ? "3d6" :
+                                                            nameLower.includes("thunderwave") ? "2d8" :
+                                                            nameLower.includes("shatter") ? "3d8" :
+                                                            nameLower.includes("fireball") ? "8d6" :
+                                                            nameLower.includes("lightning bolt") ? "8d6" :
+                                                            nameLower.includes("acid splash") ? "1d6" :
+                                                            nameLower.includes("sleep") ? "5d8" :
+                                                            nameLower.includes("cone of cold") ? "8d8" : undefined
+                                                        );
+                                                        const damageType = (
+                                                            nameLower.includes("burning hands") || nameLower.includes("fireball") ? "fire" :
+                                                            nameLower.includes("thunderwave") || nameLower.includes("shatter") ? "thunder" :
+                                                            nameLower.includes("lightning bolt") ? "lightning" :
+                                                            nameLower.includes("acid splash") ? "acid" :
+                                                            nameLower.includes("cone of cold") ? "cold" : undefined
+                                                        );
+                                                        onStartAoETargeting({
+                                                            spell,
+                                                            spellLevel: spell.level ?? (level || 1),
+                                                            shape,
+                                                            size,
+                                                            saveType,
+                                                            saveDc: charData?.stats?.spell_save_dc || 13,
+                                                            damageFormula: damageFormula || "",
+                                                            damageType,
+                                                            halfOnSave: !nameLower.includes("acid splash"),
+                                                            castingTime: "1 action",
+                                                        });
+                                                    } else if (onSelectSpell) {
+                                                        onSelectSpell(spell);
+                                                    } else {
+                                                        onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0, getAttackOptions(false));
+                                                    }
+                                                };
+
                                                 return (
-                                                    <button
+                                                    <div
                                                         key={spell.id}
-                                                        onClick={() => {
-                                                            if (onSelectSpell) {
-                                                                onSelectSpell(spell);
-                                                            } else {
-                                                                onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0, getAttackOptions(false));
-                                                            }
-                                                        }}
-                                                        disabled={disabled}
-                                                        className={`px-3 py-1.5 rounded border text-xs font-lora font-medium transition-all flex items-center gap-1.5 ${
+                                                        className={`inline-flex items-center rounded border overflow-hidden transition-all ${
                                                             disabled
                                                                 ? 'bg-[#141622]/40 border-slate-800 opacity-40 cursor-not-allowed'
-                                                                : 'bg-[#181a28] border-purple-800/60 hover:border-purple-400 text-purple-200 hover:bg-[#251f33] shadow-[0_0_10px_rgba(168,85,247,0.15)] cursor-pointer'
+                                                                : 'bg-[#181a28] border-purple-800/60 hover:border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
                                                         }`}
                                                     >
-                                                        <span>{isAoE ? '🎯' : '✨'}</span>
-                                                        <span>{spell.name}</span>
-                                                        {isAoE && (
-                                                            <span className="text-[9px] px-1 rounded bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 font-cinzel font-bold">
-                                                                AoE
-                                                            </span>
+                                                        <button
+                                                            onClick={handleAoECastDefault}
+                                                            disabled={disabled}
+                                                            title={isAoE ? "Aim on Grid (Default)" : "Cast Spell"}
+                                                            className={`px-3 py-1.5 text-xs font-lora font-medium flex items-center gap-1.5 ${
+                                                                disabled
+                                                                    ? 'cursor-not-allowed text-slate-500'
+                                                                    : 'text-purple-200 hover:text-white hover:bg-[#251f33] cursor-pointer'
+                                                            }`}
+                                                        >
+                                                            <span>{isAoE ? '🎯' : '✨'}</span>
+                                                            <span>{spell.name}</span>
+                                                            {isAoE && (
+                                                                <span className="text-[9px] px-1 rounded bg-cyan-950/90 border border-cyan-500/70 text-cyan-300 font-cinzel font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]">
+                                                                    Aim on Grid
+                                                                </span>
+                                                            )}
+                                                            {spell.is_ritual && (
+                                                                <span className="text-[9px] px-1 rounded bg-blue-950 text-blue-300 font-mono">
+                                                                    R
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                        {isAoE && onSelectSpell && !disabled && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onSelectSpell(spell);
+                                                                }}
+                                                                title="Configure / Upcast Spell"
+                                                                className="px-1.5 py-1.5 text-[11px] text-purple-400 hover:text-purple-100 hover:bg-purple-900/60 border-l border-purple-800/60 cursor-pointer transition-colors"
+                                                            >
+                                                                ⚙️
+                                                            </button>
                                                         )}
-                                                        {spell.is_ritual && (
-                                                            <span className="text-[9px] px-1 rounded bg-blue-950 text-blue-300 font-mono">
-                                                                R
-                                                            </span>
-                                                        )}
-                                                    </button>
+                                                    </div>
                                                 );
                                             })}
                                         </div>

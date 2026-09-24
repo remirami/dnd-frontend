@@ -1318,6 +1318,7 @@ export default function CombatPage() {
                 charData={charData}
                 getSpellSlots={getSpellSlots}
                 onSelectSpell={(spell) => setSelectedSpellForCast(spell)}
+                onStartAoETargeting={handleStartAoETargeting}
                 enemyAttacks={enemyAttacks}
                 damageAmount={damageAmount}
                 setDamageAmount={setDamageAmount}
