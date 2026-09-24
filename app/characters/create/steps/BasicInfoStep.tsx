@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Dices } from "lucide-react";
 import { racesApi, classesApi, backgroundsApi } from "@/lib/api/gamedata";
 import api from "@/lib/api/client";
 import type { CharacterFormData } from "../CharacterCreationWizard";
@@ -13,9 +14,17 @@ interface BasicInfoStepProps {
     formData: CharacterFormData;
     updateFormData: (updates: Partial<CharacterFormData>) => void;
     onNext: () => void;
+    onRandomizeStep?: () => void;
+    isRandomizingStep?: boolean;
 }
 
-export default function BasicInfoStep({ formData, updateFormData, onNext }: BasicInfoStepProps) {
+export default function BasicInfoStep({
+    formData,
+    updateFormData,
+    onNext,
+    onRandomizeStep,
+    isRandomizingStep
+}: BasicInfoStepProps) {
     const [races, setRaces] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
     const [backgrounds, setBackgrounds] = useState<any[]>([]);
@@ -277,7 +286,18 @@ export default function BasicInfoStep({ formData, updateFormData, onNext }: Basi
             </div>
 
             {/* Navigation */}
-            <div className="flex justify-end pt-5 border-t border-[#c5a059]/20 mt-6">
+            <div className="flex justify-between items-center pt-5 border-t border-[#c5a059]/20 mt-6">
+                {onRandomizeStep ? (
+                    <button
+                        type="button"
+                        onClick={onRandomizeStep}
+                        disabled={isRandomizingStep}
+                        className="px-4 py-2 border border-[#c5a059]/40 hover:bg-[#c5a059]/10 text-[#c5a059] font-lora font-semibold text-xs rounded transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                        <Dices className={`w-3.5 h-3.5 ${isRandomizingStep ? "animate-spin" : ""}`} />
+                        <span>{isRandomizingStep ? "Rolling..." : "Randomize This Page"}</span>
+                    </button>
+                ) : <div />}
                 <button
                     type="button"
                     onClick={onNext}

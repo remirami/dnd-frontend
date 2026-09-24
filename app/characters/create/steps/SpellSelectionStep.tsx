@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Dices } from "lucide-react";
 import api from "@/lib/api/client";
 import type { CharacterFormData } from "../CharacterCreationWizard";
 
@@ -12,6 +13,8 @@ interface SpellSelectionStepProps {
     onUpdate: (data: Partial<CharacterFormData>) => void;
     onNext: () => void;
     onBack: () => void;
+    onRandomizeStep?: () => void;
+    isRandomizingStep?: boolean;
 }
 
 interface Spell {
@@ -61,6 +64,8 @@ export default function SpellSelectionStep({
     onUpdate,
     onNext,
     onBack,
+    onRandomizeStep,
+    isRandomizingStep,
 }: SpellSelectionStepProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -69,6 +74,14 @@ export default function SpellSelectionStep({
     // Selected spell IDs
     const [selectedCantrips, setSelectedCantrips] = useState<number[]>(formData.cantrip_ids || []);
     const [selectedSpells, setSelectedSpells] = useState<number[]>(formData.spell_ids || []);
+
+    useEffect(() => {
+        setSelectedCantrips(formData.cantrip_ids || []);
+    }, [formData.cantrip_ids]);
+
+    useEffect(() => {
+        setSelectedSpells(formData.spell_ids || []);
+    }, [formData.spell_ids]);
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
@@ -515,7 +528,7 @@ export default function SpellSelectionStep({
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+            <div className="flex justify-between items-center pt-5 border-t border-[#c5a059]/20 mt-6">
                 <button
                     type="button"
                     onClick={onBack}
@@ -523,6 +536,17 @@ export default function SpellSelectionStep({
                 >
                     ← Back
                 </button>
+                {onRandomizeStep && (
+                    <button
+                        type="button"
+                        onClick={onRandomizeStep}
+                        disabled={isRandomizingStep}
+                        className="px-4 py-2 border border-[#c5a059]/40 hover:bg-[#c5a059]/10 text-[#c5a059] font-lora font-semibold text-xs rounded transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                        <Dices className={`w-3.5 h-3.5 ${isRandomizingStep ? "animate-spin" : ""}`} />
+                        <span>{isRandomizingStep ? "Rolling..." : "Randomize This Page"}</span>
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={handleNext}

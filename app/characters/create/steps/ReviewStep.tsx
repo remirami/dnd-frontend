@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dices } from "lucide-react";
 import { charactersApi } from "@/lib/api/characters";
 import { racesApi, classesApi, backgroundsApi } from "@/lib/api/gamedata";
 import api from "@/lib/api/client";
@@ -13,9 +14,11 @@ interface ReviewStepProps {
     formData: CharacterFormData;
     onBack: () => void;
     onSubmit: () => void;
+    onRandomizeAll?: () => void;
+    isRandomizing?: boolean;
 }
 
-export default function ReviewStep({ formData, onBack }: ReviewStepProps) {
+export default function ReviewStep({ formData, onBack, onRandomizeAll, isRandomizing }: ReviewStepProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
@@ -281,7 +284,7 @@ export default function ReviewStep({ formData, onBack }: ReviewStepProps) {
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+            <div className="flex justify-between items-center pt-5 border-t border-[#c5a059]/20 mt-6">
                 <button
                     type="button"
                     onClick={onBack}
@@ -290,6 +293,17 @@ export default function ReviewStep({ formData, onBack }: ReviewStepProps) {
                 >
                     ← Back
                 </button>
+                {onRandomizeAll && (
+                    <button
+                        type="button"
+                        onClick={onRandomizeAll}
+                        disabled={loading || isRandomizing}
+                        className="px-4 py-2 border border-[#c5a059]/40 hover:bg-[#c5a059]/10 text-[#c5a059] font-lora font-semibold text-xs rounded transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                        <Dices className={`w-3.5 h-3.5 ${isRandomizing ? "animate-spin" : ""}`} />
+                        <span>{isRandomizing ? "Rolling..." : "Re-roll Hero 🎲"}</span>
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={handleSubmit}

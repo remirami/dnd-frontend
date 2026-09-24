@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dices } from "lucide-react";
 import type { CharacterFormData } from "../CharacterCreationWizard";
 
 const HP_METHODS = [
@@ -18,11 +19,20 @@ interface AbilityScoresStepProps {
     updateFormData: (updates: Partial<CharacterFormData>) => void;
     onNext: () => void;
     onBack: () => void;
+    onRandomizeStep?: () => void;
+    isRandomizingStep?: boolean;
 }
 
 import { backgroundsApi } from "@/lib/api/gamedata";
 
-export default function AbilityScoresStep({ formData, updateFormData, onNext, onBack }: AbilityScoresStepProps) {
+export default function AbilityScoresStep({
+    formData,
+    updateFormData,
+    onNext,
+    onBack,
+    onRandomizeStep,
+    isRandomizingStep
+}: AbilityScoresStepProps) {
     const [method, setMethod] = useState("manual");
     const [pointBuyRemaining, setPointBuyRemaining] = useState(27);
     const [selectedBackground, setSelectedBackground] = useState<any>(null);
@@ -227,7 +237,7 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-5 border-t border-[#c5a059]/20 mt-6">
+            <div className="flex justify-between items-center pt-5 border-t border-[#c5a059]/20 mt-6">
                 <button
                     type="button"
                     onClick={onBack}
@@ -235,6 +245,17 @@ export default function AbilityScoresStep({ formData, updateFormData, onNext, on
                 >
                     ← Back
                 </button>
+                {onRandomizeStep && (
+                    <button
+                        type="button"
+                        onClick={onRandomizeStep}
+                        disabled={isRandomizingStep}
+                        className="px-4 py-2 border border-[#c5a059]/40 hover:bg-[#c5a059]/10 text-[#c5a059] font-lora font-semibold text-xs rounded transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                        <Dices className={`w-3.5 h-3.5 ${isRandomizingStep ? "animate-spin" : ""}`} />
+                        <span>{isRandomizingStep ? "Rolling..." : "Randomize This Page"}</span>
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={onNext}

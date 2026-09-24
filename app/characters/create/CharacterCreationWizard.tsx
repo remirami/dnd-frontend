@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import FantasyCard from "@/components/ui/FantasyCard";
-import { Sparkles, ShieldAlert } from "lucide-react";
+import { Sparkles, ShieldAlert, Dices } from "lucide-react";
+import api from "@/lib/api/client";
 
 // Import step components (we'll create these)
 import BasicInfoStep from "./steps/BasicInfoStep";
@@ -69,6 +70,7 @@ export default function CharacterCreationWizard() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
     const [isRandomizing, setIsRandomizing] = useState(false);
+    const [isRandomizingStep, setIsRandomizingStep] = useState(false);
     const [formData, setFormData] = useState<CharacterFormData>({
         name: "",
         ruleset_version: "2014",
@@ -163,6 +165,262 @@ export default function CharacterCreationWizard() {
         }
     };
 
+    const handleRandomizeCurrentStep = async () => {
+        if (isLimitReached) {
+            alert("Hero limit reached (20/20). Please delete an existing character before creating a new one.");
+            return;
+        }
+        setIsRandomizingStep(true);
+        try {
+            switch (currentStep) {
+                case 1: {
+                    // Step 1: Basic Info (Name, Race, Class, Background, Languages)
+                    const res = await charactersApi.generateRandom({
+                        preview: true,
+                        ruleset_version: formData.ruleset_version,
+                    });
+                    const d = res.data;
+                    updateFormData({
+                        name: d.name || "",
+                        race_id: d.race_id || null,
+                        character_class_id: d.character_class_id || null,
+                        character_class_name: d.character_class_name,
+                        background_id: d.background_id || null,
+                        language_ids: d.language_ids || [],
+                        subclass: null,
+                        equipment_selections: {},
+                        cantrip_ids: [],
+                        spell_ids: [],
+                    });
+                    break;
+                }
+                case 2: {
+                    // Step 2: Subclass Selection
+                    if (!formData.character_class_id) {
+                        alert("Please select a character class first.");
+                        break;
+                    }
+                    const subRes = await api.get(
+                        `/character-classes/${formData.character_class_id}/subclasses/?ruleset=${formData.ruleset_version || '2014'}`
+                    );
+                    const subList = Array.isArray(subRes.data) ? subRes.data : [];
+                    if (subList.length > 0) {
+                        const randomSub = subList[Math.floor(Math.random() * subList.length)];
+                        updateFormData({ subclass: randomSub.name || randomSub.id });
+                    }
+                    break;
+                }
+                case 3: {
+                    // Step 3: Personality (Alignment, Bonds, Flaws, Ideals)
+                    const alignments = ["LG", "NG", "CG", "LN", "N", "CN", "LE", "NE", "CE"];
+                    const ideals = [
+                        "Freedom. Chains are made to be broken, as are those who would forge them.",
+                        "Honor. If I give my word, I will keep it until my final breath.",
+                        "Knowledge. The path to power and self-improvement is paved with wisdom.",
+                        "Community. We have a sacred duty to protect those who cannot protect themselves.",
+                        "Respect. All folk deserve to be treated with dignity and fairness.",
+                        "Glory. My deeds will echo in song and legend long after I am gone.",
+                        "Discovery. The world is vast and full of forgotten wonders waiting to be uncovered.",
+                        "Balance. Nature and power must remain in equilibrium.",
+                        "Loyalty. Never turn your back on those who bleed beside you in battle."
+                    ];
+                    const bonds = [
+                        "I will do whatever it takes to protect the companions who stand beside me.",
+                        "I seek to prove myself worthy of my ancestors' noble legacy.",
+                        "An ancient heirloom or unanswered debt drives me out into the wider world.",
+                        "My loyalty to my allies is unwavering, no matter the danger.",
+                        "I swore an oath to avenge my fallen mentor and restore their honor.",
+                        "I fight for those who cannot fight for themselves."
+                    ];
+                    const flaws = [
+                        "I have a hard time resisting a boastful wager or a physical challenge.",
+                        "I am overly suspicious of anyone who claims to act out of pure altruism.",
+                        "I speak my mind bluntly before thinking about the consequences.",
+                        "I am slow to trust strangers, even when they offer aid.",
+                        "I harbor a dark secret that I fear my friends will discover.",
+                        "I cannot resist a mystery, even when it is obviously dangerous."
+                    ];
+
+                    updateFormData({
+                        alignment: alignments[Math.floor(Math.random() * alignments.length)],
+                        ideals: ideals[Math.floor(Math.random() * ideals.length)],
+                        bonds: bonds[Math.floor(Math.random() * bonds.length)],
+                        flaws: flaws[Math.floor(Math.random() * flaws.length)],
+                    });
+                    break;
+                }
+                case 4: {
+                    // Step 4: Ability Scores & HP Method
+                    const roll = () => {
+                        const dice = Array.from({ length: 4 }, () => Math.floor(Math.random() * 6) + 1);
+                        dice.sort((a, b) => a - b);
+                        return dice.slice(1).reduce((a, b) => a + b, 0);
+                    };
+                    const rolls = Array.from({ length: 6 }, roll).sort((a, b) => b - a);
+
+                    const statPriorities: Record<string, string[]> = {
+                        barbarian: ['strength', 'constitution', 'dexterity', 'wisdom', 'charisma', 'intelligence'],
+                        bard: ['charisma', 'dexterity', 'constitution', 'wisdom', 'intelligence', 'strength'],
+                        cleric: ['wisdom', 'constitution', 'strength', 'dexterity', 'charisma', 'intelligence'],
+                        druid: ['wisdom', 'constitution', 'dexterity', 'intelligence', 'charisma', 'strength'],
+                        fighter: ['strength', 'constitution', 'dexterity', 'wisdom', 'intelligence', 'charisma'],
+                        monk: ['dexterity', 'wisdom', 'constitution', 'strength', 'charisma', 'intelligence'],
+                        paladin: ['strength', 'charisma', 'constitution', 'wisdom', 'dexterity', 'intelligence'],
+                        ranger: ['dexterity', 'wisdom', 'constitution', 'strength', 'intelligence', 'charisma'],
+                        rogue: ['dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'strength'],
+                        sorcerer: ['charisma', 'constitution', 'dexterity', 'wisdom', 'intelligence', 'strength'],
+                        warlock: ['charisma', 'constitution', 'dexterity', 'wisdom', 'intelligence', 'strength'],
+                        wizard: ['intelligence', 'constitution', 'dexterity', 'wisdom', 'charisma', 'strength'],
+                    };
+
+                    const cls = (formData.character_class_name || '').toLowerCase().split('(')[0].trim();
+                    const priority = statPriorities[cls] || ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+                    const newScores: Record<string, number> = {};
+                    priority.forEach((stat, idx) => {
+                        newScores[stat] = rolls[idx];
+                    });
+
+                    let bgASI: Record<string, number> = {};
+                    if (formData.ruleset_version === '2024' && formData.background_id) {
+                        try {
+                            const bgRes = await api.get(`/character-backgrounds/${formData.background_id}/`);
+                            const bg = bgRes.data;
+                            const options: string[] = (bg.ability_score_options || '').split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+                            if (options.length >= 2) {
+                                const matching = priority.filter(p => options.includes(p));
+                                if (matching.length >= 2) {
+                                    bgASI[matching[0]] = 2;
+                                    bgASI[matching[1]] = 1;
+                                } else {
+                                    bgASI[options[0]] = 2;
+                                    bgASI[options[1]] = 1;
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Failed to load background for ASI", e);
+                        }
+                    }
+
+                    const hpMethods = ["fixed", "average", "manual"];
+                    const hp_method = hpMethods[Math.floor(Math.random() * hpMethods.length)];
+
+                    updateFormData({
+                        strength: newScores.strength ?? 10,
+                        dexterity: newScores.dexterity ?? 10,
+                        constitution: newScores.constitution ?? 10,
+                        intelligence: newScores.intelligence ?? 10,
+                        wisdom: newScores.wisdom ?? 10,
+                        charisma: newScores.charisma ?? 10,
+                        hp_method,
+                        background_asi_selection: bgASI,
+                    });
+                    break;
+                }
+                case 5: {
+                    // Step 5: Equipment Selection
+                    let clsName = formData.character_class_name;
+                    if (!clsName && formData.character_class_id) {
+                        const classResponse = await api.get(`/character-classes/${formData.character_class_id}/`);
+                        clsName = classResponse.data.name;
+                    }
+                    if (!clsName) {
+                        alert("Please select a character class first.");
+                        break;
+                    }
+
+                    const [equipRes, simpleWpRes, martialWpRes] = await Promise.all([
+                        api.get(`/characters/starting_equipment_choices/?class_name=${clsName}`),
+                        api.get('/weapons/?category=simple'),
+                        api.get('/weapons/?category=martial'),
+                    ]);
+
+                    const choices = equipRes.data?.choices || [];
+                    const simpleWps = simpleWpRes.data?.results || simpleWpRes.data || [];
+                    const martialWps = martialWpRes.data?.results || martialWpRes.data || [];
+
+                    const newSelections: Record<string, string> = {};
+                    for (const choice of choices) {
+                        const options = choice.options || [];
+                        if (options.length > 0) {
+                            const randOpt = options[Math.floor(Math.random() * options.length)];
+                            const choiceNum = choice.choice_number.toString();
+                            newSelections[choiceNum] = randOpt.label;
+
+                            if (randOpt.additional_choice) {
+                                const count = randOpt.additional_choice.count || 1;
+                                const category = randOpt.additional_choice.category || 'simple';
+                                const pool = category === 'martial' ? martialWps : simpleWps;
+                                for (let i = 0; i < count; i++) {
+                                    if (pool.length > 0) {
+                                        const w = pool[Math.floor(Math.random() * pool.length)];
+                                        newSelections[`${choiceNum}_sub_${i}`] = w.name;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    updateFormData({ equipment_selections: newSelections });
+                    break;
+                }
+                case 6: {
+                    // Step 6: Spells Selection
+                    let clsName = formData.character_class_name;
+                    if (!clsName && formData.character_class_id) {
+                        const classResponse = await api.get(`/character-classes/${formData.character_class_id}/`);
+                        clsName = classResponse.data.name;
+                    }
+                    if (!clsName) {
+                        alert("Please select a character class first.");
+                        break;
+                    }
+
+                    const res = await api.get(
+                        `/characters/starting_spell_choices/?class_name=${clsName}&ruleset=${formData.ruleset_version || '2014'}`
+                    );
+                    const spellData = res.data;
+
+                    if (spellData && !spellData.message && spellData.spells_info) {
+                        const cantripCount = spellData.cantrips_count || 0;
+                        const spellCount = spellData.spells_info.count || 0;
+
+                        const shuffle = <T,>(arr: T[]): T[] => {
+                            const c = [...arr];
+                            for (let i = c.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [c[i], c[j]] = [c[j], c[i]];
+                            }
+                            return c;
+                        };
+
+                        const availCantrips: any[] = spellData.available_cantrips || [];
+                        const availSpells: any[] = spellData.available_spells || [];
+
+                        const pickedCantripIds = shuffle(availCantrips).slice(0, cantripCount).map(c => c.id);
+                        const pickedSpellIds = shuffle(availSpells).slice(0, spellCount).map(s => s.id);
+
+                        updateFormData({
+                            cantrip_ids: pickedCantripIds,
+                            spell_ids: pickedSpellIds,
+                        });
+                    }
+                    break;
+                }
+                case 7: {
+                    // Step 7: Review Step
+                    await handleRandomizeAll();
+                    break;
+                }
+            }
+        } catch (err) {
+            console.error("Failed to randomize step:", err);
+            alert("Failed to randomize this page. Please try again.");
+        } finally {
+            setIsRandomizingStep(false);
+        }
+    };
+
     const shouldShowSubclassStep = (data: CharacterFormData) => {
         // Only show for 2014 Cleric, Sorcerer, Warlock (Level 1)
         if (data.ruleset_version === '2014' && data.character_class_name) {
@@ -204,18 +462,19 @@ export default function CharacterCreationWizard() {
                         formData={formData}
                         updateFormData={updateFormData}
                         onNext={handleNext}
+                        onRandomizeStep={handleRandomizeCurrentStep}
+                        isRandomizingStep={isRandomizingStep}
                     />
                 );
             case 2:
-                // If we are rendering step 2 but it should be skipped, effect?
-                // No, the parent router handles the numbering. We just render the component.
-                // But check just in case? No, trust handleNext/Back.
                 return (
                     <SubclassSelectionStep
                         formData={formData}
                         updateFormData={updateFormData}
                         onNext={handleNext}
                         onBack={handleBack}
+                        onRandomizeStep={handleRandomizeCurrentStep}
+                        isRandomizingStep={isRandomizingStep}
                     />
                 );
             case 3:
@@ -225,6 +484,8 @@ export default function CharacterCreationWizard() {
                         updateFormData={updateFormData}
                         onNext={handleNext}
                         onBack={handleBack}
+                        onRandomizeStep={handleRandomizeCurrentStep}
+                        isRandomizingStep={isRandomizingStep}
                     />
                 );
             case 4:
@@ -234,6 +495,8 @@ export default function CharacterCreationWizard() {
                         updateFormData={updateFormData}
                         onNext={handleNext}
                         onBack={handleBack}
+                        onRandomizeStep={handleRandomizeCurrentStep}
+                        isRandomizingStep={isRandomizingStep}
                     />
                 );
             case 5:
@@ -243,6 +506,8 @@ export default function CharacterCreationWizard() {
                         updateFormData={updateFormData}
                         onNext={handleNext}
                         onBack={handleBack}
+                        onRandomizeStep={handleRandomizeCurrentStep}
+                        isRandomizingStep={isRandomizingStep}
                     />
                 );
             case 6:
@@ -252,6 +517,8 @@ export default function CharacterCreationWizard() {
                         onUpdate={updateFormData}
                         onNext={handleNext}
                         onBack={handleBack}
+                        onRandomizeStep={handleRandomizeCurrentStep}
+                        isRandomizingStep={isRandomizingStep}
                     />
                 );
             case 7:
@@ -262,6 +529,8 @@ export default function CharacterCreationWizard() {
                         onSubmit={() => {
                             // We'll implement submission in ReviewStep
                         }}
+                        onRandomizeAll={handleRandomizeAll}
+                        isRandomizing={isRandomizing}
                     />
                 );
             default:
@@ -322,13 +591,23 @@ export default function CharacterCreationWizard() {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <button
+                            type="button"
+                            onClick={handleRandomizeCurrentStep}
+                            disabled={isRandomizingStep || isRandomizing || isLimitReached}
+                            title={`Randomize ${STEPS[currentStep - 1]?.name || 'this page'}`}
+                            className="px-3.5 py-2 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] hover:text-[#e0bc75] font-lora font-semibold text-xs sm:text-sm rounded border border-[#c5a059]/60 shadow-[0_0_15px_rgba(197,160,89,0.15)] hover:shadow-[0_0_20px_rgba(197,160,89,0.3)] transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Dices className={`w-4 h-4 text-[#c5a059] ${isRandomizingStep ? "animate-spin" : ""}`} />
+                            <span>{isRandomizingStep ? "Rolling..." : "Randomize This Page"}</span>
+                        </button>
                         <button
                             type="button"
                             onClick={handleRandomizeAll}
-                            disabled={isRandomizing || isLimitReached}
+                            disabled={isRandomizing || isRandomizingStep || isLimitReached}
                             title={isLimitReached ? "Hero roster limit reached (20/20)" : "Randomize character"}
-                            className="px-4 py-2 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] hover:text-[#e0bc75] font-lora font-semibold text-xs sm:text-sm rounded border border-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:shadow-[0_0_20px_rgba(197,160,89,0.35)] transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-3.5 py-2 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] hover:text-[#e0bc75] font-lora font-semibold text-xs sm:text-sm rounded border border-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.2)] hover:shadow-[0_0_20px_rgba(197,160,89,0.35)] transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Sparkles className="w-4 h-4 text-[#c5a059]" />
                             <span>{isRandomizing ? "Rolling..." : "Randomize Character"}</span>
