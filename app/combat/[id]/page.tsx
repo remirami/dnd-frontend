@@ -57,6 +57,7 @@ export default function CombatPage() {
     const [isMoving, setIsMoving] = useState(false);
     const [isMovementOperating, setIsMovementOperating] = useState(false);
     const [aoeTargeting, setAoeTargeting] = useState<AoETargetingConfig | null>(null);
+    const [viewMode, setViewMode] = useState<"grid" | "duel">("grid");
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
     const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
@@ -291,6 +292,11 @@ export default function CombatPage() {
         return participants.find(p => p.is_active && p.current_hp > 0);
     };
 
+    // Reset view mode back to tactical grid whenever a character's turn ends or turn advances
+    useEffect(() => {
+        setViewMode("grid");
+    }, [session?.current_participant?.id, session?.current_round, session?.current_turn_index]);
+
     const handleViewParticipant = (participantId: number) => {
         setViewingParticipantId(participantId);
         const participant = session?.participants.find(p => p.id === participantId);
@@ -382,6 +388,7 @@ export default function CombatPage() {
 
     const handleNextTurn = async () => {
         if (aiProcessing || isAiRunningRef.current) return;
+        setViewMode("grid");
         try {
             const response = await combatApi.nextTurn(sessionId);
             const updatedSession = response.data.session;
@@ -1302,6 +1309,8 @@ export default function CombatPage() {
                 aoeTargeting={aoeTargeting}
                 onConfirmAoECast={handleConfirmAoECast}
                 onCancelAoETargeting={handleCancelAoETargeting}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
             />
 
             {/* 4. Bottom Tactical Action Dock */}

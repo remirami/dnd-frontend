@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
@@ -52,6 +52,8 @@ interface BattlefieldArenaProps {
     aoeTargeting?: AoETargetingConfig | null;
     onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
     onCancelAoETargeting?: () => void;
+    viewMode?: "grid" | "duel";
+    onViewModeChange?: (mode: "grid" | "duel") => void;
 }
 
 const hpBarGradient = (cur: number, max: number) => {
@@ -244,8 +246,28 @@ export function BattlefieldArena({
     aoeTargeting,
     onConfirmAoECast,
     onCancelAoETargeting,
+    viewMode: viewModeProp,
+    onViewModeChange,
 }: BattlefieldArenaProps) {
-    const [viewMode, setViewMode] = useState<"grid" | "duel">("grid");
+    const [internalViewMode, setInternalViewMode] = useState<"grid" | "duel">("grid");
+    const viewMode = viewModeProp !== undefined ? viewModeProp : internalViewMode;
+
+    const setViewMode = useCallback(
+        (mode: "grid" | "duel") => {
+            if (onViewModeChange) {
+                onViewModeChange(mode);
+            } else {
+                setInternalViewMode(mode);
+            }
+        },
+        [onViewModeChange]
+    );
+
+    // Reset view mode back to tactical grid whenever the active turn ends or changes
+    useEffect(() => {
+        setViewMode("grid");
+    }, [currentParticipant?.id, setViewMode]);
+
     // Active floating combat text state
     const [floatingText, setFloatingText] = useState<AttackFeedback | null>(null);
 
@@ -254,7 +276,7 @@ export function BattlefieldArena({
         if (aoeTargeting) {
             setViewMode("grid");
         }
-    }, [aoeTargeting]);
+    }, [aoeTargeting, setViewMode]);
 
     // Trigger floating combat text whenever a new attack feedback arrives
     useEffect(() => {
