@@ -45,6 +45,7 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "inflict wounds": { isAttackRoll: true, damageDice: "3d10", damageType: "necrotic", upcastDiceCount: 1, range: "Touch", castingTime: "1 action" },
     "thunderwave": { saveType: "CON", damageDice: "2d8", damageType: "thunder", upcastDiceCount: 1, halfOnSave: true, range: "Self (15-ft cube)", castingTime: "1 action", isAoE: true },
     "sleep": { damageDice: "5d8", condition: "unconscious", upcastDiceCount: 2, range: "90 ft", castingTime: "1 action", isAoE: true },
+    "grease": { saveType: "DEX", range: "60 ft (10-ft square)", castingTime: "1 action", isAoE: true },
     "charm person": { saveType: "WIS", condition: "charmed", requiresConcentration: false, range: "30 ft", castingTime: "1 action" },
     "cause fear": { saveType: "WIS", condition: "frightened", requiresConcentration: true, range: "60 ft", castingTime: "1 action" },
     "witch bolt": { isAttackRoll: true, damageDice: "1d12", damageType: "lightning", upcastDiceCount: 1, requiresConcentration: true, range: "30 ft", castingTime: "1 action" },
@@ -637,13 +638,14 @@ function SpellCastModalContent({
                                     const shape = (
                                         rangeStr.includes("cone") ? "cone" :
                                         rangeStr.includes("line") ? "line" :
-                                        rangeStr.includes("cube") ? "cube" : "sphere"
+                                        (rangeStr.includes("cube") || rangeStr.includes("square")) ? "cube" : "sphere"
                                     );
                                     const size = (
                                         spellNameLower.includes("cone of cold") ? 60 :
                                         spellNameLower.includes("burning hands") ? 15 :
                                         spellNameLower.includes("lightning bolt") ? 100 :
                                         spellNameLower.includes("thunderwave") ? 15 :
+                                        spellNameLower.includes("grease") ? 10 :
                                         spellNameLower.includes("shatter") ? 10 :
                                         spellNameLower.includes("acid splash") ? 5 : 20
                                     );

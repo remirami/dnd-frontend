@@ -751,6 +751,7 @@ export function ActionDock({
                                             {spells.map((spell) => {
                                                 const noSlots = slots !== null && slots.remaining <= 0;
                                                 const disabled = !hasAttacksLeft || currentIsIncapacitated || isAttacking || (noSlots && !spell.is_ritual);
+                                                const isAoE = /burning hands|thunderwave|shatter|sleep|fireball|lightning bolt|acid splash|grease|cone of cold/i.test(spell.name);
                                                 return (
                                                     <button
                                                         key={spell.id}
@@ -768,8 +769,13 @@ export function ActionDock({
                                                                 : 'bg-[#181a28] border-purple-800/60 hover:border-purple-400 text-purple-200 hover:bg-[#251f33] shadow-[0_0_10px_rgba(168,85,247,0.15)] cursor-pointer'
                                                         }`}
                                                     >
-                                                        <span>✨</span>
+                                                        <span>{isAoE ? '🎯' : '✨'}</span>
                                                         <span>{spell.name}</span>
+                                                        {isAoE && (
+                                                            <span className="text-[9px] px-1 rounded bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 font-cinzel font-bold">
+                                                                AoE
+                                                            </span>
+                                                        )}
                                                         {spell.is_ritual && (
                                                             <span className="text-[9px] px-1 rounded bg-blue-950 text-blue-300 font-mono">
                                                                 R
