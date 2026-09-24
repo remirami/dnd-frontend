@@ -867,10 +867,14 @@ export function BattleGrid({
                             disabled={isMoving || isOperating || isDisengaged}
                             onClick={() => onDisengage()}
                             title="Move without provoking opportunity attacks this turn"
-                            className="px-2 py-0.5 rounded bg-[#181a24] hover:bg-emerald-950/70 border border-emerald-600/40 hover:border-emerald-400 text-emerald-200 text-[11px] font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            className={`px-2 py-0.5 rounded text-[11px] font-cinzel font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 ${
+                                hoveredOARisk
+                                    ? "bg-amber-950 border border-amber-500 text-amber-200 ring-2 ring-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.5)] animate-pulse"
+                                    : "bg-[#181a24] hover:bg-emerald-950/70 border border-emerald-600/40 hover:border-emerald-400 text-emerald-200"
+                            }`}
                         >
-                            <span>🕊️</span>
-                            <span>Disengage</span>
+                            <span>{hoveredOARisk ? "⚠️" : "🕊️"}</span>
+                            <span>{hoveredOARisk ? "Disengage (Avoid OA)" : "Disengage"}</span>
                         </button>
                     )}
                 </div>
@@ -970,6 +974,7 @@ export function BattleGrid({
                                 const isAoECell = aoeFootprint.has(`${col},${row}`);
                                 const isAoEEnemyTarget = occupant && aoeTargets.enemies.some(e => e.id === occupant.id);
                                 const isAoEAllyTarget = occupant && aoeTargets.allies.some(a => a.id === occupant.id);
+                                const isOAThreateningEnemy = Boolean(hoveredOARisk && occupant && hoveredOARisk.some(e => e.id === occupant.id));
 
                                 return (
                                     <div
@@ -1011,7 +1016,9 @@ export function BattleGrid({
                                         {occupant && (
                                             <div
                                                 className={`relative w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs shadow-md transition-transform duration-200 ${
-                                                    isAoEEnemyTarget
+                                                    isOAThreateningEnemy
+                                                        ? "scale-110 ring-3 ring-red-500 shadow-[0_0_16px_rgba(239,68,68,0.9)] animate-pulse"
+                                                        : isAoEEnemyTarget
                                                         ? "scale-110 ring-4 ring-red-500 shadow-[0_0_22px_rgba(239,68,68,0.95)] animate-pulse"
                                                         : isAoEAllyTarget
                                                         ? "scale-110 ring-4 ring-amber-400 shadow-[0_0_22px_rgba(251,191,36,0.95)] animate-pulse"
@@ -1019,7 +1026,7 @@ export function BattleGrid({
                                                         ? "scale-105 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]"
                                                         : ""
                                                 } ${
-                                                    isTarget && !isAoEEnemyTarget && !isAoEAllyTarget
+                                                    isTarget && !isAoEEnemyTarget && !isAoEAllyTarget && !isOAThreateningEnemy
                                                         ? "ring-3 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.85)] scale-105"
                                                         : ""
                                                 } ${
@@ -1078,8 +1085,15 @@ export function BattleGrid({
                                                     </span>
                                                 )}
 
+                                                {/* Opportunity Attack Reaction Threat Badge */}
+                                                {isOAThreateningEnemy && (
+                                                    <span className="absolute -top-2 -right-1 text-[10px] drop-shadow-[0_0_6px_rgba(239,68,68,0.95)] animate-bounce" title="Will take Opportunity Attack">
+                                                        ⚔️
+                                                    </span>
+                                                )}
+
                                                 {/* Target Crosshairs */}
-                                                {isTarget && (
+                                                {isTarget && !isOAThreateningEnemy && (
                                                     <span className="absolute -bottom-1 -right-1 text-[10px] drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse">
                                                         🎯
                                                     </span>
@@ -1140,17 +1154,26 @@ export function BattleGrid({
                                         {/* Trajectory Distance Callout on Hover (Position-clamped to prevent grid overflow) */}
                                         {isHovered && !occupant && (
                                             <div
-                                                className={`absolute z-30 px-1.5 py-0.5 rounded bg-black/95 border border-cyan-400 text-cyan-200 text-[9px] font-fira-sans font-bold whitespace-nowrap shadow-xl pointer-events-none ${
+                                                className={`absolute z-30 px-1.5 py-0.5 rounded text-[9px] font-fira-sans font-bold whitespace-nowrap shadow-xl pointer-events-none ${
+                                                    hoveredOARisk
+                                                        ? "bg-red-950/95 border-2 border-red-500 text-red-200 shadow-[0_0_14px_rgba(239,68,68,0.6)]"
+                                                        : "bg-black/95 border border-cyan-400 text-cyan-200"
+                                                } ${
                                                     row === 0 ? "top-full mt-1" : "-top-7"
                                                 } ${
                                                     col === 0 ? "left-0" : col === COLS - 1 ? "right-0" : "left-1/2 -translate-x-1/2"
                                                 }`}
                                             >
                                                 {distFromCur > 0 && !isSolidTerrain && (
-                                                    <>
-                                                        👣 {distFromCur} ft
-                                                        {distFromCur > movementRemaining ? " • Dash" : ""}
-                                                    </>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span>👣 {distFromCur} ft</span>
+                                                        {distFromCur > movementRemaining && <span>• Dash</span>}
+                                                        {hoveredOARisk && (
+                                                            <span className="text-red-300 font-bold bg-red-900/80 px-1 rounded border border-red-500 text-[8px] uppercase tracking-wider flex items-center gap-0.5">
+                                                                <span>⚠️</span> Provokes OA
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 )}
                                                 {isSolidTerrain && (
                                                     <span className="text-red-300">⛔ {terrain?.name} (Blocked)</span>
@@ -1266,16 +1289,16 @@ export function BattleGrid({
                                     y1={`${((curRow + 0.5) / ROWS) * 100}%`}
                                     x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
                                     y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                    stroke={isHoveredReachable ? "#22d3ee" : "#f59e0b"}
-                                    strokeWidth="2"
-                                    strokeDasharray="5 3"
+                                    stroke={hoveredOARisk ? "#ef4444" : isHoveredReachable ? "#22d3ee" : "#f59e0b"}
+                                    strokeWidth={hoveredOARisk ? "2.5" : "2"}
+                                    strokeDasharray={hoveredOARisk ? "4 3" : "5 3"}
                                     strokeLinecap="round"
                                 />
                                 <circle
                                     cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
                                     cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                    r="3"
-                                    fill={isHoveredReachable ? "#22d3ee" : "#f59e0b"}
+                                    r={hoveredOARisk ? "4" : "3"}
+                                    fill={hoveredOARisk ? "#ef4444" : isHoveredReachable ? "#22d3ee" : "#f59e0b"}
                                 />
                             </svg>
                         )}
@@ -1296,36 +1319,6 @@ export function BattleGrid({
                             </svg>
                         )}
                     </div>
-                </div>
-
-                {/* Threat / Opportunity Attack Warning Overlay (Strict Invariant Height to eliminate grid jitter) */}
-                <div className="h-8 min-h-[32px] max-h-[32px] mt-1.5 w-full flex items-center overflow-hidden flex-shrink-0">
-                    {hoveredOARisk ? (
-                        <div className="w-full h-full px-2 py-1 rounded-lg bg-red-950/90 border border-red-500 text-red-200 text-[11px] font-lora flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-in fade-in duration-200">
-                            <div className="flex items-center gap-1.5 truncate">
-                                <span className="text-sm flex-shrink-0">⚠️</span>
-                                <div className="truncate">
-                                    <span className="font-cinzel font-bold text-red-300">
-                                        Opportunity Attack Warning:
-                                    </span>{" "}
-                                    Leaving reach of{" "}
-                                    <span className="font-semibold text-white">
-                                        {hoveredOARisk.map((e) => e.name).join(", ")}
-                                    </span>{" "}
-                                    provokes a reaction strike!
-                                </div>
-                            </div>
-                            {onDisengage && (
-                                <button
-                                    type="button"
-                                    onClick={() => onDisengage()}
-                                    className="px-2 py-0.5 rounded bg-red-800 hover:bg-red-700 text-white font-cinzel font-bold text-[10px] cursor-pointer flex-shrink-0 ml-2"
-                                >
-                                    Disengage
-                                </button>
-                            )}
-                        </div>
-                    ) : null}
                 </div>
             </div>
 
