@@ -118,6 +118,7 @@ interface BattleGridProps {
     aoeTargeting?: AoETargetingConfig | null;
     onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
     onCancelAoETargeting?: () => void;
+    onSwitchToDuel?: () => void;
 }
 
 const COLS = 10; // 0..45 ft in 5 ft steps (Cols A-J)
@@ -313,6 +314,7 @@ export function BattleGrid({
     aoeTargeting,
     onConfirmAoECast,
     onCancelAoETargeting,
+    onSwitchToDuel,
 }: BattleGridProps) {
     const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null);
 
@@ -550,6 +552,10 @@ export function BattleGrid({
             }
             if (occupant.participant_type !== currentParticipant?.participant_type) {
                 onSelectTarget(occupant.id.toString());
+                const enemyDist = getChebyshevDist(curX, curY, x, y);
+                if (enemyDist <= 5 && onSwitchToDuel) {
+                    onSwitchToDuel();
+                }
             } else {
                 onInspectParticipant(occupant);
             }
@@ -707,7 +713,13 @@ export function BattleGrid({
                                 <button
                                     key={enemy.id}
                                     type="button"
-                                    onClick={() => onSelectTarget(enemy.id.toString())}
+                                    onClick={() => {
+                                        onSelectTarget(enemy.id.toString());
+                                        if (isMelee && onSwitchToDuel) {
+                                            onSwitchToDuel();
+                                        }
+                                    }}
+                                    title={isMelee ? `${enemy.name} (Melee • Click to Duel Focus)` : `${enemy.name} (${dist} ft)`}
                                     className={`flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md border text-left transition-all cursor-pointer ${
                                         isSelected
                                             ? "bg-red-950/90 border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)] ring-1 ring-red-400"
@@ -1024,8 +1036,12 @@ export function BattleGrid({
                                         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:8px_8px] pointer-events-none rounded-md" />
 
                                         {/* Living Occupant Token */}
-                                        {occupant && (
+                                        {occupant && (() => {
+                                            const isEnemyOccupant = occupant.participant_type !== currentParticipant?.participant_type;
+                                            const isMeleeEnemy = Boolean(isEnemyOccupant && distFromCur <= 5 && distFromCur > 0);
+                                            return (
                                             <div
+                                                title={isMeleeEnemy ? `${occupant.name} (Melee Reach • Click to Duel Focus)` : occupant.name}
                                                 className={`relative w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs shadow-md transition-transform duration-200 ${
                                                     isOAThreateningEnemy
                                                         ? "scale-110 ring-3 ring-red-500 shadow-[0_0_16px_rgba(239,68,68,0.9)] animate-pulse"
@@ -1039,6 +1055,10 @@ export function BattleGrid({
                                                 } ${
                                                     isTarget && !isAoEEnemyTarget && !isAoEAllyTarget && !isOAThreateningEnemy
                                                         ? "ring-3 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.85)] scale-105"
+                                                        : ""
+                                                } ${
+                                                    isMeleeEnemy && !isTarget
+                                                        ? "ring-2 ring-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
                                                         : ""
                                                 } ${
                                                     occupant.participant_type === "character"
@@ -1110,7 +1130,8 @@ export function BattleGrid({
                                                     </span>
                                                 )}
                                             </div>
-                                        )}
+                                            );
+                                        })()}
 
                                         {/* Token Name Label Beneath */}
                                         {occupant && (

@@ -395,6 +395,7 @@ export function BattlefieldArena({
                     aoeTargeting={aoeTargeting}
                     onConfirmAoECast={onConfirmAoECast}
                     onCancelAoETargeting={onCancelAoETargeting}
+                    onSwitchToDuel={() => setViewMode("duel")}
                 />
             ) : (
                 /* View Mode 2: Central Clash Stage: Attacker vs Defender */
