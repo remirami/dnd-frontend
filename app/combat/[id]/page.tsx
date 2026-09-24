@@ -292,10 +292,10 @@ export default function CombatPage() {
         return participants.find(p => p.is_active && p.current_hp > 0);
     };
 
-    // Reset view mode back to tactical grid whenever a character's turn ends or turn advances
+    // Reset view mode back to tactical grid whenever a character's turn ends, turn advances, or combat outcome is reached
     useEffect(() => {
         setViewMode("grid");
-    }, [session?.current_participant?.id, session?.current_round, session?.current_turn_index]);
+    }, [session?.current_participant?.id, session?.current_round, session?.current_turn_index, combatOutcome]);
 
     const handleViewParticipant = (participantId: number) => {
         setViewingParticipantId(participantId);

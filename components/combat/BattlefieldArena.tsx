@@ -268,6 +268,23 @@ export function BattlefieldArena({
         setViewMode("grid");
     }, [currentParticipant?.id, setViewMode]);
 
+    // Reset view mode back to tactical grid if the target enemy is killed (0 or negative HP) or no longer exists
+    useEffect(() => {
+        if (viewMode === "duel") {
+            if (!targetParticipant) {
+                setViewMode("grid");
+            } else if (targetParticipant.current_hp <= 0) {
+                // If lethal feedback just occurred, allow 500ms for hit animation/floating text, then return to grid
+                const hasRecentFeedback = lastAttackFeedback && Date.now() - lastAttackFeedback.timestamp < 1500;
+                const delay = hasRecentFeedback ? 500 : 0;
+                const timer = setTimeout(() => {
+                    setViewMode("grid");
+                }, delay);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [targetParticipant, targetParticipant?.id, targetParticipant?.current_hp, viewMode, setViewMode, lastAttackFeedback]);
+
     // Active floating combat text state
     const [floatingText, setFloatingText] = useState<AttackFeedback | null>(null);
 
