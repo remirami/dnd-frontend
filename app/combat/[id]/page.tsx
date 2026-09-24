@@ -25,7 +25,7 @@ import { SpellCastModal } from "@/components/combat/SpellCastModal";
 import { CombatLogDrawer } from "@/components/combat/CombatLogDrawer";
 import { ParticipantInspectorDrawer } from "@/components/combat/ParticipantInspectorDrawer";
 import { isIncapacitating } from "@/lib/data/conditions";
-import type { CombatSession, CombatParticipant, CombatAction, CharacterSpell } from "@/lib/types/combat";
+import type { CombatSession, CombatParticipant, CombatAction, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
 import type { Enemy, Attack } from "@/lib/types/enemy";
 import type { GauntletRun } from "@/lib/types/gauntlet";
 
@@ -56,6 +56,7 @@ export default function CombatPage() {
     const [isCastingSpell, setIsCastingSpell] = useState(false);
     const [isMoving, setIsMoving] = useState(false);
     const [isMovementOperating, setIsMovementOperating] = useState(false);
+    const [aoeTargeting, setAoeTargeting] = useState<AoETargetingConfig | null>(null);
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
     const [aiActionBanner, setAiActionBanner] = useState<{ message: string; isHit: boolean } | null>(null);
@@ -866,7 +867,9 @@ export default function CombatPage() {
             }
         } catch (err: any) {
             console.error("Failed to move:", err);
+            await loadSession();
             alert(err.response?.data?.error || "Movement failed.");
+            throw err;
         } finally {
             setIsMoving(false);
         }
@@ -889,6 +892,7 @@ export default function CombatPage() {
         } catch (err: any) {
             console.error("Failed to dash:", err);
             alert(err.response?.data?.error || "Dash failed.");
+            throw err;
         } finally {
             setIsMovementOperating(false);
         }
@@ -936,6 +940,38 @@ export default function CombatPage() {
         } finally {
             setIsMovementOperating(false);
         }
+    };
+
+    // 5E Spatial AoE Spell Targeting Handlers
+    const handleStartAoETargeting = (config: AoETargetingConfig) => {
+        setSelectedSpellForCast(null);
+        setAoeTargeting(config);
+    };
+
+    const handleConfirmAoECast = async (data: { targetIds: number[] }) => {
+        const current = getCurrentParticipant();
+        if (!aoeTargeting || !current) return;
+        const config = aoeTargeting;
+        setAoeTargeting(null);
+        await handleCastSpell({
+            casterId: current.id,
+            targetId: data.targetIds[0] || null,
+            targetIds: data.targetIds,
+            spellName: config.spell.name,
+            spellLevel: config.spellLevel,
+            saveType: config.saveType,
+            saveDc: config.saveDc,
+            damageString: config.damageFormula,
+            isHealing: config.isHealing,
+            requiresConcentration: config.requiresConcentration,
+            isBonusAction: config.isBonusAction,
+            castingTime: config.castingTime,
+            halfOnSave: config.halfOnSave ?? true,
+        });
+    };
+
+    const handleCancelAoETargeting = () => {
+        setAoeTargeting(null);
     };
 
     if (loading) {
@@ -1263,6 +1299,9 @@ export default function CombatPage() {
                 onDodge={handleDodge}
                 isMoving={isMoving}
                 isOperating={isMovementOperating}
+                aoeTargeting={aoeTargeting}
+                onConfirmAoECast={handleConfirmAoECast}
+                onCancelAoETargeting={handleCancelAoETargeting}
             />
 
             {/* 4. Bottom Tactical Action Dock */}
@@ -1329,6 +1368,7 @@ export default function CombatPage() {
                     getSpellSlots={getSpellSlots}
                     isCasting={isCastingSpell}
                     onCast={handleCastSpell}
+                    onStartAoETargeting={handleStartAoETargeting}
                 />
             )}
         </div>

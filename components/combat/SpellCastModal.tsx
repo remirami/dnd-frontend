@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
-import type { CombatParticipant, CharacterSpell } from "@/lib/types/combat";
+import type { CombatParticipant, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
 
 interface SpellMechanic {
     saveType?: "DEX" | "CON" | "WIS" | "STR" | "INT" | "CHA";
@@ -91,6 +91,7 @@ export interface SpellCastModalProps {
         castingTime?: string;
         halfOnSave?: boolean;
     }) => Promise<void>;
+    onStartAoETargeting?: (config: AoETargetingConfig) => void;
 }
 
 /**
@@ -106,6 +107,7 @@ function SpellCastModalContent({
     getSpellSlots,
     isCasting,
     onCast,
+    onStartAoETargeting,
 }: {
     onClose: () => void;
     spell: CharacterSpell;
@@ -115,6 +117,7 @@ function SpellCastModalContent({
     getSpellSlots: (level: number) => { total: number; used: number; remaining: number };
     isCasting: boolean;
     onCast: SpellCastModalProps["onCast"];
+    onStartAoETargeting?: (config: AoETargetingConfig) => void;
 }) {
     const baseLevel = spell.level;
     const spellNameLower = spell.name.toLowerCase().trim();
@@ -625,6 +628,49 @@ function SpellCastModalContent({
                             Cancel
                         </Button>
 
+                        {isAoE && onStartAoETargeting && (
+                            <Button
+                                type="button"
+                                disabled={!hasSlotsRemaining || isCasting}
+                                onClick={() => {
+                                    const rangeStr = (mechanics.range || "").toLowerCase();
+                                    const shape = (
+                                        rangeStr.includes("cone") ? "cone" :
+                                        rangeStr.includes("line") ? "line" :
+                                        rangeStr.includes("cube") ? "cube" : "sphere"
+                                    );
+                                    const size = (
+                                        spellNameLower.includes("cone of cold") ? 60 :
+                                        spellNameLower.includes("burning hands") ? 15 :
+                                        spellNameLower.includes("lightning bolt") ? 100 :
+                                        spellNameLower.includes("thunderwave") ? 15 :
+                                        spellNameLower.includes("shatter") ? 10 :
+                                        spellNameLower.includes("acid splash") ? 5 : 20
+                                    );
+                                    onStartAoETargeting({
+                                        spell,
+                                        spellLevel: selectedLevel,
+                                        shape,
+                                        size,
+                                        saveType: mechanics.saveType,
+                                        saveDc: spellSaveDc,
+                                        damageFormula: computedFormula,
+                                        damageType: mechanics.damageType,
+                                        isHealing: mechanics.isHealing,
+                                        halfOnSave: mechanics.halfOnSave ?? true,
+                                        requiresConcentration: mechanics.requiresConcentration,
+                                        isBonusAction: isBonusAction,
+                                        castingTime: mechanics.castingTime,
+                                    });
+                                    onClose();
+                                }}
+                                className="h-9 px-4 font-cinzel font-bold text-xs uppercase tracking-wider rounded bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-500/70 text-cyan-200 shadow-[0_0_15px_rgba(34,211,238,0.35)] cursor-pointer flex items-center gap-1.5 transition-all"
+                            >
+                                <span>🎯</span>
+                                <span>Aim on Grid</span>
+                            </Button>
+                        )}
+
                         <Button
                             type="button"
                             onClick={handleExecuteCast}
@@ -673,6 +719,7 @@ export function SpellCastModal(props: SpellCastModalProps) {
             getSpellSlots={props.getSpellSlots}
             isCasting={props.isCasting}
             onCast={props.onCast}
+            onStartAoETargeting={props.onStartAoETargeting}
         />
     );
 }

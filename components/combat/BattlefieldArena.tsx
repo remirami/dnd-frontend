@@ -8,7 +8,7 @@ import { GauntletArenaHud } from "@/components/gauntlet/GauntletArenaHud";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
 import { BattleGrid } from "@/components/combat/BattleGrid";
 import { isIncapacitating } from "@/lib/data/conditions";
-import type { CombatParticipant } from "@/lib/types/combat";
+import type { CombatParticipant, AoETargetingConfig } from "@/lib/types/combat";
 import type { GauntletRun } from "@/lib/types/gauntlet";
 
 export interface AttackFeedback {
@@ -49,6 +49,9 @@ interface BattlefieldArenaProps {
     onDodge?: () => Promise<void>;
     isMoving?: boolean;
     isOperating?: boolean;
+    aoeTargeting?: AoETargetingConfig | null;
+    onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
+    onCancelAoETargeting?: () => void;
 }
 
 const hpBarGradient = (cur: number, max: number) => {
@@ -238,10 +241,20 @@ export function BattlefieldArena({
     onDodge,
     isMoving,
     isOperating,
+    aoeTargeting,
+    onConfirmAoECast,
+    onCancelAoETargeting,
 }: BattlefieldArenaProps) {
     const [viewMode, setViewMode] = useState<"grid" | "duel">("grid");
     // Active floating combat text state
     const [floatingText, setFloatingText] = useState<AttackFeedback | null>(null);
+
+    // Switch to tactical grid view immediately if AoE targeting mode is activated
+    useEffect(() => {
+        if (aoeTargeting) {
+            setViewMode("grid");
+        }
+    }, [aoeTargeting]);
 
     // Trigger floating combat text whenever a new attack feedback arrives
     useEffect(() => {
@@ -284,7 +297,39 @@ export function BattlefieldArena({
     const defenderIsTargetOfAttack = floatingText && targetParticipant?.id === floatingText.targetId;
 
     return (
-        <div className="w-full flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+        <div className="w-full flex flex-col items-center justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+            {/* Pinned Arena Top Header: Mode Switcher (Always accessible, never scrolled off or obscured) */}
+            {onMove && (
+                <div className="sticky top-0 z-30 w-full flex items-center justify-center py-1 bg-[#0c0d12]/95 backdrop-blur-md border-b border-[#c5a059]/25 shadow-md flex-shrink-0">
+                    <div className="flex items-center gap-1.5 bg-[#12141c]/90 p-1 rounded-lg border border-[#c5a059]/30 shadow-md">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("grid")}
+                            className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                viewMode === "grid"
+                                    ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
+                                    : "text-slate-400 hover:text-slate-200"
+                            }`}
+                        >
+                            <span>🗺️</span>
+                            <span>Tactical Grid</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("duel")}
+                            className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                viewMode === "duel"
+                                    ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
+                                    : "text-slate-400 hover:text-slate-200"
+                            }`}
+                        >
+                            <span>⚔️</span>
+                            <span>Duel Focus</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Gauntlet HUD if in Gauntlet Mode */}
             {gauntletRun && gauntletRunId && (
                 <div className="w-full max-w-5xl mx-auto">
@@ -331,36 +376,6 @@ export function BattlefieldArena({
                 </div>
             )}
 
-            {/* Mode Switcher: Tactical Grid vs Duel Focus */}
-            {onMove && (
-                <div className="flex items-center gap-1.5 bg-[#12141c]/90 p-1 rounded-lg border border-[#c5a059]/30 shadow-md">
-                    <button
-                        type="button"
-                        onClick={() => setViewMode("grid")}
-                        className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                            viewMode === "grid"
-                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
-                                : "text-slate-400 hover:text-slate-200"
-                        }`}
-                    >
-                        <span>🗺️</span>
-                        <span>Tactical Grid</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setViewMode("duel")}
-                        className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                            viewMode === "duel"
-                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
-                                : "text-slate-400 hover:text-slate-200"
-                        }`}
-                    >
-                        <span>⚔️</span>
-                        <span>Duel Focus</span>
-                    </button>
-                </div>
-            )}
-
             {/* View Mode 1: 2D Tactical Battle Grid */}
             {viewMode === "grid" && onMove ? (
                 <BattleGrid
@@ -377,6 +392,9 @@ export function BattlefieldArena({
                     onDodge={onDodge}
                     isMoving={isMoving}
                     isOperating={isOperating}
+                    aoeTargeting={aoeTargeting}
+                    onConfirmAoECast={onConfirmAoECast}
+                    onCancelAoETargeting={onCancelAoETargeting}
                 />
             ) : (
                 /* View Mode 2: Central Clash Stage: Attacker vs Defender */

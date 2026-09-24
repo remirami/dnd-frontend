@@ -344,3 +344,19 @@ export interface AutoEnemyTurnsResponse {
     current_turn?: string;
     session: CombatSession;
 }
+
+export interface AoETargetingConfig {
+    spell: CharacterSpell;
+    spellLevel: number;
+    shape: 'sphere' | 'cone' | 'line' | 'cube' | 'cylinder';
+    size: number;
+    saveType?: string;
+    saveDc: number;
+    damageFormula: string;
+    damageType?: string;
+    isHealing?: boolean;
+    halfOnSave?: boolean;
+    requiresConcentration?: boolean;
+    isBonusAction?: boolean;
+    castingTime?: string;
+}

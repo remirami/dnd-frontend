@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import type { CombatParticipant } from "@/lib/types/combat";
+import type { CombatParticipant, AoETargetingConfig } from "@/lib/types/combat";
 import { isIncapacitating } from "@/lib/data/conditions";
 
 export interface TerrainFeature {
@@ -115,6 +115,9 @@ interface BattleGridProps {
     onDodge?: () => Promise<void>;
     isMoving?: boolean;
     isOperating?: boolean;
+    aoeTargeting?: AoETargetingConfig | null;
+    onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
+    onCancelAoETargeting?: () => void;
 }
 
 const COLS = 10; // 0..45 ft in 5 ft steps (Cols A-J)
@@ -124,6 +127,121 @@ const COL_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
 // 5E Chebyshev distance in feet (5 ft per step)
 function getChebyshevDist(x1: number, y1: number, x2: number, y2: number): number {
     return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
+}
+
+// Calculate cells affected by 5E Area of Effect template
+function getAoECells(
+    targetCol: number,
+    targetRow: number,
+    casterCol: number,
+    casterRow: number,
+    shape: 'sphere' | 'cone' | 'line' | 'cube' | 'cylinder',
+    sizeFt: number
+): Set<string> {
+    const affected = new Set<string>();
+    const radiusSquares = Math.round(sizeFt / 5);
+
+    if (shape === 'sphere' || shape === 'cylinder') {
+        // Sphere: Euclidean circular radius from target cell center
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                const distFt = Math.hypot((c - targetCol) * 5, (r - targetRow) * 5);
+                if (distFt <= sizeFt + 1.0) {
+                    affected.add(`${c},${r}`);
+                }
+            }
+        }
+    } else if (shape === 'cone') {
+        // Cone: 53-degree cone projected from caster towards target cell
+        const dx = (targetCol - casterCol) * 5;
+        const dy = (targetRow - casterRow) * 5;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) {
+            const dirX = dx / len;
+            const dirY = dy / len;
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS; r++) {
+                    const px = (c - casterCol) * 5;
+                    const py = (r - casterRow) * 5;
+                    const distAlong = px * dirX + py * dirY;
+                    const distPerp = Math.abs(px * (-dirY) + py * dirX);
+                    // D&D 5E cone: width at distance D is D (half-width D/2)
+                    if (distAlong > 0 && distAlong <= sizeFt && distPerp <= (distAlong / 2) + 2.5) {
+                        affected.add(`${c},${r}`);
+                    }
+                }
+            }
+        }
+    } else if (shape === 'line') {
+        // Line: 5ft wide line projected from caster towards target
+        const dx = (targetCol - casterCol) * 5;
+        const dy = (targetRow - casterRow) * 5;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) {
+            const dirX = dx / len;
+            const dirY = dy / len;
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS; r++) {
+                    const px = (c - casterCol) * 5;
+                    const py = (r - casterRow) * 5;
+                    const distAlong = px * dirX + py * dirY;
+                    const distPerp = Math.abs(px * (-dirY) + py * dirX);
+                    if (distAlong >= 0 && distAlong <= sizeFt && distPerp <= 3.5) {
+                        affected.add(`${c},${r}`);
+                    }
+                }
+            }
+        }
+    } else if (shape === 'cube') {
+        // Cube: Size x Size area (e.g. 15ft = 3x3)
+        const half = Math.floor(radiusSquares / 2);
+        for (let c = targetCol - half; c <= targetCol + half; c++) {
+            for (let r = targetRow - half; r <= targetRow + half; r++) {
+                if (c >= 0 && c < COLS && r >= 0 && r < ROWS) {
+                    affected.add(`${c},${r}`);
+                }
+            }
+        }
+    }
+    return affected;
+}
+
+function getAoETheme(spellName: string, damageType?: string) {
+    const name = spellName.toLowerCase();
+    const dt = (damageType || "").toLowerCase();
+    if (dt.includes("fire") || name.includes("fire") || name.includes("burning")) {
+        return {
+            aura: "bg-orange-600/35 border-2 border-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)]",
+            svgColor: "#f97316",
+            badge: "🔥 Fire Area",
+        };
+    }
+    if (dt.includes("cold") || name.includes("cold") || name.includes("ice") || name.includes("frost")) {
+        return {
+            aura: "bg-cyan-600/35 border-2 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]",
+            svgColor: "#06b6d4",
+            badge: "❄️ Cold Area",
+        };
+    }
+    if (dt.includes("lightning") || name.includes("lightning") || name.includes("shock")) {
+        return {
+            aura: "bg-yellow-500/35 border-2 border-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)]",
+            svgColor: "#eab308",
+            badge: "⚡ Lightning Area",
+        };
+    }
+    if (dt.includes("thunder") || name.includes("thunder") || name.includes("shatter")) {
+        return {
+            aura: "bg-purple-600/35 border-2 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)]",
+            svgColor: "#a855f7",
+            badge: "💥 Thunder Area",
+        };
+    }
+    return {
+        aura: "bg-red-600/35 border-2 border-red-400 shadow-[0_0_15px_rgba(239,68,68,0.5)]",
+        svgColor: "#ef4444",
+        badge: "✨ Blast Area",
+    };
 }
 
 // Tactical fallback clusters: organic, unaligned 20ft starting zones
@@ -193,6 +311,9 @@ export function BattleGrid({
     onDodge,
     isMoving = false,
     isOperating = false,
+    aoeTargeting,
+    onConfirmAoECast,
+    onCancelAoETargeting,
 }: BattleGridProps) {
     const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null);
 
@@ -352,8 +473,63 @@ export function BattleGrid({
     const isHoveredReachable = hoveredDist > 0 && hoveredDist <= movementRemaining;
     const isHoveredDashReachable = hoveredDist > movementRemaining && hoveredDist <= dashPotential;
 
+    // 5E AoE Spell Footprint Calculation
+    const aoeFootprint = useMemo(() => {
+        if (!aoeTargeting || !hoveredCell) return new Set<string>();
+        const hCol = Math.round(hoveredCell.x / 5);
+        const hRow = Math.round(hoveredCell.y / 5);
+        return getAoECells(hCol, hRow, curCol, curRow, aoeTargeting.shape, aoeTargeting.size);
+    }, [aoeTargeting, hoveredCell, curCol, curRow]);
+
+    // Active participants in AoE footprint
+    const aoeTargets = useMemo(() => {
+        if (!aoeTargeting || aoeFootprint.size === 0) return { enemies: [], allies: [], all: [] };
+        const enemies: CombatParticipant[] = [];
+        const allies: CombatParticipant[] = [];
+        const all: CombatParticipant[] = [];
+
+        allParticipants.forEach((p) => {
+            if (p.current_hp > 0 && p.is_active) {
+                const coords = resolveParticipantCoords(p, allParticipants);
+                if (aoeFootprint.has(`${coords.col},${coords.row}`)) {
+                    all.push(p);
+                    if (p.participant_type === 'enemy') {
+                        enemies.push(p);
+                    } else {
+                        allies.push(p);
+                    }
+                }
+            }
+        });
+        return { enemies, allies, all };
+    }, [aoeTargeting, aoeFootprint, allParticipants]);
+
+    const aoeTheme = useMemo(() => {
+        if (!aoeTargeting) return getAoETheme("");
+        return getAoETheme(aoeTargeting.spell.name, aoeTargeting.damageType);
+    }, [aoeTargeting]);
+
+    const handleAoEClick = async (targetX: number, targetY: number) => {
+        if (!aoeTargeting || !onConfirmAoECast) return;
+        const targetIds = aoeTargets.all.map((p) => p.id);
+
+        if (aoeTargets.allies.length > 0) {
+            const allyNames = aoeTargets.allies.map((a) => a.name).join(", ");
+            const confirmed = confirm(
+                `⚠️ FRIENDLY FIRE WARNING!\n\n${allyNames} will be caught in the blast area!\n\nDo you want to proceed with casting ${aoeTargeting.spell.name}?`
+            );
+            if (!confirmed) return;
+        }
+
+        await onConfirmAoECast({ targetIds });
+    };
+
     // Handle tile click
-    const handleCellClick = (x: number, y: number, occupant?: CombatParticipant) => {
+    const handleCellClick = async (x: number, y: number, occupant?: CombatParticipant) => {
+        if (aoeTargeting) {
+            await handleAoEClick(x, y);
+            return;
+        }
         if (isMoving || isOperating) return;
 
         // If clicking a living active participant, select as target or inspect
@@ -386,19 +562,28 @@ export function BattleGrid({
             if (currentParticipant) {
                 setOptimisticPos({ id: currentParticipant.id, col: targetCol, row: targetRow });
             }
-            onMove(x, y);
+            try {
+                await onMove(x, y);
+            } catch (err) {
+                setOptimisticPos(null);
+            }
         } else if (dist <= dashPotential && onDash && !dashedThisTurn) {
             if (confirm(`Move is ${dist} ft (exceeds ${movementRemaining} ft). Use Dash action to extend movement?`)) {
-                if (currentParticipant) {
-                    setOptimisticPos({ id: currentParticipant.id, col: targetCol, row: targetRow });
+                try {
+                    await onDash();
+                    if (currentParticipant) {
+                        setOptimisticPos({ id: currentParticipant.id, col: targetCol, row: targetRow });
+                    }
+                    await onMove(x, y);
+                } catch (err) {
+                    setOptimisticPos(null);
                 }
-                onDash().then(() => onMove(x, y));
             }
         }
     };
 
     // Quick directional step (5 ft step in one direction)
-    const handleStep = (dx: number, dy: number) => {
+    const handleStep = async (dx: number, dy: number) => {
         if (isMoving || isOperating || movementRemaining < 5) return;
         const nextX = curX + dx * 5;
         const nextY = curY + dy * 5;
@@ -416,11 +601,77 @@ export function BattleGrid({
         if (currentParticipant) {
             setOptimisticPos({ id: currentParticipant.id, col: nextCol, row: nextRow });
         }
-        onMove(nextX, nextY);
+        try {
+            await onMove(nextX, nextY);
+        } catch (err) {
+            setOptimisticPos(null);
+        }
     };
 
     return (
         <div className="w-full max-w-3xl sm:max-w-4xl mx-auto flex flex-col items-center gap-1.5 sm:gap-2 select-none font-lora">
+            {/* 0. AoE Targeting Mode Banner (Pillar 6.3) */}
+            {aoeTargeting && (
+                <div className="w-full p-2.5 rounded-lg bg-gradient-to-r from-red-950 via-[#181a24] to-red-950 border-2 border-red-500/70 shadow-[0_0_20px_rgba(239,68,68,0.35)] flex flex-wrap items-center justify-between gap-2 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl animate-pulse flex-shrink-0">🔥</span>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-cinzel font-bold text-xs sm:text-sm text-red-200 uppercase tracking-wider truncate">
+                                    Aiming {aoeTargeting.spell.name}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded bg-red-900/60 border border-red-700/50 text-[10px] font-cinzel font-semibold text-red-300">
+                                    {aoeTargeting.shape.toUpperCase()}: {aoeTargeting.size} FT
+                                </span>
+                                {aoeTargeting.saveType && (
+                                    <span className="px-1.5 py-0.5 rounded bg-black/50 border border-slate-700 text-[10px] font-fira-sans text-amber-300">
+                                        DC {aoeTargeting.saveDc} {aoeTargeting.saveType} Save
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[10px] sm:text-[11px] text-slate-300 font-lora mt-0.5">
+                                Hover over grid cells to aim template. Click square to unleash spell.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                        {aoeTargets.enemies.length > 0 && (
+                            <span className="px-2 py-0.5 rounded bg-red-900/80 border border-red-500 text-[11px] font-cinzel font-bold text-red-100 flex items-center gap-1 shadow-sm">
+                                <span>🎯</span> {aoeTargets.enemies.length} {aoeTargets.enemies.length === 1 ? 'Enemy' : 'Enemies'}
+                            </span>
+                        )}
+                        {aoeTargets.allies.length > 0 && (
+                            <span className="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-500 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-pulse">
+                                <span>⚠️</span> {aoeTargets.allies.length} {aoeTargets.allies.length === 1 ? 'Ally' : 'Allies'} (Friendly Fire)
+                            </span>
+                        )}
+                        {onCancelAoETargeting && (
+                            <button
+                                type="button"
+                                onClick={onCancelAoETargeting}
+                                className="px-2.5 py-1 rounded bg-[#2a1418] hover:bg-red-900 border border-red-600/60 text-red-200 text-xs font-cinzel font-bold cursor-pointer transition-all"
+                            >
+                                ✕ Cancel
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Friendly Fire Warning Banner */}
+            {aoeTargeting && aoeTargets.allies.length > 0 && (
+                <div className="w-full px-3 py-1.5 rounded-lg bg-amber-950/90 border border-amber-500 text-amber-200 text-xs font-lora flex items-center justify-between shadow-[0_0_15px_rgba(245,158,11,0.35)] animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2">
+                        <span className="text-base flex-shrink-0">⚠️</span>
+                        <span>
+                            <strong className="font-cinzel text-amber-300">FRIENDLY FIRE HAZARD:</strong>{" "}
+                            {aoeTargets.allies.map(a => a.name).join(", ")} will be caught in the blast!
+                        </span>
+                    </div>
+                </div>
+            )}
+
             {/* 1. Hostile Target Radar: Click Any Enemy to Lock On */}
             {activeEnemies.length > 0 && (
                 <div className="w-full bg-[#12141c]/95 border border-red-950/70 py-1.5 px-2.5 rounded-lg shadow-md backdrop-blur-md">
@@ -730,6 +981,10 @@ export function BattleGrid({
                                 const isTarget =
                                     occupant && occupant.id.toString() === targetId;
 
+                                const isAoECell = aoeFootprint.has(`${col},${row}`);
+                                const isAoEEnemyTarget = occupant && aoeTargets.enemies.some(e => e.id === occupant.id);
+                                const isAoEAllyTarget = occupant && aoeTargets.allies.some(a => a.id === occupant.id);
+
                                 return (
                                     <div
                                         key={`${col}-${row}`}
@@ -738,7 +993,9 @@ export function BattleGrid({
                                             setHoveredCell({ x: tileX, y: tileY })
                                         }
                                         className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 rounded relative flex flex-col items-center justify-center transition-all duration-150 cursor-pointer overflow-visible ${
-                                            isCurrentPos
+                                            isAoECell
+                                                ? aoeTheme.aura
+                                                : isCurrentPos
                                                 ? "bg-[#182030]/90 border-2 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.4)]"
                                                 : isReachable
                                                 ? isHovered
@@ -768,11 +1025,15 @@ export function BattleGrid({
                                         {occupant && (
                                             <div
                                                 className={`relative w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs shadow-md transition-transform duration-200 ${
-                                                    occupant.id === currentParticipant?.id
+                                                    isAoEEnemyTarget
+                                                        ? "scale-110 ring-4 ring-red-500 shadow-[0_0_22px_rgba(239,68,68,0.95)] animate-pulse"
+                                                        : isAoEAllyTarget
+                                                        ? "scale-110 ring-4 ring-amber-400 shadow-[0_0_22px_rgba(251,191,36,0.95)] animate-pulse"
+                                                        : occupant.id === currentParticipant?.id
                                                         ? "scale-105 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]"
                                                         : ""
                                                 } ${
-                                                    isTarget
+                                                    isTarget && !isAoEEnemyTarget && !isAoEAllyTarget
                                                         ? "ring-3 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.85)] scale-105"
                                                         : ""
                                                 } ${
@@ -912,8 +1173,101 @@ export function BattleGrid({
                             })
                         )}
 
+                        {/* 5E AoE Spell Spatial Blast Overlay */}
+                        {aoeTargeting && hoveredCell && (
+                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
+                                <defs>
+                                    <radialGradient id="aoeBlastGrad" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stopColor={aoeTheme.svgColor} stopOpacity="0.45" />
+                                        <stop offset="70%" stopColor={aoeTheme.svgColor} stopOpacity="0.25" />
+                                        <stop offset="100%" stopColor={aoeTheme.svgColor} stopOpacity="0.0" />
+                                    </radialGradient>
+                                </defs>
+
+                                {/* Sphere or Cylinder AoE Blast Template */}
+                                {(aoeTargeting.shape === "sphere" || aoeTargeting.shape === "cylinder") && (
+                                    <>
+                                        <ellipse
+                                            cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
+                                            cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
+                                            rx={`${((aoeTargeting.size / 5) / COLS) * 100}%`}
+                                            ry={`${((aoeTargeting.size / 5) / ROWS) * 100}%`}
+                                            fill="url(#aoeBlastGrad)"
+                                            stroke={aoeTheme.svgColor}
+                                            strokeWidth="2"
+                                            strokeDasharray="6 4"
+                                            className="animate-pulse"
+                                        />
+                                        {/* Crosshair at ground zero */}
+                                        <circle
+                                            cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
+                                            cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
+                                            r="4"
+                                            fill={aoeTheme.svgColor}
+                                            stroke="#ffffff"
+                                            strokeWidth="1.5"
+                                        />
+                                    </>
+                                )}
+
+                                {/* Cube AoE Blast Template */}
+                                {aoeTargeting.shape === "cube" && (
+                                    <>
+                                        <rect
+                                            x={`${((Math.round(hoveredCell.x / 5) - Math.floor(aoeTargeting.size / 10)) / COLS) * 100}%`}
+                                            y={`${((Math.round(hoveredCell.y / 5) - Math.floor(aoeTargeting.size / 10)) / ROWS) * 100}%`}
+                                            width={`${((aoeTargeting.size / 5) / COLS) * 100}%`}
+                                            height={`${((aoeTargeting.size / 5) / ROWS) * 100}%`}
+                                            fill="url(#aoeBlastGrad)"
+                                            stroke={aoeTheme.svgColor}
+                                            strokeWidth="2"
+                                            strokeDasharray="6 4"
+                                            className="animate-pulse"
+                                        />
+                                        <circle
+                                            cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
+                                            cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
+                                            r="4"
+                                            fill={aoeTheme.svgColor}
+                                            stroke="#ffffff"
+                                            strokeWidth="1.5"
+                                        />
+                                    </>
+                                )}
+
+                                {/* Line AoE Beam */}
+                                {aoeTargeting.shape === "line" && (
+                                    <line
+                                        x1={`${((curCol + 0.5) / COLS) * 100}%`}
+                                        y1={`${((curRow + 0.5) / ROWS) * 100}%`}
+                                        x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
+                                        y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
+                                        stroke={aoeTheme.svgColor}
+                                        strokeWidth="16"
+                                        strokeOpacity="0.35"
+                                        strokeLinecap="round"
+                                        className="animate-pulse"
+                                    />
+                                )}
+
+                                {/* Cone AoE Vector */}
+                                {aoeTargeting.shape === "cone" && (
+                                    <line
+                                        x1={`${((curCol + 0.5) / COLS) * 100}%`}
+                                        y1={`${((curRow + 0.5) / ROWS) * 100}%`}
+                                        x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
+                                        y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
+                                        stroke={aoeTheme.svgColor}
+                                        strokeWidth="3"
+                                        strokeDasharray="4 2"
+                                        strokeLinecap="round"
+                                    />
+                                )}
+                            </svg>
+                        )}
+
                         {/* Trajectory Vector to Hovered Tile (SVG) */}
-                        {hoveredCell && (isHoveredReachable || isHoveredDashReachable) && (
+                        {hoveredCell && !aoeTargeting && (isHoveredReachable || isHoveredDashReachable) && (
                             <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
                                 <line
                                     x1={`${((curCol + 0.5) / COLS) * 100}%`}
@@ -935,7 +1289,7 @@ export function BattleGrid({
                         )}
 
                         {/* Tactical Target Vector connecting Player to Selected Target */}
-                        {targetCoords && !hoveredCell && (
+                        {targetCoords && !hoveredCell && !aoeTargeting && (
                             <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
                                 <line
                                     x1={`${((curCol + 0.5) / COLS) * 100}%`}
@@ -952,33 +1306,35 @@ export function BattleGrid({
                     </div>
                 </div>
 
-                {/* Threat / Opportunity Attack Warning Overlay */}
-                {hoveredOARisk && (
-                    <div className="mt-1.5 p-1.5 rounded-lg bg-red-950/90 border border-red-500 text-red-200 text-[11px] font-lora flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-in fade-in duration-200">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-sm">⚠️</span>
-                            <div>
-                                <span className="font-cinzel font-bold text-red-300">
-                                    Opportunity Attack Warning:
-                                </span>{" "}
-                                Leaving reach of{" "}
-                                <span className="font-semibold text-white">
-                                    {hoveredOARisk.map((e) => e.name).join(", ")}
-                                </span>{" "}
-                                provokes a reaction strike!
+                {/* Threat / Opportunity Attack Warning Overlay (Reserved Invariant Height to eliminate grid jitter) */}
+                <div className="h-8 mt-1.5 w-full flex items-center">
+                    {hoveredOARisk ? (
+                        <div className="w-full h-full px-2 py-1 rounded-lg bg-red-950/90 border border-red-500 text-red-200 text-[11px] font-lora flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-in fade-in duration-200">
+                            <div className="flex items-center gap-1.5 truncate">
+                                <span className="text-sm flex-shrink-0">⚠️</span>
+                                <div className="truncate">
+                                    <span className="font-cinzel font-bold text-red-300">
+                                        Opportunity Attack Warning:
+                                    </span>{" "}
+                                    Leaving reach of{" "}
+                                    <span className="font-semibold text-white">
+                                        {hoveredOARisk.map((e) => e.name).join(", ")}
+                                    </span>{" "}
+                                    provokes a reaction strike!
+                                </div>
                             </div>
+                            {onDisengage && (
+                                <button
+                                    type="button"
+                                    onClick={() => onDisengage()}
+                                    className="px-2 py-0.5 rounded bg-red-800 hover:bg-red-700 text-white font-cinzel font-bold text-[10px] cursor-pointer flex-shrink-0 ml-2"
+                                >
+                                    Disengage
+                                </button>
+                            )}
                         </div>
-                        {onDisengage && (
-                            <button
-                                type="button"
-                                onClick={() => onDisengage()}
-                                className="px-2 py-0.5 rounded bg-red-800 hover:bg-red-700 text-white font-cinzel font-bold text-[10px] cursor-pointer flex-shrink-0"
-                            >
-                                Disengage
-                            </button>
-                        )}
-                    </div>
-                )}
+                    ) : null}
+                </div>
             </div>
 
             {/* 4. Tactical Grid Legend & Instructions */}
