@@ -449,12 +449,23 @@ export function BattleGrid({
     // Check if the current participant is currently in an enemy's reach
     const currentlyInThreat = threatCells.has(`${curCol},${curRow}`);
 
-    // Opportunity attack risk on tile hover
+    // Opportunity attack risk on tile hover (strictly for legitimate foot movement to an empty reachable tile)
     const hoveredOARisk = useMemo(() => {
-        if (!hoveredCell || isDisengaged || !currentlyInThreat) return null;
+        if (!hoveredCell || isDisengaged || !currentlyInThreat || aoeTargeting) return null;
         const targetCol = Math.round(hoveredCell.x / 5);
         const targetRow = Math.round(hoveredCell.y / 5);
         if (targetCol === curCol && targetRow === curRow) return null;
+
+        // If hovering over an occupant (enemy or ally), the user is targeting with ranged attacks/spells or inspecting, NOT moving
+        if (cellOccupancy.has(`${targetCol},${targetRow}`)) return null;
+
+        // If hovering over solid terrain, movement is blocked
+        const terrain = terrainMap.get(`${targetCol},${targetRow}`);
+        if (terrain?.blocksMovement) return null;
+
+        // If tile is beyond player's total reachable movement distance (base + dash), user is targeting/inspecting afar, not moving
+        const dist = getChebyshevDist(curX, curY, hoveredCell.x, hoveredCell.y);
+        if (dist > dashPotential) return null;
 
         const enemiesLeft = activeEnemies.filter((enemy) => {
             if (enemy.reaction_used) return false;
@@ -465,7 +476,7 @@ export function BattleGrid({
         });
 
         return enemiesLeft.length > 0 ? enemiesLeft : null;
-    }, [hoveredCell, isDisengaged, currentlyInThreat, curCol, curRow, activeEnemies, allParticipants]);
+    }, [hoveredCell, isDisengaged, currentlyInThreat, aoeTargeting, curCol, curRow, cellOccupancy, terrainMap, curX, curY, dashPotential, activeEnemies, allParticipants]);
 
     // Hover calculations
     const hoveredDist = hoveredCell ? getChebyshevDist(curX, curY, hoveredCell.x, hoveredCell.y) : 0;

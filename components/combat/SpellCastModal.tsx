@@ -548,9 +548,10 @@ function SpellCastModalContent({
                                 const isSelf = p.id === caster.id;
                                 const hpPct = Math.max(0, Math.min(100, (p.current_hp / p.max_hp) * 100));
                                 return (
-                                    <button
+                                    <div
                                         key={p.id}
-                                        type="button"
+                                        role="button"
+                                        tabIndex={0}
                                         onClick={() => {
                                             if (isMultiMissile) {
                                                 if (unassignedDarts > 0) {
@@ -568,6 +569,18 @@ function SpellCastModalContent({
                                                 toggleTargetId(p.id);
                                             } else {
                                                 setSelectedTargetId(p.id);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                if (isMultiMissile) {
+                                                    if (unassignedDarts > 0) handleAddDart(p.id);
+                                                } else if (isAoE) {
+                                                    toggleTargetId(p.id);
+                                                } else {
+                                                    setSelectedTargetId(p.id);
+                                                }
                                             }
                                         }}
                                         className={`p-2 rounded border text-left flex items-center gap-2 transition-all cursor-pointer ${
@@ -633,7 +646,7 @@ function SpellCastModalContent({
                                                 </button>
                                             </div>
                                         )}
-                                    </button>
+                                    </div>
                                 );
                             })}
                         </div>
