@@ -999,14 +999,29 @@ export default function CombatPage() {
                 })
                 .map(ci => {
                     const item = ci.item_details!;
-                    const isFinesse = item.finesse || false;
-                    const isRanged = item.weapon_type?.toLowerCase().includes('ranged') || (item.range_normal && item.range_normal > 5) || /bow|crossbow|dart|sling|blowgun/i.test(item.name || '');
+                    const isFinesse = item.finesse || /dagger|rapier|scimitar|shortsword|dart/i.test(item.name || '');
+                    const isThrown = item.thrown || /javelin|spear|handaxe|dart|dagger|trident|light hammer/i.test(item.name || '');
+                    const isRanged = item.weapon_type?.toLowerCase().includes('ranged') ||
+                        (item.range_normal && item.range_normal > 5) ||
+                        /bow|crossbow|dart|sling|blowgun/i.test(item.name || '');
+
+                    // 5e Ability modifier rules:
+                    // - Finesse weapons (dagger, rapier, scimitar, dart) use max(STR, DEX)
+                    // - Pure ranged weapons (bow, crossbow, sling) use DEX
+                    // - Thrown melee weapons (javelin, spear, handaxe, trident) use STR
+                    // - Standard melee weapons use STR
                     let abilityMod = stats?.strength_modifier || 0;
-                    if (isRanged) {
-                        abilityMod = stats?.dexterity_modifier || 0;
-                    } else if (isFinesse) {
+                    if (isFinesse) {
                         abilityMod = Math.max(stats?.strength_modifier || 0, stats?.dexterity_modifier || 0);
+                    } else if (isRanged && !isThrown) {
+                        abilityMod = stats?.dexterity_modifier || 0;
+                    } else {
+                        abilityMod = stats?.strength_modifier || 0;
                     }
+
+                    const rangeNormal = item.range_normal || (/javelin/i.test(item.name) ? 30 : /shortbow|crossbow/i.test(item.name) ? 80 : /longbow/i.test(item.name) ? 150 : isThrown ? 20 : isRanged ? 60 : 5);
+                    const rangeLong = item.range_long || (/javelin/i.test(item.name) ? 120 : /shortbow/i.test(item.name) ? 320 : /longbow/i.test(item.name) ? 600 : isThrown ? 60 : isRanged ? 180 : 5);
+
                     return {
                         name: item.name,
                         bonus: profBonus + abilityMod,
@@ -1019,12 +1034,15 @@ export default function CombatPage() {
                             item.light && 'Light',
                             item.heavy && 'Heavy',
                             item.reach && 'Reach',
-                            item.thrown && 'Thrown',
+                            isThrown && 'Thrown',
                             item.versatile_damage && `Versatile (${item.versatile_damage})`,
                         ].filter(Boolean) as string[],
                         abilityMod,
                         isEquipped: ci.is_equipped || ci.equipment_slot !== 'inventory',
                         isRanged,
+                        isThrown,
+                        rangeNormal,
+                        rangeLong,
                     };
                 });
             if (weapons.length > 0) return weapons;
@@ -1033,17 +1051,31 @@ export default function CombatPage() {
         // Fallback: use the equipped_items computed field from the backend
         if (currentParticipant?.equipped_items?.weapon) {
             const weapon = currentParticipant.equipped_items.weapon;
+            const isFinesse = (weapon as any).finesse || /dagger|rapier|scimitar|shortsword|dart/i.test(weapon.name || '');
+            const isThrown = (weapon as any).thrown || /javelin|spear|handaxe|dart|dagger|trident|light hammer/i.test(weapon.name || '');
             const isRanged = (weapon as any).weapon_type?.toLowerCase().includes('ranged') || /bow|crossbow|dart|sling|blowgun/i.test(weapon.name || '');
-            const abilityMod = isRanged ? (stats?.dexterity_modifier || 0) : (stats?.strength_modifier || 0);
+            let abilityMod = stats?.strength_modifier || 0;
+            if (isFinesse) {
+                abilityMod = Math.max(stats?.strength_modifier || 0, stats?.dexterity_modifier || 0);
+            } else if (isRanged && !isThrown) {
+                abilityMod = stats?.dexterity_modifier || 0;
+            } else {
+                abilityMod = stats?.strength_modifier || 0;
+            }
             return [{
                 name: weapon.name,
                 bonus: profBonus + abilityMod,
                 damage: weapon.damage_dice,
                 damageType: '',
-                properties: [isRanged && 'Ranged'].filter(Boolean) as string[],
+                properties: [
+                    isFinesse && 'Finesse',
+                    isRanged && 'Ranged',
+                    isThrown && 'Thrown',
+                ].filter(Boolean) as string[],
                 abilityMod,
                 isEquipped: true,
                 isRanged,
+                isThrown,
             }];
         }
 

@@ -242,7 +242,15 @@ export function CombatLog({
             // 2. Action Type Filter
             if (actionTypeFilter === 'attack' && action.action_type !== 'attack') return false;
             if (actionTypeFilter === 'spell' && action.action_type !== 'spell') return false;
-            if (actionTypeFilter === 'damage_heal' && action.action_type !== 'damage' && action.action_type !== 'healing') return false;
+            if (actionTypeFilter === 'damage_heal') {
+                const hasDamage = (action.damage_amount != null && action.damage_amount > 0);
+                const hasHealing = (action.healing_amount != null && action.healing_amount > 0);
+                const isDmgType = action.action_type === 'damage' || action.action_type === 'healing';
+                const descLower = action.description?.toLowerCase() || '';
+                const hasDmgDesc = (descLower.includes('damage') || descLower.includes('took')) && !descLower.includes('took 0 damage');
+                const hasHealDesc = descLower.includes('heal') || descLower.includes('regain') || descLower.includes('restor');
+                if (!hasDamage && !hasHealing && !isDmgType && !hasDmgDesc && !hasHealDesc) return false;
+            }
 
             // 3. Round Filter
             if (roundFilter !== 'all' && action.round_number !== roundFilter) return false;

@@ -24,6 +24,9 @@ interface ActionDockProps {
         properties: string[];
         isEquipped?: boolean;
         isRanged?: boolean;
+        isThrown?: boolean;
+        rangeNormal?: number;
+        rangeLong?: number;
     }>;
     characterSpells: Map<number, CharacterSpell[]>;
     charData: any;
@@ -305,9 +308,20 @@ export function ActionDock({
     );
 
     const targetParticipant = allParticipants?.find(p => p.id === parseInt(targetId));
+    const hasTargetCoords = (
+        currentParticipant?.position_x != null && currentParticipant?.position_y != null &&
+        targetParticipant?.position_x != null && targetParticipant?.position_y != null &&
+        (currentParticipant.position_x !== 0 || currentParticipant.position_y !== 0 || targetParticipant.position_x !== 0 || targetParticipant.position_y !== 0)
+    );
+    const targetDist = hasTargetCoords
+        ? Math.max(Math.abs(currentParticipant!.position_x! - targetParticipant!.position_x!), Math.abs(currentParticipant!.position_y! - targetParticipant!.position_y!))
+        : 5;
+
     // Determine active weapon for roll preview
     const activeWeapon = characterWeapons?.find((w: any) => w.isEquipped) || characterWeapons?.[0];
-    const previewIsMelee = activeWeapon ? (activeWeapon.isRanged !== undefined ? !activeWeapon.isRanged : !activeWeapon.properties?.some((p: string) => p.toLowerCase().includes('ranged'))) : true;
+    const activeIsThrown = activeWeapon?.isThrown || activeWeapon?.properties?.some((p: string) => p.toLowerCase().includes('thrown'));
+    const activeIsRanged = activeWeapon?.isRanged || (activeIsThrown && targetDist > 5);
+    const previewIsMelee = !activeIsRanged;
     const rollPreview = computeRollPrediction(currentParticipant, targetParticipant, previewIsMelee, useInspiration, allParticipants);
 
     const getAttackOptions = (isMelee: boolean = true) => {
@@ -662,7 +676,9 @@ export function ActionDock({
                             characterWeapons.length > 0 ? (
                                 <div className="flex items-center gap-2.5 overflow-x-auto py-1">
                                     {characterWeapons.map((wp: any, idx) => {
-                                        const isMelee = wp.isRanged !== undefined ? !wp.isRanged : !wp.properties?.some((p: string) => p.toLowerCase().includes('ranged'));
+                                        const isThrown = wp.isThrown || wp.properties?.some((p: string) => p.toLowerCase().includes('thrown'));
+                                        const isRangedAttack = wp.isRanged || (isThrown && targetDist > 5);
+                                        const isMelee = !isRangedAttack;
                                         return (
                                             <button
                                                 key={idx}
@@ -680,11 +696,26 @@ export function ActionDock({
                                                         +{wp.bonus} to hit
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-1 text-[11px] font-fira-sans">
-                                                    <span className="text-red-300 font-bold">{wp.damage} + {wp.abilityMod}</span>
-                                                    {wp.damageType && (
-                                                        <span className="text-[10px] text-[#d1cdb8]/60 font-lora italic">{wp.damageType}</span>
-                                                    )}
+                                                <div className="flex items-center justify-between gap-1.5 mt-1 text-[11px] font-fira-sans">
+                                                    <div className="flex items-center gap-1.5 text-slate-300">
+                                                        <span className="text-red-300 font-bold">{wp.damage} + {wp.abilityMod}</span>
+                                                        {wp.damageType && (
+                                                            <span className="text-[9px] text-[#d1cdb8]/60 font-lora italic">{wp.damageType}</span>
+                                                        )}
+                                                    </div>
+                                                    {isThrown && targetDist > 5 ? (
+                                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/90 border border-amber-600/70 text-amber-300 font-bold whitespace-nowrap shadow-sm">
+                                                            🎯 Throw ({targetDist} ft)
+                                                        </span>
+                                                    ) : wp.isRanged ? (
+                                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/90 border border-cyan-600/70 text-cyan-300 font-bold whitespace-nowrap shadow-sm">
+                                                            🏹 Ranged
+                                                        </span>
+                                                    ) : isThrown ? (
+                                                        <span className="text-[8px] px-1 py-0.5 rounded bg-stone-800 text-stone-300 whitespace-nowrap">
+                                                            Melee/Throw
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                             </button>
                                         );
