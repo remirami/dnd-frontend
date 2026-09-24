@@ -297,7 +297,7 @@ export function BattlefieldArena({
     const defenderIsTargetOfAttack = floatingText && targetParticipant?.id === floatingText.targetId;
 
     return (
-        <div className="w-full flex flex-col items-center justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+        <div className="w-full flex flex-col items-center justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
             {/* Pinned Arena Top Header: Mode Switcher (Always accessible, never scrolled off or obscured) */}
             {onMove && (
                 <div className="sticky top-0 z-30 w-full flex items-center justify-center py-1 bg-[#0c0d12]/95 backdrop-blur-md border-b border-[#c5a059]/25 shadow-md flex-shrink-0">

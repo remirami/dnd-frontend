@@ -634,14 +634,14 @@ export function BattleGrid({
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-nowrap flex-shrink-0">
                         {aoeTargets.enemies.length > 0 && (
-                            <span className="px-2 py-0.5 rounded bg-red-900/80 border border-red-500 text-[11px] font-cinzel font-bold text-red-100 flex items-center gap-1 shadow-sm">
+                            <span className="px-2 py-0.5 rounded bg-red-900/80 border border-red-500 text-[11px] font-cinzel font-bold text-red-100 flex items-center gap-1 shadow-sm whitespace-nowrap">
                                 <span>🎯</span> {aoeTargets.enemies.length} {aoeTargets.enemies.length === 1 ? 'Enemy' : 'Enemies'}
                             </span>
                         )}
                         {aoeTargets.allies.length > 0 && (
-                            <span className="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-500 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-pulse">
+                            <span className="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-500 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-pulse whitespace-nowrap">
                                 <span>⚠️</span> {aoeTargets.allies.length} {aoeTargets.allies.length === 1 ? 'Ally' : 'Allies'} (Friendly Fire)
                             </span>
                         )}
@@ -649,24 +649,11 @@ export function BattleGrid({
                             <button
                                 type="button"
                                 onClick={onCancelAoETargeting}
-                                className="px-2.5 py-1 rounded bg-[#2a1418] hover:bg-red-900 border border-red-600/60 text-red-200 text-xs font-cinzel font-bold cursor-pointer transition-all"
+                                className="px-2.5 py-1 rounded bg-[#2a1418] hover:bg-red-900 border border-red-600/60 text-red-200 text-xs font-cinzel font-bold cursor-pointer transition-all whitespace-nowrap"
                             >
                                 ✕ Cancel
                             </button>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {/* Friendly Fire Warning Banner */}
-            {aoeTargeting && aoeTargets.allies.length > 0 && (
-                <div className="w-full px-3 py-1.5 rounded-lg bg-amber-950/90 border border-amber-500 text-amber-200 text-xs font-lora flex items-center justify-between shadow-[0_0_15px_rgba(245,158,11,0.35)] animate-in fade-in duration-150">
-                    <div className="flex items-center gap-2">
-                        <span className="text-base flex-shrink-0">⚠️</span>
-                        <span>
-                            <strong className="font-cinzel text-amber-300">FRIENDLY FIRE HAZARD:</strong>{" "}
-                            {aoeTargets.allies.map(a => a.name).join(", ")} will be caught in the blast!
-                        </span>
                     </div>
                 </div>
             )}
@@ -889,21 +876,21 @@ export function BattleGrid({
                 </div>
             </div>
 
-            {/* Arena Environment & Terrain Banner */}
-            <div className="w-full flex items-center justify-between px-2.5 py-1 rounded bg-[#10121a]/95 border border-[#c5a059]/30 text-[10px] shadow-sm">
-                <div className="flex items-center gap-1.5 font-cinzel font-semibold text-[#c5a059]">
+            {/* Arena Environment & Terrain Banner (Strict Invariant Height to eliminate vertical layout jumps) */}
+            <div className="w-full h-7 min-h-[28px] max-h-[28px] flex items-center justify-between px-2.5 py-0.5 rounded bg-[#10121a]/95 border border-[#c5a059]/30 text-[10px] shadow-sm overflow-hidden flex-shrink-0">
+                <div className="flex items-center gap-1.5 font-cinzel font-semibold text-[#c5a059] truncate flex-shrink-0">
                     <span>🏟️</span>
                     <span>{currentLayout.name}</span>
                     <span className="text-slate-400 font-fira-sans text-[9px] hidden sm:inline">• {currentLayout.theme}</span>
                 </div>
                 {hoveredCell && terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`) ? (
-                    <div className="flex items-center gap-1.5 text-cyan-300 font-fira-sans">
-                        <span>{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.icon}</span>
-                        <span className="font-bold">{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.name}:</span>
-                        <span className="text-slate-300 text-[9px] truncate max-w-[200px] sm:max-w-none">{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.description}</span>
+                    <div className="flex items-center gap-1.5 text-cyan-300 font-fira-sans truncate ml-2">
+                        <span className="flex-shrink-0">{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.icon}</span>
+                        <span className="font-bold flex-shrink-0">{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.name}:</span>
+                        <span className="text-slate-300 text-[9px] truncate">{terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!.description}</span>
                     </div>
                 ) : (
-                    <div className="text-[9px] text-slate-400 font-fira-sans hidden sm:block truncate">
+                    <div className="text-[9px] text-slate-400 font-fira-sans hidden sm:block truncate ml-2">
                         {currentLayout.description}
                     </div>
                 )}
@@ -999,18 +986,18 @@ export function BattleGrid({
                                                 : isReachable
                                                 ? isHovered
                                                     ? "bg-cyan-500/30 border-2 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.5)]"
-                                                    : "bg-cyan-950/25 border border-cyan-600/40 hover:bg-cyan-900/40"
+                                                    : "bg-cyan-950/25 border-2 border-cyan-600/40 hover:bg-cyan-900/40"
                                                 : isDashReachable
                                                 ? isHovered
                                                     ? "bg-amber-500/30 border-2 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
-                                                    : "bg-amber-950/20 border border-amber-700/30 hover:bg-amber-900/30"
+                                                    : "bg-amber-950/20 border-2 border-amber-700/30 hover:bg-amber-900/30"
                                                 : isSolidTerrain
-                                                ? "bg-[#0b0c10] border border-slate-700/80 shadow-inner"
+                                                ? "bg-[#0b0c10] border-2 border-slate-700/80 shadow-inner"
                                                 : terrain?.cover === "half"
-                                                ? "bg-[#161413]/90 border border-amber-900/40 hover:border-amber-700/60"
+                                                ? "bg-[#161413]/90 border-2 border-amber-900/40 hover:border-amber-700/60"
                                                 : terrain?.difficultTerrain
-                                                ? "bg-[#0b1418]/90 border border-cyan-900/40 hover:border-cyan-700/60"
-                                                : "bg-[#10121a]/90 border border-slate-800/80 hover:border-slate-600/60 hover:bg-[#151722]"
+                                                ? "bg-[#0b1418]/90 border-2 border-cyan-900/40 hover:border-cyan-700/60"
+                                                : "bg-[#10121a]/90 border-2 border-slate-800/80 hover:border-slate-600/60 hover:bg-[#151722]"
                                         } ${
                                             isThreat && !occupant
                                                 ? "ring-1 ring-red-500/30 ring-inset"
@@ -1150,9 +1137,15 @@ export function BattleGrid({
                                             <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
                                         )}
 
-                                        {/* Trajectory Distance Callout on Hover */}
+                                        {/* Trajectory Distance Callout on Hover (Position-clamped to prevent grid overflow) */}
                                         {isHovered && !occupant && (
-                                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 px-1.5 py-0.5 rounded bg-black/95 border border-cyan-400 text-cyan-200 text-[9px] font-fira-sans font-bold whitespace-nowrap shadow-xl pointer-events-none">
+                                            <div
+                                                className={`absolute z-30 px-1.5 py-0.5 rounded bg-black/95 border border-cyan-400 text-cyan-200 text-[9px] font-fira-sans font-bold whitespace-nowrap shadow-xl pointer-events-none ${
+                                                    row === 0 ? "top-full mt-1" : "-top-7"
+                                                } ${
+                                                    col === 0 ? "left-0" : col === COLS - 1 ? "right-0" : "left-1/2 -translate-x-1/2"
+                                                }`}
+                                            >
                                                 {distFromCur > 0 && !isSolidTerrain && (
                                                     <>
                                                         👣 {distFromCur} ft
@@ -1172,9 +1165,9 @@ export function BattleGrid({
                             })
                         )}
 
-                        {/* 5E AoE Spell Spatial Blast Overlay */}
+                        {/* 5E AoE Spell Spatial Blast Overlay (Clipped to grid bounds to prevent viewport expansion) */}
                         {aoeTargeting && hoveredCell && (
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
+                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-hidden rounded-lg">
                                 <defs>
                                     <radialGradient id="aoeBlastGrad" cx="50%" cy="50%" r="50%">
                                         <stop offset="0%" stopColor={aoeTheme.svgColor} stopOpacity="0.45" />
@@ -1305,8 +1298,8 @@ export function BattleGrid({
                     </div>
                 </div>
 
-                {/* Threat / Opportunity Attack Warning Overlay (Reserved Invariant Height to eliminate grid jitter) */}
-                <div className="h-8 mt-1.5 w-full flex items-center">
+                {/* Threat / Opportunity Attack Warning Overlay (Strict Invariant Height to eliminate grid jitter) */}
+                <div className="h-8 min-h-[32px] max-h-[32px] mt-1.5 w-full flex items-center overflow-hidden flex-shrink-0">
                     {hoveredOARisk ? (
                         <div className="w-full h-full px-2 py-1 rounded-lg bg-red-950/90 border border-red-500 text-red-200 text-[11px] font-lora flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-in fade-in duration-200">
                             <div className="flex items-center gap-1.5 truncate">
