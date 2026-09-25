@@ -448,7 +448,7 @@ export function BattlefieldArena({
 
                 {/* Live Clash Card (Reveals on enemy hover, locks on click, dismisses on unhover/unlock/death) */}
                 {activeDefender && (
-                    <div className="absolute top-2 right-2 sm:right-4 z-40 max-w-sm sm:max-w-md w-[calc(100%-1rem)] sm:w-96 pointer-events-auto shadow-2xl animate-in fade-in slide-in-from-right-4 duration-200">
+                    <div className="absolute top-2 right-2 sm:right-4 z-40 max-w-sm sm:max-w-md w-[calc(100%-1rem)] sm:w-96 pointer-events-auto">
                         <ClashCard
                             attacker={currentParticipant}
                             defender={activeDefender}

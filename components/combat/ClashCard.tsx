@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
@@ -80,6 +80,47 @@ export function ClashCard({
 }: ClashCardProps) {
     if (!attacker && !defender) return null;
 
+    // Draggable position offset state
+    const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        // Only drag with left mouse button or primary touch
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        // Don't initiate drag if clicking an interactive control
+        if ((e.target as HTMLElement).closest("button")) return;
+
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        setIsDragging(true);
+        dragStartRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            initX: offset.x,
+            initY: offset.y,
+        };
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!isDragging || !dragStartRef.current) return;
+        const dx = e.clientX - dragStartRef.current.startX;
+        const dy = e.clientY - dragStartRef.current.startY;
+        setOffset({
+            x: dragStartRef.current.initX + dx,
+            y: dragStartRef.current.initY + dy,
+        });
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+        if (isDragging) {
+            setIsDragging(false);
+            try {
+                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+            } catch (_) {}
+            dragStartRef.current = null;
+        }
+    };
+
     const isEnemyTurn = attacker?.participant_type === "enemy";
     const attackerDamaged = attacker ? damagedParticipantIds.has(attacker.id) : false;
     const defenderDamaged = defender ? damagedParticipantIds.has(defender.id) : false;
@@ -87,11 +128,29 @@ export function ClashCard({
     return (
         <aside
             aria-label="Combat Clash Details"
-            className="w-full max-w-[420px] rounded-xl border border-[#c5a059]/40 bg-[#0d0f17]/95 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.7)] p-3 relative flex flex-col gap-2.5 transition-all duration-200 animate-in fade-in slide-in-from-right-4 z-20 select-none text-slate-200"
+            style={{
+                transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
+                touchAction: "none",
+            }}
+            className={`w-full max-w-[420px] rounded-xl border border-[#c5a059]/40 bg-[#0d0f17]/95 backdrop-blur-md p-3 relative flex flex-col gap-2.5 transition-shadow duration-150 z-40 select-none text-slate-200 ${
+                isDragging
+                    ? "shadow-[0_16px_48px_rgba(0,0,0,0.95)] ring-1 ring-[#c5a059]/70 cursor-grabbing scale-[1.01]"
+                    : "shadow-[0_8px_32px_rgba(0,0,0,0.7)] animate-in fade-in slide-in-from-right-4"
+            }`}
         >
-            {/* Top Bar: Title, Lock Status, and Close Button */}
-            <div className="flex items-center justify-between border-b border-[#c5a059]/25 pb-1.5 px-0.5">
+            {/* Top Bar: Title (Drag Handle), Lock Status, Reset, and Close Button */}
+            <div
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                className="flex items-center justify-between border-b border-[#c5a059]/25 pb-1.5 px-0.5 cursor-grab active:cursor-grabbing select-none"
+                title="Drag here to move Clash Card anywhere on screen"
+            >
                 <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 hover:text-amber-300 transition-colors text-xs" title="Drag to reposition">
+                        ⋮⋮
+                    </span>
                     <span className="text-sm">⚔️</span>
                     <span className="font-cinzel text-xs font-bold tracking-wider text-[#c5a059] uppercase">
                         Combat Clash
@@ -104,6 +163,20 @@ export function ClashCard({
                 </div>
 
                 <div className="flex items-center gap-1">
+                    {(offset.x !== 0 || offset.y !== 0) && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOffset({ x: 0, y: 0 });
+                            }}
+                            title="Reset position to default top-right"
+                            className="text-[10px] font-fira-sans px-1.5 py-0.5 rounded bg-[#161824] hover:bg-[#202436] border border-slate-700 text-slate-300 hover:text-amber-300 transition-colors cursor-pointer"
+                        >
+                            ↺ Reset
+                        </button>
+                    )}
+
                     {onToggleLock && (
                         <button
                             type="button"
