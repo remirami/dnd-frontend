@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
-import { GauntletArenaHud } from "@/components/gauntlet/GauntletArenaHud";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
 import { BattleGrid } from "@/components/combat/BattleGrid";
 import { ClashCard } from "@/components/combat/ClashCard";
@@ -346,10 +345,6 @@ export function BattlefieldArena({
         disadvantageReasons: rollPred.disadvReasons,
     };
 
-    const enemiesRemaining = allParticipants.filter(
-        (p) => p.participant_type === "enemy" && p.current_hp > 0 && p.is_active
-    ).length;
-
     const currentIsIncapacitated = currentParticipant?.conditions?.some((c: any) =>
         isIncapacitating(typeof c === "string" ? c : c.name)
     ) ?? false;
@@ -369,13 +364,6 @@ export function BattlefieldArena({
             {floatingText && (
                 <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none drop-shadow-2xl">
                     <FloatingCombatText text={floatingText} />
-                </div>
-            )}
-
-            {/* Gauntlet HUD if in Gauntlet Mode */}
-            {gauntletRun && gauntletRunId && (
-                <div className="w-full max-w-5xl mx-auto">
-                    <GauntletArenaHud run={gauntletRun} enemiesRemaining={enemiesRemaining} onOpenRespite={onOpenRespite} />
                 </div>
             )}
 

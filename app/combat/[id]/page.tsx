@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { CombatLog } from "./CombatLog";
 import { MonsterStatblockModal } from "@/components/monsters/MonsterStatblockModal";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
-import { GauntletArenaHud } from "@/components/gauntlet/GauntletArenaHud";
+import { Trophy, Skull, Award, Zap } from "lucide-react";
 import { RespiteModal } from "@/components/gauntlet/RespiteModal";
 import { VictoryDefeatModal } from "@/components/gauntlet/VictoryDefeatModal";
 import { InitiativeRibbon } from "@/components/combat/InitiativeRibbon";
@@ -1025,6 +1025,11 @@ export default function CombatPage() {
     }
 
     const participants = session.participants || [];
+    const enemiesRemaining = participants.filter(
+        (p) => p.participant_type === "enemy" && p.current_hp > 0 && p.is_active
+    ).length;
+    const isEndless = gauntletRun ? (gauntletRun.is_endless || gauntletRun.current_wave > 10) : false;
+    const isWaveComplete = gauntletRun ? (enemiesRemaining === 0 || gauntletRun.status === 'respite') : false;
     const currentParticipant = getCurrentParticipant() || null;
     const sortedParticipants = [...participants].sort((a, b) => b.initiative - a.initiative);
     const isEnemyTurn = currentParticipant?.participant_type === 'enemy';
@@ -1247,25 +1252,73 @@ export default function CombatPage() {
 
             {/* 1. Compact Header Bar */}
             <div className="border-b border-[#181a21] bg-[#0c0d12]/95 backdrop-blur-md z-30 font-lora flex-shrink-0">
-                <div className="max-w-[1800px] mx-auto px-4 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        <h1 className="font-cinzel-decorative text-sm sm:text-base font-bold tracking-wider text-[#c5a059] drop-shadow-[0_2px_8px_rgba(197,160,89,0.3)] flex items-center gap-1.5">
+                <div className="max-w-[1800px] mx-auto px-4 py-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap min-w-0">
+                        <h1 className="font-cinzel-decorative text-sm sm:text-base font-bold tracking-wider text-[#c5a059] drop-shadow-[0_2px_8px_rgba(197,160,89,0.3)] flex items-center gap-1.5 shrink-0">
                             <span>⚔</span> COMBAT ARENA
                         </h1>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold font-fira-sans border border-[#c5a059]/40 bg-[#181a21] text-[#c5a059]">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold font-fira-sans border border-[#c5a059]/40 bg-[#181a21] text-[#c5a059] shrink-0">
                             Round {session.current_round}
                         </span>
                         {gauntletRun ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-cinzel border border-amber-600/40 bg-amber-950/40 text-amber-300">
-                                🏆 Gauntlet: Wave {gauntletRun.current_wave}/10
-                            </span>
+                            <>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-cinzel border shrink-0 ${
+                                    isEndless
+                                        ? 'border-purple-500/50 bg-purple-950/60 text-purple-300 animate-pulse'
+                                        : 'border-amber-600/40 bg-amber-950/40 text-amber-300'
+                                }`}>
+                                    <Trophy className="w-3 h-3 text-amber-400" />
+                                    <span>{isEndless ? `Endless Wave ${gauntletRun.current_wave}` : `Wave ${gauntletRun.current_wave}/${gauntletRun.max_waves || 10}`}</span>
+                                </span>
+                                {gauntletRun.name && (
+                                    <span className="text-slate-300 text-xs italic font-serif hidden md:inline-flex items-center gap-1.5 border-l border-slate-700/60 pl-2 shrink-0 truncate max-w-[200px]" title={gauntletRun.name}>
+                                        {gauntletRun.name}
+                                    </span>
+                                )}
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-700/60 bg-[#181a21] text-slate-200 shrink-0">
+                                    <Skull className="w-3 h-3 text-rose-400" />
+                                    <span className="text-slate-400 text-[9px] uppercase tracking-wider">Enemies:</span>
+                                    <span className={`font-bold font-fira-sans ${enemiesRemaining === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {enemiesRemaining}
+                                    </span>
+                                </span>
+                                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-[#c5a059]/30 bg-[#0c0d12]/70 text-[#c5a059] shrink-0">
+                                    <Award className="w-3 h-3 text-[#c5a059]" />
+                                    <span className="text-slate-400 text-[9px] uppercase tracking-wider font-cinzel">Score:</span>
+                                    <span className="font-bold font-fira-sans">
+                                        {(gauntletRun.score || 0).toLocaleString()}
+                                    </span>
+                                </span>
+                                {gauntletRun.active_boons && gauntletRun.active_boons.length > 0 && (
+                                    <div className="hidden xl:flex items-center gap-1 shrink-0">
+                                        {gauntletRun.active_boons.map((boon, bIdx) => (
+                                            <span
+                                                key={bIdx}
+                                                title={boon.name}
+                                                className="px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/50 text-[10px] text-emerald-300 font-semibold flex items-center gap-1"
+                                            >
+                                                <Zap className="w-2.5 h-2.5 text-emerald-400" />
+                                                <span className="truncate max-w-[80px]">{boon.name}</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
                         ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider font-lora border border-[#c5a059]/25 bg-[#12141a] text-[#d1cdb8]/80">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider font-lora border border-[#c5a059]/25 bg-[#12141a] text-[#d1cdb8]/80 shrink-0">
                                 {session.status || (session.is_active ? 'Active' : 'Ended')}
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
+                        {gauntletRun && isWaveComplete && (
+                            <Button
+                                onClick={() => setIsRespiteOpen(true)}
+                                className="px-3 py-1 h-7 rounded bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold font-cinzel text-[11px] tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all animate-bounce cursor-pointer"
+                            >
+                                ✦ Enter Respite ✦
+                            </Button>
+                        )}
                         <Button
                             onClick={() => router.push(gauntletRunId ? "/gauntlet" : "/combat")}
                             variant="ghost"
