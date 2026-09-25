@@ -8,7 +8,7 @@ import { charactersApi } from "@/lib/api/characters";
 import { enemiesApi } from "@/lib/api/enemies";
 import FantasyCard from "@/components/ui/FantasyCard";
 import Navbar from "@/components/layout/Navbar";
-import { Swords, Skull, Users, Search, X, Play, Trash2, Shuffle, ChevronDown } from "lucide-react";
+import { Swords, Skull, Users, Search, X, Play, Trash2, Shuffle, ChevronDown, Check } from "lucide-react";
 import type { Character } from "@/lib/types/character";
 import type { Enemy } from "@/lib/types/enemy";
 import type { CombatSession, CombatParticipant } from "@/lib/types/combat";
@@ -420,89 +420,75 @@ export default function CombatSetupPage() {
                     </div>
 
                     {/* Character list */}
-                    <div className="divide-y divide-[#c5a059]/10">
+                    <div className="p-4 sm:p-5">
                         {characters.length === 0 ? (
-                            <p className="font-lora text-sm text-[#d1cdb8]/50 italic px-5 py-6">
+                            <p className="font-lora text-sm text-[#d1cdb8]/50 italic text-center py-6">
                                 No characters found. Create a character first!
                             </p>
                         ) : (
-                            characters.map((char) => {
-                                const isAdded = session?.participants?.some(
-                                    p => (p.participant_type === "character" && p.character?.id === char.id) || p.name === char.name
-                                );
-                                const cannotAdd = !isAdded && (isPartyFull || isTotalFull);
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {characters.map((char) => {
+                                    const isAdded = session?.participants?.some(
+                                        p => (p.participant_type === "character" && p.character?.id === char.id) || p.name === char.name
+                                    );
+                                    const cannotAdd = !isAdded && (isPartyFull || isTotalFull);
+                                    const hp = (char as any).stats?.hit_points || (char as any).max_hp || 10;
+                                    const maxHp = (char as any).stats?.max_hit_points || (char as any).max_hp || 10;
+                                    const classNameStr = (char as any).character_class?.name_display || (char as any).character_class?.name || "Adventurer";
+                                    const raceStr = (char as any).race?.name_display || (char as any).race?.name || "";
 
-                                return (
-                                    <div
-                                        key={char.id}
-                                        onClick={() => {
-                                            if (cannotAdd) {
-                                                if (isPartyFull) alert(`Party roster is full (maximum ${MAX_PARTY_PARTICIPANTS} characters). De-select a hero first.`);
-                                                else alert(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants).`);
-                                                return;
+                                    return (
+                                        <div
+                                            key={char.id}
+                                            onClick={() => {
+                                                if (cannotAdd) {
+                                                    if (isPartyFull) alert(`Party roster is full (maximum ${MAX_PARTY_PARTICIPANTS} characters). De-select a hero first.`);
+                                                    else alert(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants).`);
+                                                    return;
+                                                }
+                                                handleToggleCharacter(char.id, char.name);
+                                            }}
+                                            title={
+                                                isAdded ? "Click to de-select character"
+                                                : cannotAdd ? (isPartyFull ? "Party roster full (max 6)" : "Encounter limit reached (max 16)")
+                                                : "Click to add to combat"
                                             }
-                                            handleToggleCharacter(char.id, char.name);
-                                        }}
-                                        title={
-                                            isAdded ? "Click to de-select character"
-                                            : cannotAdd ? (isPartyFull ? "Party roster full (max 6)" : "Encounter limit reached (max 16)")
-                                            : "Click to add to combat"
-                                        }
-                                        className={`flex items-center gap-4 px-5 py-3.5 transition-all select-none group ${
-                                            isAdded
-                                                ? "bg-[#22c55e]/8 border-l-2 border-[#22c55e]/60 hover:bg-[#22c55e]/12 cursor-pointer"
-                                                : cannotAdd
-                                                ? "opacity-45 cursor-not-allowed border-l-2 border-transparent"
-                                                : "hover:bg-[#c5a059]/5 border-l-2 border-transparent hover:border-[#c5a059]/30 cursor-pointer"
-                                        }`}
-                                    >
-                                        {/* Checkbox indicator */}
-                                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                                            isAdded
-                                                ? "bg-[#22c55e] border-[#22c55e] shadow-[0_0_6px_rgba(34,197,94,0.4)]"
-                                                : cannotAdd
-                                                ? "border-[#d1cdb8]/20"
-                                                : "border-[#c5a059]/40 group-hover:border-[#c5a059]"
-                                        }`}>
-                                            {isAdded && <span className="text-[#0c0d12] text-[9px] font-black">✓</span>}
-                                        </div>
+                                            className={`p-3 rounded-lg border-2 transition-all select-none flex items-center justify-between ${
+                                                isAdded
+                                                    ? "bg-amber-950/30 border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.25)] cursor-pointer"
+                                                    : cannotAdd
+                                                    ? "bg-[#0c0d12]/40 border-slate-800/60 opacity-40 cursor-not-allowed"
+                                                    : "bg-[#0c0d12]/60 border-slate-800 hover:border-slate-700 cursor-pointer"
+                                            }`}
+                                        >
+                                            <div className="space-y-1 min-w-0 pr-2">
+                                                <div className="font-bold text-sm font-cinzel text-white flex items-center gap-1.5 truncate">
+                                                    <span className="truncate">{char.name}</span>
+                                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-fira-sans font-normal shrink-0">
+                                                        Lvl {char.level || 1}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-slate-400 font-lora truncate">
+                                                    {raceStr ? `${raceStr} ` : ""}{classNameStr}
+                                                </div>
+                                                <div className="text-[11px] text-emerald-400 font-fira-sans">
+                                                    HP: {hp} / {maxHp}
+                                                </div>
+                                            </div>
 
-                                        {/* Name + subtitle */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className={`font-lora text-sm font-semibold truncate transition-colors ${
-                                                isAdded ? "text-[#22c55e]"
-                                                : cannotAdd ? "text-[#d1cdb8]/40"
-                                                : "text-[#d1cdb8] group-hover:text-[#c5a059]"
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                                                isAdded
+                                                    ? "bg-[#c5a059] border-[#c5a059] text-slate-950 shadow-[0_0_8px_rgba(197,160,89,0.4)]"
+                                                    : cannotAdd
+                                                    ? "border-slate-800"
+                                                    : "border-slate-700 hover:border-slate-500"
                                             }`}>
-                                                {char.name}
-                                            </div>
-                                            <div className="font-fira-sans text-xs text-[#d1cdb8]/45 mt-0.5">
-                                                Level {char.level} {char.race?.name_display} {char.character_class?.name_display}
+                                                {isAdded && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                                             </div>
                                         </div>
-
-                                        {/* Right action indicator */}
-                                        {isAdded ? (
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <span className="font-lora text-[11px] text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/30 px-2 py-0.5 rounded">
-                                                    Selected ✓
-                                                </span>
-                                                <span className="font-lora text-[11px] text-[#e57373]/70 hover:text-[#e57373] transition-colors">
-                                                    Remove
-                                                </span>
-                                            </div>
-                                        ) : cannotAdd ? (
-                                            <span className="font-fira-sans text-[10px] text-[#c5a059]/50 bg-[#c5a059]/8 border border-[#c5a059]/20 px-2 py-0.5 rounded shrink-0">
-                                                {isPartyFull ? "Party Full" : "At Limit"}
-                                            </span>
-                                        ) : (
-                                            <span className="font-lora text-xs text-[#d1cdb8]/35 group-hover:text-[#c5a059] transition-colors shrink-0">
-                                                + Select
-                                            </span>
-                                        )}
-                                    </div>
-                                );
-                            })
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                 </FantasyCard>
