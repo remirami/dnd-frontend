@@ -17,6 +17,8 @@ import EquipmentSelectionStep from "./steps/EquipmentSelectionStep";
 import SpellSelectionStep from "./steps/SpellSelectionStep";
 import ReviewStep from "./steps/ReviewStep";
 
+import { getRecommendedWeapons } from "@/lib/data/weaponProficiencies";
+
 export interface CharacterFormData {
     // Basic Info
     name: string;
@@ -45,6 +47,9 @@ export interface CharacterFormData {
 
     // Equipment Selections
     equipment_selections: { [key: string]: string };
+    primary_weapon?: string;
+    secondary_weapon?: string;
+    include_shield?: boolean;
 
     // Spell Selections
     cantrip_ids: number[];
@@ -92,6 +97,9 @@ export default function CharacterCreationWizard() {
         charisma: 10,
         hp_method: "fixed",
         equipment_selections: {},
+        primary_weapon: undefined,
+        secondary_weapon: undefined,
+        include_shield: false,
         cantrip_ids: [],
         spell_ids: [],
         language_ids: [],
@@ -130,6 +138,7 @@ export default function CharacterCreationWizard() {
                 ruleset_version: formData.ruleset_version
             });
             const data = res.data;
+            const recWeapons = getRecommendedWeapons(data.character_class_name);
             setFormData({
                 name: data.name || "",
                 ruleset_version: data.ruleset_version || "2014",
@@ -151,6 +160,9 @@ export default function CharacterCreationWizard() {
                 charisma: data.charisma ?? 10,
                 hp_method: data.hp_method || "fixed",
                 equipment_selections: data.equipment_selections || {},
+                primary_weapon: recWeapons.primary,
+                secondary_weapon: recWeapons.secondary,
+                include_shield: recWeapons.includeShield,
                 cantrip_ids: data.cantrip_ids || [],
                 spell_ids: data.spell_ids || [],
                 language_ids: data.language_ids || [],
@@ -329,39 +341,29 @@ export default function CharacterCreationWizard() {
                         break;
                     }
 
-                    const [equipRes, simpleWpRes, martialWpRes] = await Promise.all([
-                        api.get(`/characters/starting_equipment_choices/?class_name=${clsName}`),
-                        api.get('/weapons/?category=simple'),
-                        api.get('/weapons/?category=martial'),
-                    ]);
-
+                    const equipRes = await api.get(`/characters/starting_equipment_choices/?class_name=${clsName}`);
                     const choices = equipRes.data?.choices || [];
-                    const simpleWps = simpleWpRes.data?.results || simpleWpRes.data || [];
-                    const martialWps = martialWpRes.data?.results || martialWpRes.data || [];
 
                     const newSelections: Record<string, string> = {};
                     for (const choice of choices) {
+                        if (choice.description && choice.description.toLowerCase().includes('weapon')) {
+                            continue;
+                        }
                         const options = choice.options || [];
                         if (options.length > 0) {
                             const randOpt = options[Math.floor(Math.random() * options.length)];
                             const choiceNum = choice.choice_number.toString();
                             newSelections[choiceNum] = randOpt.label;
-
-                            if (randOpt.additional_choice) {
-                                const count = randOpt.additional_choice.count || 1;
-                                const category = randOpt.additional_choice.category || 'simple';
-                                const pool = category === 'martial' ? martialWps : simpleWps;
-                                for (let i = 0; i < count; i++) {
-                                    if (pool.length > 0) {
-                                        const w = pool[Math.floor(Math.random() * pool.length)];
-                                        newSelections[`${choiceNum}_sub_${i}`] = w.name;
-                                    }
-                                }
-                            }
                         }
                     }
 
-                    updateFormData({ equipment_selections: newSelections });
+                    const recWeapons = getRecommendedWeapons(clsName);
+                    updateFormData({
+                        primary_weapon: recWeapons.primary,
+                        secondary_weapon: recWeapons.secondary,
+                        include_shield: recWeapons.includeShield,
+                        equipment_selections: newSelections,
+                    });
                     break;
                 }
                 case 6: {

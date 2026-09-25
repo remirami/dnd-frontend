@@ -90,11 +90,14 @@ export default function ReviewStep({ formData, onBack, onRandomizeAll, isRandomi
             const createResponse = await charactersApi.create(characterPayload);
             const characterId = createResponse.data.id;
 
-            // 2. Apply starting equipment
-            if (Object.keys(formData.equipment_selections).length > 0) {
+            // 2. Apply starting equipment & weapons
+            const selectedWeaponsList = [formData.primary_weapon, formData.secondary_weapon].filter(Boolean) as string[];
+            if (Object.keys(formData.equipment_selections).length > 0 || selectedWeaponsList.length > 0) {
                 try {
                     await api.post(`/characters/${characterId}/apply_starting_equipment/`, {
-                        selections: formData.equipment_selections
+                        selections: formData.equipment_selections,
+                        selected_weapons: selectedWeaponsList,
+                        include_shield: formData.include_shield || false,
                     });
                 } catch (equipErr: any) {
                     console.error("Equipment application failed:", equipErr);
@@ -213,11 +216,41 @@ export default function ReviewStep({ formData, onBack, onRandomizeAll, isRandomi
                 </div>
             </div>
 
-            {/* Equipment Summary */}
+            {/* Equipment & Weapons Summary */}
             <div className="bg-[#12141a] border border-[#c5a059]/25 rounded p-4">
-                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-3">Equipment</h3>
+                <h3 className="font-cinzel-decorative text-base font-bold text-[#c5a059] mb-3">Equipment & Weapons</h3>
+                
+                {/* Starting Weapons */}
+                {(formData.primary_weapon || formData.secondary_weapon || formData.include_shield) && (
+                    <div className="mb-3 pb-3 border-b border-[#c5a059]/15 space-y-1.5 text-xs">
+                        <span className="text-[10px] uppercase font-semibold text-[#c5a059] tracking-wider block">Starting Arsenal</span>
+                        {formData.primary_weapon && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[#d1cdb8]/60">Primary Weapon:</span>
+                                <span className="text-[#c5a059] font-bold font-fira-sans">⚔️ {formData.primary_weapon}</span>
+                            </div>
+                        )}
+                        {formData.secondary_weapon && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[#d1cdb8]/60">Secondary Weapon:</span>
+                                <span className="text-[#d1cdb8] font-medium font-fira-sans">🗡️ {formData.secondary_weapon}</span>
+                                {/bow|crossbow|sling/i.test(formData.secondary_weapon) && (
+                                    <span className="text-[10px] text-amber-400/80 italic">(+ 20 Ammunition)</span>
+                                )}
+                            </div>
+                        )}
+                        {formData.include_shield && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[#d1cdb8]/60">Shield:</span>
+                                <span className="text-emerald-400 font-medium">🛡️ Shield (+2 AC)</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {selectedEquipmentCount > 0 ? (
                     <div className="space-y-1.5">
+                        <span className="text-[10px] uppercase font-semibold text-[#c5a059] tracking-wider block">Gear & Packages</span>
                         {Object.entries(formData.equipment_selections).map(([choiceNum, selection]) => (
                             <div key={choiceNum} className="text-xs">
                                 <span className="text-[#d1cdb8]/60">Choice {choiceNum}:</span>
@@ -225,9 +258,9 @@ export default function ReviewStep({ formData, onBack, onRandomizeAll, isRandomi
                             </div>
                         ))}
                     </div>
-                ) : (
+                ) : !formData.primary_weapon ? (
                     <p className="text-[#d1cdb8]/50 text-xs italic">No equipment selected</p>
-                )}
+                ) : null}
             </div>
 
             {/* Spells Summary */}
