@@ -67,22 +67,16 @@ export default function Home() {
       tooltipText: "View your adventurers, their gear, and attributes.",
     },
     {
-      id: "campaign",
-      title: "CAMPAIGN",
+      id: "combat",
+      title: "COMBAT ARENA",
       icon: (
-        <CampaignPillarIcon
-          className={`w-16 h-16 md:w-20 md:h-20 ${
-            isCampaignEnabled ? "text-[#c5a059]" : "text-slate-500"
-          }`}
-        />
+        <CampaignPillarIcon className="w-16 h-16 md:w-20 md:h-20 text-[#c5a059]" />
       ),
       href: "/combat",
-      disabled: !isCampaignEnabled,
-      statusBadge: "UNDER CONSTRUCTION",
-      tooltipHeader: isCampaignEnabled ? "✦ ENTER THE ARENA ✦" : "✦ CAMPAIGN REALM ✦",
-      tooltipText: isCampaignEnabled
-        ? "Initiate the combat simulator. Track initiative order, manage hit points, and roll the dice to determine the fates of battle."
-        : "Story campaigns and dungeon master tools are currently under construction for an upcoming realm expansion. Venture into The Gauntlet to battle fierce monsters in the meantime!",
+      disabled: false,
+      tooltipHeader: "✦ ENTER THE ARENA ✦",
+      tooltipText:
+        "Initiate tactical turn-based skirmishes. Track initiative order, manage hit points & spells, roll dice, and review your War Archives.",
     },
     {
       id: "gauntlet",
