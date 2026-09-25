@@ -271,6 +271,23 @@ export interface CombatParticipant {
     dashed_this_turn?: boolean;
 }
 
+export interface EnvironmentalEffect {
+    id: number;
+    combat_session: number;
+    effect_type: string;
+    effect_type_display?: string;
+    terrain_type?: string | null;
+    weather_type?: string | null;
+    cover_area_x?: number | null;
+    cover_area_y?: number | null;
+    cover_area_radius?: number | null;
+    lighting_area_x?: number | null;
+    lighting_area_y?: number | null;
+    lighting_area_radius?: number | null;
+    description?: string;
+    is_active?: boolean;
+}
+
 export interface CombatSession {
     id: number;
     campaign?: number;
@@ -283,6 +300,7 @@ export interface CombatSession {
     ended_at?: string;
     participants: CombatParticipant[];
     actions?: CombatAction[];
+    environmental_effects?: EnvironmentalEffect[];
     current_participant?: CombatParticipant;
     status?: string;
     gauntlet_run?: {

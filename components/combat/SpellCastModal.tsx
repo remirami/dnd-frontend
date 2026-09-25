@@ -46,6 +46,7 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "thunderwave": { saveType: "CON", damageDice: "2d8", damageType: "thunder", upcastDiceCount: 1, halfOnSave: true, range: "Self (15-ft cube)", castingTime: "1 action", isAoE: true },
     "sleep": { damageDice: "5d8", condition: "unconscious", upcastDiceCount: 2, range: "90 ft", castingTime: "1 action", isAoE: true },
     "grease": { saveType: "DEX", range: "60 ft (10-ft square)", castingTime: "1 action", isAoE: true },
+    "fog cloud": { range: "120 ft (20-ft radius)", castingTime: "1 action", requiresConcentration: true, isAoE: true },
     "charm person": { saveType: "WIS", condition: "charmed", requiresConcentration: false, range: "30 ft", castingTime: "1 action" },
     "cause fear": { saveType: "WIS", condition: "frightened", requiresConcentration: true, range: "60 ft", castingTime: "1 action" },
     "witch bolt": { isAttackRoll: true, damageDice: "1d12", damageType: "lightning", upcastDiceCount: 1, requiresConcentration: true, range: "30 ft", castingTime: "1 action" },
@@ -189,7 +190,16 @@ function SpellCastModalContent({
     });
 
     // Magic Missile individual dart allocations (Target ID -> Dart Count)
-    const [dartAllocations, setDartAllocations] = useState<Record<number, number>>({});
+    const [dartAllocations, setDartAllocations] = useState<Record<number, number>>(() => {
+        if (!isMultiMissile) return {};
+        const defaultTarget = initialTargetId
+            ? parseInt(initialTargetId)
+            : allParticipants.find((p) => p.participant_type === "enemy" && p.is_active)?.id;
+        if (defaultTarget) {
+            return { [defaultTarget]: 3 + Math.max(0, baseLevel - 1) };
+        }
+        return {};
+    });
 
     useEffect(() => {
         if (!isMultiMissile) return;
@@ -211,7 +221,7 @@ function SpellCastModalContent({
             }
             return prev;
         });
-    }, [isMultiMissile, totalDarts, selectedTargetId, enemyParticipants]);
+    }, [isMultiMissile, totalDarts, enemyParticipants]);
 
     const assignedDartsCount = Object.values(dartAllocations).reduce((sum, n) => sum + n, 0);
     const unassignedDarts = Math.max(0, totalDarts - assignedDartsCount);
@@ -325,6 +335,12 @@ function SpellCastModalContent({
                     targetsToCast.push(id);
                 }
             });
+            const fallbackTarget = selectedTargetId || enemyParticipants[0]?.id;
+            if (fallbackTarget) {
+                while (targetsToCast.length < totalDarts) {
+                    targetsToCast.push(fallbackTarget);
+                }
+            }
             formula = "1d4+1";
         } else if (isAoE) {
             targetsToCast = selectedTargetIds;
@@ -556,14 +572,11 @@ function SpellCastModalContent({
                                             if (isMultiMissile) {
                                                 if (unassignedDarts > 0) {
                                                     handleAddDart(p.id);
-                                                } else if ((dartAllocations[p.id] || 0) > 0) {
-                                                    handleRemoveDart(p.id);
+                                                } else if ((dartAllocations[p.id] || 0) === totalDarts) {
+                                                    // Already has all darts assigned
                                                 } else {
-                                                    const otherId = Object.keys(dartAllocations).map(Number).find(id => (dartAllocations[id] || 0) > 0);
-                                                    if (otherId) {
-                                                        handleRemoveDart(otherId);
-                                                        handleAddDart(p.id);
-                                                    }
+                                                    setDartAllocations({ [p.id]: totalDarts });
+                                                    setSelectedTargetId(p.id);
                                                 }
                                             } else if (isAoE) {
                                                 toggleTargetId(p.id);
@@ -575,7 +588,12 @@ function SpellCastModalContent({
                                             if (e.key === "Enter" || e.key === " ") {
                                                 e.preventDefault();
                                                 if (isMultiMissile) {
-                                                    if (unassignedDarts > 0) handleAddDart(p.id);
+                                                    if (unassignedDarts > 0) {
+                                                        handleAddDart(p.id);
+                                                    } else {
+                                                        setDartAllocations({ [p.id]: totalDarts });
+                                                        setSelectedTargetId(p.id);
+                                                    }
                                                 } else if (isAoE) {
                                                     toggleTargetId(p.id);
                                                 } else {
@@ -789,6 +807,7 @@ function SpellCastModalContent({
                                         spellNameLower.includes("thunderwave") ? 15 :
                                         spellNameLower.includes("grease") ? 10 :
                                         spellNameLower.includes("shatter") ? 10 :
+                                        spellNameLower.includes("fog cloud") ? 20 :
                                         spellNameLower.includes("acid splash") ? 5 : 20
                                     );
                                     onStartAoETargeting({

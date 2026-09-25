@@ -33,6 +33,7 @@ interface ActionDockProps {
     getSpellSlots: (level: number) => { total: number; used?: number; remaining: number };
     onSelectSpell?: (spell: CharacterSpell) => void;
     onStartAoETargeting?: (config: AoETargetingConfig) => void;
+    onCancelAoETargeting?: () => void;
     // Monster actions (practice mode)
     enemyAttacks: Array<{ name: string; bonus: number; damage: string; type?: string; description?: string }>;
     // Test mode damage/healing
@@ -199,6 +200,7 @@ export function ActionDock({
     getSpellSlots,
     onSelectSpell,
     onStartAoETargeting,
+    onCancelAoETargeting,
     enemyAttacks,
     damageAmount,
     setDamageAmount,
@@ -369,6 +371,9 @@ export function ActionDock({
     };
 
     const toggleDrawer = (tab: 'weapons' | 'spells' | 'features' | 'consumables' | 'maneuvers' | 'test') => {
+        if (onCancelAoETargeting) {
+            onCancelAoETargeting();
+        }
         setOpenDrawer(prev => prev === tab ? null : tab);
     };
 
@@ -579,7 +584,7 @@ export function ActionDock({
                                                     {spells.map((spell) => {
                                                         const noSlots = slots !== null && slots.remaining <= 0;
                                                         const disabled = !hasAttacksLeft || currentIsIncapacitated || isAttacking || (noSlots && !spell.is_ritual);
-                                                        const isAoE = /burning hands|thunderwave|shatter|sleep|fireball|lightning bolt|acid splash|grease|cone of cold/i.test(spell.name);
+                                                        const isAoE = /burning hands|thunderwave|shatter|sleep|fireball|lightning bolt|acid splash|grease|cone of cold|fog cloud/i.test(spell.name);
 
                                                         const handleAoECastDefault = () => {
                                                             if (isAoE && onStartAoETargeting) {
@@ -596,6 +601,7 @@ export function ActionDock({
                                                                     nameLower.includes("thunderwave") ? 15 :
                                                                     nameLower.includes("grease") ? 10 :
                                                                     nameLower.includes("shatter") ? 10 :
+                                                                    nameLower.includes("fog cloud") ? 20 :
                                                                     nameLower.includes("acid splash") ? 5 : 20
                                                                 );
                                                                 const saveType = (

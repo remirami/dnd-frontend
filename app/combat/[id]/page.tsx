@@ -251,6 +251,10 @@ export default function CombatPage() {
         } else {
             setSelectedEnemy(null);
         }
+
+        // Clear any active AoE grid targeting or modal on turn change
+        setAoeTargeting(null);
+        setSelectedSpellForCast(null);
     }, [session?.current_turn_index, session?.current_round]);
 
     const loadSession = async () => {
@@ -400,6 +404,8 @@ export default function CombatPage() {
 
     const handleNextTurn = async () => {
         if (aiProcessing || isAiRunningRef.current) return;
+        setAoeTargeting(null);
+        setSelectedSpellForCast(null);
         setViewMode("grid");
         try {
             const response = await combatApi.nextTurn(sessionId);
@@ -432,6 +438,7 @@ export default function CombatPage() {
         attackBonus: number,
         options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean; is_ranged?: boolean }
     ) => {
+        setAoeTargeting(null);
         const current = getCurrentParticipant();
         if (!current || !targetId) {
             alert("Please select a target for the attack");
@@ -830,6 +837,7 @@ export default function CombatPage() {
 
     // 5E Tactical Movement Handlers
     const handleMove = async (targetX: number, targetY: number) => {
+        setAoeTargeting(null);
         const current = getCurrentParticipant();
         if (!current || !sessionId) return;
         setIsMoving(true);
@@ -1420,6 +1428,7 @@ export default function CombatPage() {
                 aoeTargeting={aoeTargeting}
                 onConfirmAoECast={handleConfirmAoECast}
                 onCancelAoETargeting={handleCancelAoETargeting}
+                environmentalEffects={session?.environmental_effects}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
             />
@@ -1437,8 +1446,12 @@ export default function CombatPage() {
                 characterSpells={characterSpells}
                 charData={charData}
                 getSpellSlots={getSpellSlots}
-                onSelectSpell={(spell) => setSelectedSpellForCast(spell)}
+                onSelectSpell={(spell) => {
+                    setAoeTargeting(null);
+                    setSelectedSpellForCast(spell);
+                }}
                 onStartAoETargeting={handleStartAoETargeting}
+                onCancelAoETargeting={handleCancelAoETargeting}
                 enemyAttacks={enemyAttacks}
                 damageAmount={damageAmount}
                 setDamageAmount={setDamageAmount}

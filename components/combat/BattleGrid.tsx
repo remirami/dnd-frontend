@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import type { CombatParticipant, AoETargetingConfig } from "@/lib/types/combat";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import type { CombatParticipant, AoETargetingConfig, EnvironmentalEffect } from "@/lib/types/combat";
 import { isIncapacitating } from "@/lib/data/conditions";
 
 export interface TerrainFeature {
@@ -118,6 +118,7 @@ interface BattleGridProps {
     aoeTargeting?: AoETargetingConfig | null;
     onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
     onCancelAoETargeting?: () => void;
+    environmentalEffects?: EnvironmentalEffect[];
     onSwitchToDuel?: () => void;
     onHoverEnemy?: (enemy: CombatParticipant | null) => void;
 }
@@ -211,6 +212,20 @@ function getAoECells(
 function getAoETheme(spellName: string, damageType?: string) {
     const name = spellName.toLowerCase();
     const dt = (damageType || "").toLowerCase();
+    if (name.includes("fog") || name.includes("cloud") || dt.includes("fog")) {
+        return {
+            aura: "bg-slate-300/40 border-2 border-slate-200 shadow-[0_0_20px_rgba(203,213,225,0.6)] backdrop-blur-sm",
+            svgColor: "#cbd5e1",
+            badge: "🌫️ Heavy Fog",
+        };
+    }
+    if (name.includes("grease") || dt.includes("grease")) {
+        return {
+            aura: "bg-amber-600/40 border-2 border-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.6)]",
+            svgColor: "#d97706",
+            badge: "🧈 Slick Grease",
+        };
+    }
     if (dt.includes("fire") || name.includes("fire") || name.includes("burning")) {
         return {
             aura: "bg-orange-600/35 border-2 border-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)]",
@@ -315,10 +330,23 @@ export function BattleGrid({
     aoeTargeting,
     onConfirmAoECast,
     onCancelAoETargeting,
+    environmentalEffects,
     onSwitchToDuel,
     onHoverEnemy,
 }: BattleGridProps) {
     const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null);
+
+    // Escape key listener to quickly dismiss AoE grid targeting
+    useEffect(() => {
+        if (!aoeTargeting || !onCancelAoETargeting) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                onCancelAoETargeting();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [aoeTargeting, onCancelAoETargeting]);
 
     // Current procedural battlefield layout
     const currentLayout = useMemo(() => getBattlefieldLayout(sessionId), [sessionId]);
@@ -469,6 +497,103 @@ export function BattleGrid({
     // Check if the current participant is currently in an enemy's reach
     const currentlyInThreat = threatCells.has(`${curCol},${curRow}`);
 
+    // Check if cell is difficult terrain (layout hazards + active spell ground effects like Grease)
+    const isCellDifficult = useCallback((col: number, row: number) => {
+        const feat = terrainMap.get(`${col},${row}`);
+        if (feat?.difficultTerrain) return true;
+
+        if (environmentalEffects) {
+            const tileX = col * 5;
+            const tileY = row * 5;
+            for (const eff of environmentalEffects) {
+                if (eff.is_active !== false && eff.effect_type === "terrain") {
+                    if (eff.cover_area_x != null && eff.cover_area_y != null) {
+                        const rad = eff.cover_area_radius ?? 5;
+                        if (Math.max(Math.abs(tileX - eff.cover_area_x), Math.abs(tileY - eff.cover_area_y)) <= rad) {
+                            return true;
+                        }
+                    } else {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }, [terrainMap, environmentalEffects]);
+
+    // Check if cell has impassable obstacle
+    const isCellSolid = useCallback((col: number, row: number) => {
+        const feat = terrainMap.get(`${col},${row}`);
+        return feat?.blocksMovement ?? false;
+    }, [terrainMap]);
+
+    // Hostile enemy positions that block path traversal
+    const hostileBlockedCells = useMemo(() => {
+        const set = new Set<string>();
+        activeEnemies.forEach((e) => {
+            const coords = resolveParticipantCoords(e, allParticipants);
+            set.add(`${coords.col},${coords.row}`);
+        });
+        return set;
+    }, [activeEnemies, allParticipants]);
+
+    // Tile-by-tile Dijkstra pathfinding (respects 10 ft / difficult square, solid blocks, enemies)
+    const movementCostMap = useMemo(() => {
+        const costMap = new Map<string, { cost: number; path: [number, number][] }>();
+        costMap.set(`${curCol},${curRow}`, { cost: 0, path: [[curCol * 5, curRow * 5]] });
+
+        const queue: { col: number; row: number; cost: number; path: [number, number][] }[] = [
+            { col: curCol, row: curRow, cost: 0, path: [[curCol * 5, curRow * 5]] }
+        ];
+
+        const directions = [
+            [-1, -1], [0, -1], [1, -1],
+            [-1,  0],          [1,  0],
+            [-1,  1], [0,  1], [1,  1],
+        ];
+
+        while (queue.length > 0) {
+            queue.sort((a, b) => a.cost - b.cost);
+            const current = queue.shift()!;
+
+            const key = `${current.col},${current.row}`;
+            const recorded = costMap.get(key);
+            if (recorded && recorded.cost < current.cost) continue;
+
+            for (const [dc, dr] of directions) {
+                const ncol = current.col + dc;
+                const nrow = current.row + dr;
+
+                if (ncol < 0 || ncol >= COLS || nrow < 0 || nrow >= ROWS) continue;
+                if (isCellSolid(ncol, nrow)) continue;
+
+                // Prevent diagonal corner-cutting between two adjacent solid walls
+                if (dc !== 0 && dr !== 0) {
+                    if (isCellSolid(current.col + dc, current.row) && isCellSolid(current.col, current.row + dr)) {
+                        continue;
+                    }
+                }
+
+                // Living hostile creatures block passage through their square
+                if (hostileBlockedCells.has(`${ncol},${nrow}`)) continue;
+
+                // 5e difficult terrain costs 10 ft per 5-ft square
+                const stepCost = isCellDifficult(ncol, nrow) ? 10 : 5;
+                const newCost = current.cost + stepCost;
+
+                const nKey = `${ncol},${nrow}`;
+                const existing = costMap.get(nKey);
+                if (!existing || newCost < existing.cost) {
+                    const newPath: [number, number][] = [...current.path, [ncol * 5, nrow * 5]];
+                    costMap.set(nKey, { cost: newCost, path: newPath });
+                    queue.push({ col: ncol, row: nrow, cost: newCost, path: newPath });
+                }
+            }
+        }
+
+        return costMap;
+    }, [curCol, curRow, isCellSolid, isCellDifficult, hostileBlockedCells]);
+
     // Opportunity attack risk on tile hover (strictly for legitimate foot movement to an empty reachable tile)
     const hoveredOARisk = useMemo(() => {
         if (!hoveredCell || isDisengaged || !currentlyInThreat || aoeTargeting) return null;
@@ -480,12 +605,11 @@ export function BattleGrid({
         if (cellOccupancy.has(`${targetCol},${targetRow}`)) return null;
 
         // If hovering over solid terrain, movement is blocked
-        const terrain = terrainMap.get(`${targetCol},${targetRow}`);
-        if (terrain?.blocksMovement) return null;
+        if (isCellSolid(targetCol, targetRow)) return null;
 
-        // If tile is beyond player's total reachable movement distance (base + dash), user is targeting/inspecting afar, not moving
-        const dist = getChebyshevDist(curX, curY, hoveredCell.x, hoveredCell.y);
-        if (dist > dashPotential) return null;
+        // Path cost check: must be reachable within dash potential
+        const pathData = movementCostMap.get(`${targetCol},${targetRow}`);
+        if (!pathData || pathData.cost > dashPotential) return null;
 
         const enemiesLeft = activeEnemies.filter((enemy) => {
             if (enemy.reaction_used) return false;
@@ -496,12 +620,19 @@ export function BattleGrid({
         });
 
         return enemiesLeft.length > 0 ? enemiesLeft : null;
-    }, [hoveredCell, isDisengaged, currentlyInThreat, aoeTargeting, curCol, curRow, cellOccupancy, terrainMap, curX, curY, dashPotential, activeEnemies, allParticipants]);
+    }, [hoveredCell, isDisengaged, currentlyInThreat, aoeTargeting, curCol, curRow, cellOccupancy, isCellSolid, movementCostMap, dashPotential, activeEnemies, allParticipants]);
 
-    // Hover calculations
-    const hoveredDist = hoveredCell ? getChebyshevDist(curX, curY, hoveredCell.x, hoveredCell.y) : 0;
-    const isHoveredReachable = hoveredDist > 0 && hoveredDist <= movementRemaining;
-    const isHoveredDashReachable = hoveredDist > movementRemaining && hoveredDist <= dashPotential;
+    // Tile-by-tile Hover path calculations
+    const hoveredPathData = useMemo(() => {
+        if (!hoveredCell) return null;
+        const hCol = Math.round(hoveredCell.x / 5);
+        const hRow = Math.round(hoveredCell.y / 5);
+        return movementCostMap.get(`${hCol},${hRow}`) || null;
+    }, [hoveredCell, movementCostMap]);
+
+    const hoveredPathCost = hoveredPathData ? hoveredPathData.cost : Infinity;
+    const isHoveredReachable = hoveredPathCost > 0 && hoveredPathCost <= movementRemaining;
+    const isHoveredDashReachable = hoveredPathCost > movementRemaining && hoveredPathCost <= dashPotential;
 
     // 5E AoE Spell Footprint Calculation
     const aoeFootprint = useMemo(() => {
@@ -580,18 +711,22 @@ export function BattleGrid({
             return;
         }
 
-        // Empty tile or tile with corpse: Move there
-        const dist = getChebyshevDist(curX, curY, x, y);
-        if (dist === 0) return;
-
+        // Empty tile or tile with corpse: Move there via calculated Dijkstra path
         const targetCol = Math.round(x / 5);
         const targetRow = Math.round(y / 5);
+        if (targetCol === curCol && targetRow === curRow) return;
 
-        // Solid terrain features block movement
-        const targetTerrain = terrainMap.get(`${targetCol},${targetRow}`);
-        if (targetTerrain?.blocksMovement) return;
+        // Impassable terrain blocks movement
+        if (isCellSolid(targetCol, targetRow)) return;
 
-        if (dist <= movementRemaining) {
+        const pathData = movementCostMap.get(`${targetCol},${targetRow}`);
+        if (!pathData) {
+            // No valid traversable path exists to target tile
+            return;
+        }
+
+        const moveCost = pathData.cost;
+        if (moveCost <= movementRemaining) {
             // Immediate optimistic token placement
             if (currentParticipant) {
                 setOptimisticPos({ id: currentParticipant.id, col: targetCol, row: targetRow });
@@ -601,8 +736,8 @@ export function BattleGrid({
             } catch (err) {
                 setOptimisticPos(null);
             }
-        } else if (dist <= dashPotential && onDash && canDash) {
-            if (confirm(`Move is ${dist} ft (exceeds ${movementRemaining} ft). Use Dash action to extend movement?`)) {
+        } else if (moveCost <= dashPotential && onDash && canDash) {
+            if (confirm(`Move path is ${moveCost} ft (costs extra across difficult terrain / obstacles, exceeding ${movementRemaining} ft). Use Dash action to extend movement?`)) {
                 try {
                     await onDash();
                     if (currentParticipant) {
@@ -731,6 +866,12 @@ export function BattleGrid({
                     <div
                         className="relative grid grid-cols-10 gap-0.5 sm:gap-1 bg-[#090b10] p-1 sm:p-1.5 rounded-lg border border-slate-800 shadow-inner"
                         onMouseLeave={() => setHoveredCell(null)}
+                        onContextMenu={(e) => {
+                            if (aoeTargeting && onCancelAoETargeting) {
+                                e.preventDefault();
+                                onCancelAoETargeting();
+                            }
+                        }}
                     >
                         {Array.from({ length: ROWS }).map((_, row) =>
                             Array.from({ length: COLS }).map((_, col) => {
@@ -743,18 +884,29 @@ export function BattleGrid({
                                 const terrain = terrainMap.get(`${col},${row}`);
                                 const isSolidTerrain = terrain?.blocksMovement ?? false;
 
-                                const distFromCur = getChebyshevDist(curX, curY, tileX, tileY);
+                                const pathData = movementCostMap.get(`${col},${row}`);
+                                const tileCost = pathData ? pathData.cost : Infinity;
                                 const isReachable =
                                     !occupant &&
                                     !isSolidTerrain &&
-                                    distFromCur > 0 &&
-                                    distFromCur <= movementRemaining;
+                                    tileCost > 0 &&
+                                    tileCost <= movementRemaining;
                                 const isDashReachable =
                                     !occupant &&
                                     !isSolidTerrain &&
-                                    distFromCur > movementRemaining &&
-                                    distFromCur <= dashPotential;
+                                    tileCost > movementRemaining &&
+                                    tileCost <= dashPotential;
 
+                                const isGreasedTile = environmentalEffects?.some(eff => 
+                                    eff.is_active !== false && eff.effect_type === 'terrain' && eff.cover_area_x != null && eff.cover_area_y != null &&
+                                    Math.max(Math.abs(tileX - eff.cover_area_x), Math.abs(tileY - eff.cover_area_y)) <= (eff.cover_area_radius ?? 5)
+                                );
+                                const isFoggedTile = environmentalEffects?.some(eff => 
+                                    eff.is_active !== false && eff.effect_type === 'weather' && eff.lighting_area_x != null && eff.lighting_area_y != null &&
+                                    Math.hypot(tileX - eff.lighting_area_x, tileY - eff.lighting_area_y) <= ((eff.lighting_area_radius ?? 20) + 1.0)
+                                );
+
+                                const distFromCur = getChebyshevDist(curX, curY, tileX, tileY);
                                 const isHovered =
                                     hoveredCell?.x === tileX && hoveredCell?.y === tileY;
                                 const isTarget =
@@ -787,6 +939,10 @@ export function BattleGrid({
                                                     : "bg-amber-950/20 border-2 border-amber-700/30 hover:bg-amber-900/30"
                                                 : isSolidTerrain
                                                 ? "bg-[#0b0c10] border-2 border-slate-700/80 shadow-inner"
+                                                : isGreasedTile
+                                                ? "bg-[#25180e]/90 border-2 border-amber-600/50 shadow-[inset_0_0_8px_rgba(217,119,6,0.3)] hover:border-amber-400"
+                                                : isFoggedTile
+                                                ? "bg-[#1e2330]/85 border-2 border-slate-400/40 backdrop-blur-[1px] hover:border-slate-300"
                                                 : terrain?.cover === "half"
                                                 ? "bg-[#161413]/90 border-2 border-amber-900/40 hover:border-amber-700/60"
                                                 : terrain?.difficultTerrain
@@ -944,8 +1100,26 @@ export function BattleGrid({
                                             </div>
                                         )}
 
+                                        {/* Environmental Ground Markers (Grease, Fog Cloud) */}
+                                        {!occupant && !terrain && isGreasedTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs leading-none filter drop-shadow">🧈</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-amber-300 bg-amber-950/90 px-0.5 rounded-sm mt-0.5 border border-amber-700/60 leading-tight">
+                                                    Grease
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!occupant && !terrain && !isGreasedTile && isFoggedTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none opacity-80">
+                                                <span className="text-xs leading-none filter drop-shadow">🌫️</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-slate-300 bg-slate-900/90 px-0.5 rounded-sm mt-0.5 border border-slate-700 leading-tight">
+                                                    Fog
+                                                </span>
+                                            </div>
+                                        )}
+
                                         {/* Empty Reachable Indicator Pip */}
-                                        {!occupant && !terrain && isReachable && (
+                                        {!occupant && !terrain && !isGreasedTile && !isFoggedTile && isReachable && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
                                         )}
 
@@ -962,16 +1136,22 @@ export function BattleGrid({
                                                     col === 0 ? "left-0" : col === COLS - 1 ? "right-0" : "left-1/2 -translate-x-1/2"
                                                 }`}
                                             >
-                                                {distFromCur > 0 && !isSolidTerrain && (
+                                                {hoveredPathCost !== Infinity && hoveredPathCost > 0 && !isSolidTerrain && (
                                                     <div className="flex items-center gap-1.5">
-                                                        <span>👣 {distFromCur} ft</span>
-                                                        {distFromCur > movementRemaining && <span>• Dash</span>}
+                                                        <span>👣 {hoveredPathCost} ft</span>
+                                                        {hoveredPathCost > movementRemaining && <span>• Dash</span>}
+                                                        {isCellDifficult(col, row) && (
+                                                            <span className="text-cyan-300 text-[8px] bg-cyan-950/80 px-1 rounded border border-cyan-700">Difficult</span>
+                                                        )}
                                                         {hoveredOARisk && (
                                                             <span className="text-red-300 font-bold bg-red-900/80 px-1 rounded border border-red-500 text-[8px] uppercase tracking-wider flex items-center gap-0.5">
                                                                 <span>⚠️</span> Provokes OA
                                                             </span>
                                                         )}
                                                     </div>
+                                                )}
+                                                {hoveredPathCost === Infinity && !isSolidTerrain && (
+                                                    <span className="text-red-300">⛔ Path Blocked</span>
                                                 )}
                                                 {isSolidTerrain && (
                                                     <span className="text-red-300">⛔ {terrain?.name} (Blocked)</span>
@@ -1081,22 +1261,37 @@ export function BattleGrid({
 
                         {/* Trajectory Vector to Hovered Tile (SVG) */}
                         {hoveredCell && !aoeTargeting && (isHoveredReachable || isHoveredDashReachable) && (
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
-                                <line
-                                    x1={`${((curCol + 0.5) / COLS) * 100}%`}
-                                    y1={`${((curRow + 0.5) / ROWS) * 100}%`}
-                                    x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
-                                    y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                    stroke={hoveredOARisk ? "#ef4444" : isHoveredReachable ? "#22d3ee" : "#f59e0b"}
-                                    strokeWidth={hoveredOARisk ? "2.5" : "2"}
-                                    strokeDasharray={hoveredOARisk ? "4 3" : "5 3"}
-                                    strokeLinecap="round"
-                                />
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none z-20">
+                                {hoveredPathData && hoveredPathData.path.length > 1 ? (
+                                    <polyline
+                                        points={hoveredPathData.path.map(([px, py]) => `${((Math.round(px / 5) + 0.5) / COLS) * 100},${((Math.round(py / 5) + 0.5) / ROWS) * 100}`).join(" ")}
+                                        fill="none"
+                                        stroke={hoveredOARisk ? "#ef4444" : isHoveredReachable ? "#22d3ee" : "#f59e0b"}
+                                        strokeWidth="0.8"
+                                        strokeDasharray={hoveredOARisk ? "1.5 1" : "2 1"}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        vectorEffect="non-scaling-stroke"
+                                    />
+                                ) : (
+                                    <line
+                                        x1={`${((curCol + 0.5) / COLS) * 100}`}
+                                        y1={`${((curRow + 0.5) / ROWS) * 100}`}
+                                        x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}`}
+                                        y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}`}
+                                        stroke={hoveredOARisk ? "#ef4444" : isHoveredReachable ? "#22d3ee" : "#f59e0b"}
+                                        strokeWidth="0.8"
+                                        strokeDasharray={hoveredOARisk ? "1.5 1" : "2 1"}
+                                        strokeLinecap="round"
+                                        vectorEffect="non-scaling-stroke"
+                                    />
+                                )}
                                 <circle
-                                    cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
-                                    cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                    r={hoveredOARisk ? "4" : "3"}
+                                    cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}`}
+                                    cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}`}
+                                    r="1.2"
                                     fill={hoveredOARisk ? "#ef4444" : isHoveredReachable ? "#22d3ee" : "#f59e0b"}
+                                    vectorEffect="non-scaling-stroke"
                                 />
                             </svg>
                         )}
@@ -1131,11 +1326,15 @@ export function BattleGrid({
                     <span>Dash (+{baseSpeed} ft)</span>
                 </div>
                 <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded bg-amber-900/50 border border-amber-600" />
+                    <span>Difficult Terrain (10 ft/sq)</span>
+                </div>
+                <div className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded ring-1 ring-red-500 ring-inset bg-red-950/30" />
                     <span>Threat (5 ft)</span>
                 </div>
                 <div className="hidden lg:inline text-slate-400 italic">
-                    <span>💡 Click radar or grid to target • Click tile or D-Pad to move</span>
+                    <span>💡 Click tile to move • Right-click or Esc cancels AoE aiming</span>
                 </div>
             </div>
         </div>

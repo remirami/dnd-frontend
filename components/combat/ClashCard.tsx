@@ -78,12 +78,12 @@ export function ClashCard({
     damagedParticipantIds = new Set(),
     distance,
 }: ClashCardProps) {
-    if (!attacker && !defender) return null;
-
     // Draggable position offset state
     const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
+
+    if (!attacker && !defender) return null;
 
     const handlePointerDown = (e: React.PointerEvent) => {
         // Only drag with left mouse button or primary touch

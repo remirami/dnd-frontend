@@ -53,6 +53,7 @@ interface BattlefieldArenaProps {
     aoeTargeting?: AoETargetingConfig | null;
     onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
     onCancelAoETargeting?: () => void;
+    environmentalEffects?: import("@/lib/types/combat").EnvironmentalEffect[];
     viewMode?: "grid" | "duel";
     onViewModeChange?: (mode: "grid" | "duel") => void;
 }
@@ -247,6 +248,7 @@ export function BattlefieldArena({
     aoeTargeting,
     onConfirmAoECast,
     onCancelAoETargeting,
+    environmentalEffects,
     viewMode: viewModeProp,
     onViewModeChange,
 }: BattlefieldArenaProps) {
@@ -428,6 +430,7 @@ export function BattlefieldArena({
                     aoeTargeting={aoeTargeting}
                     onConfirmAoECast={onConfirmAoECast}
                     onCancelAoETargeting={onCancelAoETargeting}
+                    environmentalEffects={environmentalEffects}
                     onSwitchToDuel={() => {
                         if (targetParticipant) setIsClashLocked(true);
                     }}
