@@ -7,6 +7,8 @@ import { ConditionBadge } from "@/components/combat/ConditionBadge";
 import { GauntletArenaHud } from "@/components/gauntlet/GauntletArenaHud";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
 import { BattleGrid } from "@/components/combat/BattleGrid";
+import { ClashCard } from "@/components/combat/ClashCard";
+import { computeRollPrediction } from "@/components/combat/ActionDock";
 import { isIncapacitating } from "@/lib/data/conditions";
 import type { CombatParticipant, AoETargetingConfig } from "@/lib/types/combat";
 import type { GauntletRun } from "@/lib/types/gauntlet";
@@ -249,51 +251,37 @@ export function BattlefieldArena({
     viewMode: viewModeProp,
     onViewModeChange,
 }: BattlefieldArenaProps) {
-    const [internalViewMode, setInternalViewMode] = useState<"grid" | "duel">("grid");
-    const viewMode = viewModeProp !== undefined ? viewModeProp : internalViewMode;
+    // Hovered enemy for live Clash Card preview
+    const [hoveredEnemy, setHoveredEnemy] = useState<CombatParticipant | null>(null);
+    // Locked target state: clicking an enemy locks the Clash Card on screen
+    const [isClashLocked, setIsClashLocked] = useState<boolean>(Boolean(targetParticipant && targetParticipant.current_hp > 0));
 
-    const setViewMode = useCallback(
-        (mode: "grid" | "duel") => {
-            if (onViewModeChange) {
-                onViewModeChange(mode);
-            } else {
-                setInternalViewMode(mode);
-            }
-        },
-        [onViewModeChange]
-    );
-
-    // Reset view mode back to tactical grid whenever the active turn ends or changes
+    // When user explicitly selects a new target, lock the card
     useEffect(() => {
-        setViewMode("grid");
-    }, [currentParticipant?.id, setViewMode]);
-
-    // Reset view mode back to tactical grid if the target enemy is killed (0 or negative HP) or no longer exists
-    useEffect(() => {
-        if (viewMode === "duel") {
-            if (!targetParticipant) {
-                setViewMode("grid");
-            } else if (targetParticipant.current_hp <= 0) {
-                // If lethal feedback just occurred, allow 500ms for hit animation/floating text, then return to grid
-                const hasRecentFeedback = lastAttackFeedback && Date.now() - lastAttackFeedback.timestamp < 1500;
-                const delay = hasRecentFeedback ? 500 : 0;
-                const timer = setTimeout(() => {
-                    setViewMode("grid");
-                }, delay);
-                return () => clearTimeout(timer);
-            }
+        if (targetParticipant && targetParticipant.current_hp > 0 && targetParticipant.id !== currentParticipant?.id) {
+            setIsClashLocked(true);
         }
-    }, [targetParticipant?.id, targetParticipant?.current_hp, viewMode, setViewMode, lastAttackFeedback]);
+    }, [targetParticipant?.id, currentParticipant?.id]);
+
+    // Reset lock and dismiss preview when turn changes
+    useEffect(() => {
+        setIsClashLocked(false);
+        setHoveredEnemy(null);
+    }, [currentParticipant?.id]);
+
+    // Auto-dismiss card with a brief delay when target dies (allows impact & text to play)
+    useEffect(() => {
+        if (targetParticipant && targetParticipant.current_hp <= 0) {
+            const timer = setTimeout(() => {
+                setIsClashLocked(false);
+                setHoveredEnemy(null);
+            }, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [targetParticipant?.id, targetParticipant?.current_hp]);
 
     // Active floating combat text state
     const [floatingText, setFloatingText] = useState<AttackFeedback | null>(null);
-
-    // Switch to tactical grid view immediately if AoE targeting mode is activated
-    useEffect(() => {
-        if (aoeTargeting) {
-            setViewMode("grid");
-        }
-    }, [aoeTargeting, setViewMode]);
 
     // Trigger floating combat text whenever a new attack feedback arrives
     useEffect(() => {
@@ -308,12 +296,55 @@ export function BattlefieldArena({
         }
     }, [lastAttackFeedback]);
 
-    // Determine valid target options for quick switcher
-    const targetCandidates = allParticipants.filter((p) => {
-        if (!currentParticipant) return false;
-        const oppType = currentParticipant.participant_type === "character" ? "enemy" : "character";
-        return p.participant_type === oppType && p.current_hp > 0 && p.is_active;
-    });
+    // Determine the defender to preview or clash with:
+    // 1. Hovered enemy takes precedence (instant preview).
+    // 2. Otherwise, locked selected target.
+    const activeDefender = (hoveredEnemy && hoveredEnemy.id !== currentParticipant?.id && hoveredEnemy.current_hp > 0)
+        ? hoveredEnemy
+        : (isClashLocked && targetParticipant && targetParticipant.current_hp > 0 && targetParticipant.id !== currentParticipant?.id)
+            ? targetParticipant
+            : null;
+
+    // Distance in feet between attacker and active defender
+    const defenderDistance = (
+        currentParticipant?.position_x != null && currentParticipant?.position_y != null &&
+        activeDefender?.position_x != null && activeDefender?.position_y != null &&
+        (currentParticipant.position_x !== 0 || currentParticipant.position_y !== 0 || activeDefender.position_x !== 0 || activeDefender.position_y !== 0)
+    ) ? Math.max(Math.abs(currentParticipant.position_x - activeDefender.position_x), Math.abs(currentParticipant.position_y - activeDefender.position_y)) : null;
+
+    const isMeleeReach = defenderDistance != null ? defenderDistance <= 5 : true;
+
+    // Roll prediction calculations
+    const rollPred = computeRollPrediction(
+        currentParticipant,
+        activeDefender,
+        isMeleeReach,
+        false,
+        allParticipants
+    );
+
+    let hitChance = 65;
+    if (activeDefender && currentParticipant) {
+        const atkBonus = 5;
+        const targetAC = activeDefender.armor_class || 10;
+        const neededRoll = Math.max(1, Math.min(20, targetAC - atkBonus));
+        let baseChance = (21 - neededRoll) / 20;
+        if (rollPred.state === 'advantage') {
+            baseChance = 1 - Math.pow(1 - baseChance, 2);
+        } else if (rollPred.state === 'disadvantage') {
+            baseChance = Math.pow(baseChance, 2);
+        }
+        hitChance = Math.round(Math.max(5, Math.min(95, baseChance * 100)));
+    }
+
+    const prediction = {
+        hitChance,
+        avgDamage: 8,
+        isAdvantage: rollPred.state === 'advantage',
+        isDisadvantage: rollPred.state === 'disadvantage',
+        advantageReasons: rollPred.advReasons,
+        disadvantageReasons: rollPred.disadvReasons,
+    };
 
     const enemiesRemaining = allParticipants.filter(
         (p) => p.participant_type === "enemy" && p.current_hp > 0 && p.is_active
@@ -332,40 +363,12 @@ export function BattlefieldArena({
             : incapacitatingCond.name || "Incapacitated"
         : "Incapacitated";
 
-    const attackerIsTargetOfAttack = floatingText && currentParticipant?.id === floatingText.targetId;
-    const defenderIsTargetOfAttack = floatingText && targetParticipant?.id === floatingText.targetId;
-
     return (
         <div className="w-full flex flex-col items-center justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
-            {/* Pinned Arena Top Header: Mode Switcher (Always accessible, never scrolled off or obscured) */}
-            {onMove && (
-                <div className="sticky top-0 z-30 w-full flex items-center justify-center py-1 bg-[#0c0d12]/95 backdrop-blur-md border-b border-[#c5a059]/25 shadow-md flex-shrink-0">
-                    <div className="flex items-center gap-1.5 bg-[#12141c]/90 p-1 rounded-lg border border-[#c5a059]/30 shadow-md">
-                        <button
-                            type="button"
-                            onClick={() => setViewMode("grid")}
-                            className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                viewMode === "grid"
-                                    ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
-                                    : "text-slate-400 hover:text-slate-200"
-                            }`}
-                        >
-                            <span>🗺️</span>
-                            <span>Tactical Grid</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setViewMode("duel")}
-                            className={`px-3 py-1 rounded text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                                viewMode === "duel"
-                                    ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
-                                    : "text-slate-400 hover:text-slate-200"
-                            }`}
-                        >
-                            <span>⚔️</span>
-                            <span>Duel Focus</span>
-                        </button>
-                    </div>
+            {/* Floating Combat Text (Big immersive hit/miss/spell effects on canvas) */}
+            {floatingText && (
+                <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none drop-shadow-2xl">
+                    <FloatingCombatText text={floatingText} />
                 </div>
             )}
 
@@ -415,17 +418,20 @@ export function BattlefieldArena({
                 </div>
             )}
 
-            {/* View Mode 1: 2D Tactical Battle Grid */}
-            {viewMode === "grid" && onMove ? (
+            {/* Unified Battlefield Canvas: Tactical Battle Grid is always active */}
+            <div className="relative w-full flex-1 min-h-0 flex flex-col items-center">
                 <BattleGrid
                     sessionId={sessionId}
                     currentParticipant={currentParticipant}
                     targetParticipant={targetParticipant}
                     allParticipants={allParticipants}
                     targetId={targetId}
-                    onSelectTarget={onSelectTarget}
+                    onSelectTarget={(id) => {
+                        onSelectTarget(id);
+                        setIsClashLocked(true);
+                    }}
                     onInspectParticipant={onInspectParticipant}
-                    onMove={onMove}
+                    onMove={onMove ?? (async () => {})}
                     onDash={onDash}
                     onDisengage={onDisengage}
                     onDodge={onDodge}
@@ -434,330 +440,53 @@ export function BattlefieldArena({
                     aoeTargeting={aoeTargeting}
                     onConfirmAoECast={onConfirmAoECast}
                     onCancelAoETargeting={onCancelAoETargeting}
-                    onSwitchToDuel={() => setViewMode("duel")}
+                    onSwitchToDuel={() => {
+                        if (targetParticipant) setIsClashLocked(true);
+                    }}
+                    onHoverEnemy={setHoveredEnemy}
                 />
-            ) : (
-                /* View Mode 2: Central Clash Stage: Attacker vs Defender */
-                <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-11 gap-3 sm:gap-4 items-center my-auto">
-                {/* Attacker Card (Col 1-5) */}
-                <div
-                    className={`md:col-span-5 rounded-xl border p-4 transition-all duration-300 relative shadow-xl ${
-                        attackerIsTargetOfAttack && floatingText?.hit ? "animate-card-impact" : ""
-                    } ${
-                        isEnemyTurn
-                            ? "bg-gradient-to-br from-[#241315] via-[#1a1317] to-[#10121a] border-red-600/70 shadow-[0_0_25px_rgba(239,68,68,0.25)]"
-                            : "bg-gradient-to-br from-[#1f1b13] via-[#181a24] to-[#10121a] border-[#c5a059]/70 shadow-[0_0_25px_rgba(197,160,89,0.25)]"
-                    }`}
-                >
-                    {/* Corner filigree brackets */}
-                    <CornerFiligree position="tl" color={isEnemyTurn ? "#ef4444" : "#c5a059"} />
-                    <CornerFiligree position="tr" color={isEnemyTurn ? "#ef4444" : "#c5a059"} />
-                    <CornerFiligree position="bl" color={isEnemyTurn ? "#ef4444" : "#c5a059"} />
-                    <CornerFiligree position="br" color={isEnemyTurn ? "#ef4444" : "#c5a059"} />
 
-                    {/* Floating Combat Text Overlay if Attacker was targeted (e.g. counter-attack / turn damage / self-heal) */}
-                    {attackerIsTargetOfAttack && floatingText && (
-                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
-                            <FloatingCombatText text={floatingText} />
-                        </div>
-                    )}
-
-                    {/* Header with Portrait & Titles */}
-                    <div className="flex items-center gap-3 mb-2.5">
-                        <CombatantPortrait
-                            participant={currentParticipant}
-                            size="md"
-                            showAc={true}
-                            isDamaged={damagedParticipantIds.has(currentParticipant?.id ?? -1)}
+                {/* Live Clash Card (Reveals on enemy hover, locks on click, dismisses on unhover/unlock/death) */}
+                {activeDefender && (
+                    <div className="absolute top-2 right-2 sm:right-4 z-40 max-w-sm sm:max-w-md w-[calc(100%-1rem)] sm:w-96 pointer-events-auto shadow-2xl animate-in fade-in slide-in-from-right-4 duration-200">
+                        <ClashCard
+                            attacker={currentParticipant}
+                            defender={activeDefender}
+                            isLocked={isClashLocked && activeDefender.id === targetParticipant?.id}
+                            onToggleLock={() => {
+                                if (isClashLocked && activeDefender.id === targetParticipant?.id) {
+                                    setIsClashLocked(false);
+                                } else {
+                                    onSelectTarget(activeDefender.id.toString());
+                                    setIsClashLocked(true);
+                                }
+                            }}
+                            onClose={() => {
+                                setIsClashLocked(false);
+                                setHoveredEnemy(null);
+                            }}
+                            onInspectParticipant={onInspectParticipant}
+                            prediction={prediction}
+                            lastAttackFeedback={lastAttackFeedback}
+                            damagedParticipantIds={damagedParticipantIds}
+                            distance={defenderDistance}
                         />
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                <span
-                                    className={`w-2 h-2 rounded-full ${
-                                        isEnemyTurn ? "bg-red-400" : "bg-[#c5a059]"
-                                    } animate-pulse`}
-                                />
-                                <span className="text-[10px] uppercase tracking-widest font-cinzel font-bold text-[#d1cdb8]/70">
-                                    Active Attacker
-                                </span>
-                                {isEnemyTurn && gauntletRunId && (
-                                    <Badge className="bg-red-950/80 text-red-300 border-red-700/60 text-[9px] px-1.5 py-0 font-cinzel">
-                                        Autonomous AI
-                                    </Badge>
-                                )}
-                            </div>
-                            <h3
-                                className={`font-cinzel text-base sm:text-lg font-bold tracking-wide truncate ${
-                                    isEnemyTurn ? "text-red-200" : "text-[#e0bc75]"
-                                }`}
-                            >
-                                {currentParticipant?.name || "None"}
-                            </h3>
-                            <p className="text-[10px] font-lora text-[#d1cdb8]/60 truncate">
-                                {currentParticipant?.participant_type === "character"
-                                    ? `${currentParticipant.character?.character_class?.name || "Hero"} • Lvl ${
-                                          currentParticipant.character?.level || 1
-                                      }`
-                                    : "Hostile Creature"}
-                            </p>
-                        </div>
-
-                        {currentParticipant && (
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => onInspectParticipant(currentParticipant)}
-                                className="text-[11px] h-7 px-2 text-[#c5a059] hover:bg-[#c5a059]/10 border border-[#c5a059]/20 font-lora flex-shrink-0"
-                            >
-                                🔍 Inspect
-                            </Button>
-                        )}
                     </div>
+                )}
 
-                    {/* Vitals Grid */}
-                    {currentParticipant && (
-                        <div className="space-y-2">
-                            {/* HP Bar */}
-                            <div>
-                                <div className="flex justify-between text-xs font-fira-sans mb-1 text-[#d1cdb8]/80">
-                                    <span>Hit Points</span>
-                                    <span className="font-bold text-slate-100">
-                                        {currentParticipant.current_hp}{" "}
-                                        <span className="text-[#d1cdb8]/50">/ {currentParticipant.max_hp}</span>
-                                    </span>
-                                </div>
-                                <div className="w-full h-2.5 bg-[#0c0d12] rounded-full overflow-hidden border border-[#c5a059]/20">
-                                    <div
-                                        className={`h-full transition-all duration-300 bg-gradient-to-r ${
-                                            damagedParticipantIds.has(currentParticipant.id)
-                                                ? "from-red-600 to-red-400"
-                                                : hpBarGradient(
-                                                      currentParticipant.current_hp,
-                                                      currentParticipant.max_hp
-                                                  )
-                                        }`}
-                                        style={{
-                                            width: `${Math.max(
-                                                0,
-                                                Math.min(
-                                                    100,
-                                                    (currentParticipant.current_hp / currentParticipant.max_hp) * 100
-                                                )
-                                            )}%`,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Stat Chips */}
-                            <div className="grid grid-cols-3 gap-2 pt-1">
-                                <div className="px-2 py-1 rounded bg-[#0c0d12]/60 border border-slate-800 text-center">
-                                    <span className="text-[9px] uppercase text-slate-400 block font-lora">Armor Class</span>
-                                    <span className="font-fira-sans font-bold text-sm text-[#e0bc75]">
-                                        🛡 {currentParticipant.armor_class}
-                                    </span>
-                                </div>
-                                <div className="px-2 py-1 rounded bg-[#0c0d12]/60 border border-slate-800 text-center">
-                                    <span className="text-[9px] uppercase text-slate-400 block font-lora">Initiative</span>
-                                    <span className="font-fira-sans font-bold text-sm text-[#e0bc75]">
-                                        {currentParticipant.initiative}
-                                    </span>
-                                </div>
-                                <div className="px-2 py-1 rounded bg-[#0c0d12]/60 border border-slate-800 text-center">
-                                    <span className="text-[9px] uppercase text-slate-400 block font-lora">Attacks Left</span>
-                                    <span
-                                        className={`font-fira-sans font-bold text-sm ${
-                                            currentParticipant.attacks_remaining > 0
-                                                ? "text-emerald-400"
-                                                : "text-slate-500"
-                                        }`}
-                                    >
-                                        {currentParticipant.attacks_remaining}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Conditions */}
-                            {currentParticipant.conditions && currentParticipant.conditions.length > 0 && (
-                                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                                    {currentParticipant.conditions.map((c: any, i: number) => (
-                                        <ConditionBadge key={i} condition={c} size="sm" />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* VS Clash Emblem (Col 6) */}
-                <div className="md:col-span-1 flex flex-col items-center justify-center my-[-8px] md:my-0 select-none">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#242636] to-[#12131a] border-2 border-[#c5a059]/60 flex items-center justify-center text-[#c5a059] font-cinzel font-black text-sm shadow-[0_0_20px_rgba(197,160,89,0.35)] relative">
-                        VS
-                        <div className="absolute inset-0 rounded-full border border-amber-400/20 animate-ping opacity-30 pointer-events-none" />
-                    </div>
-                </div>
-
-                {/* Target Defender Card (Col 7-11) */}
-                <div
-                    className={`md:col-span-5 rounded-xl border p-4 transition-all duration-300 relative shadow-xl ${
-                        defenderIsTargetOfAttack && floatingText?.hit ? "animate-card-impact" : ""
-                    } ${
-                        targetParticipant
-                            ? "bg-gradient-to-bl from-[#221c14] via-[#181924] to-[#10121a] border-amber-500/70 shadow-[0_0_25px_rgba(245,158,11,0.22)]"
-                            : "bg-[#141620]/60 border-dashed border-slate-800"
-                    }`}
-                >
-                    {/* Corner filigree brackets */}
-                    <CornerFiligree position="tl" color="#f59e0b" />
-                    <CornerFiligree position="tr" color="#f59e0b" />
-                    <CornerFiligree position="bl" color="#f59e0b" />
-                    <CornerFiligree position="br" color="#f59e0b" />
-
-                    {/* Floating Combat Text Overlay when Defender is targeted */}
-                    {defenderIsTargetOfAttack && floatingText && (
-                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
-                            <FloatingCombatText text={floatingText} />
-                        </div>
-                    )}
-
-                    {/* Header with Portrait & Titles */}
-                    <div className="flex items-center gap-3 mb-2.5">
-                        <CombatantPortrait
-                            participant={targetParticipant}
-                            size="md"
-                            showAc={true}
-                            isDamaged={damagedParticipantIds.has(targetParticipant?.id ?? -1)}
-                        />
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                                <span className="text-[10px] uppercase tracking-widest font-cinzel font-bold text-amber-300">
-                                    Current Target
-                                </span>
-                            </div>
-                            <h3 className="font-cinzel text-base sm:text-lg font-bold tracking-wide mt-0.5 text-slate-100 truncate">
-                                {targetParticipant?.name || "No Target Selected"}
-                            </h3>
-                            <p className="text-[10px] font-lora text-[#d1cdb8]/60 truncate">
-                                {targetParticipant
-                                    ? targetParticipant.participant_type === "character"
-                                        ? `${targetParticipant.character?.character_class?.name || "Hero"} • Lvl ${
-                                              targetParticipant.character?.level || 1
-                                          }`
-                                        : "Hostile Opponent"
-                                    : "Choose an opponent to attack"}
-                            </p>
-                        </div>
-
-                        {targetParticipant && (
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => onInspectParticipant(targetParticipant)}
-                                className="text-[11px] h-7 px-2 text-amber-300 hover:bg-amber-950/30 border border-amber-500/30 font-lora flex-shrink-0"
-                            >
-                                🔍 Inspect
-                            </Button>
-                        )}
-                    </div>
-
-                    {targetParticipant ? (
-                        <div className="space-y-2">
-                            {/* Target HP Bar */}
-                            <div>
-                                <div className="flex justify-between text-xs font-fira-sans mb-1 text-[#d1cdb8]/80">
-                                    <span>Hit Points</span>
-                                    <span className="font-bold text-slate-100">
-                                        {targetParticipant.current_hp}{" "}
-                                        <span className="text-[#d1cdb8]/50">/ {targetParticipant.max_hp}</span>
-                                    </span>
-                                </div>
-                                <div className="w-full h-2.5 bg-[#0c0d12] rounded-full overflow-hidden border border-[#c5a059]/20">
-                                    <div
-                                        className={`h-full transition-all duration-300 bg-gradient-to-r ${
-                                            damagedParticipantIds.has(targetParticipant.id)
-                                                ? "from-red-600 to-red-400"
-                                                : hpBarGradient(
-                                                      targetParticipant.current_hp,
-                                                      targetParticipant.max_hp
-                                                  )
-                                        }`}
-                                        style={{
-                                            width: `${Math.max(
-                                                0,
-                                                Math.min(
-                                                    100,
-                                                    (targetParticipant.current_hp / targetParticipant.max_hp) * 100
-                                                )
-                                            )}%`,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Target Stat Chips */}
-                            <div className="grid grid-cols-2 gap-2 pt-1">
-                                <div className="px-2 py-1 rounded bg-[#0c0d12]/60 border border-slate-800 text-center">
-                                    <span className="text-[9px] uppercase text-slate-400 block font-lora">Armor Class</span>
-                                    <span className="font-fira-sans font-bold text-sm text-amber-300">
-                                        🛡 {targetParticipant.armor_class}
-                                    </span>
-                                </div>
-                                <div className="px-2 py-1 rounded bg-[#0c0d12]/60 border border-slate-800 text-center">
-                                    <span className="text-[9px] uppercase text-slate-400 block font-lora">Faction</span>
-                                    <span className="font-fira-sans font-semibold text-xs text-slate-300">
-                                        {targetParticipant.participant_type === "character" ? "🛡 Party Ally" : "⚔ Hostile"}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Conditions */}
-                            {targetParticipant.conditions && targetParticipant.conditions.length > 0 && (
-                                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                                    {targetParticipant.conditions.map((c: any, i: number) => (
-                                        <ConditionBadge key={i} condition={c} size="sm" />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <p className="text-xs text-[#d1cdb8]/50 italic text-center py-6 font-lora">
-                            Select a target using the quick chips below or in the initiative ribbon.
-                        </p>
-                    )}
-
-                    {/* Quick Target Switcher Chips */}
-                    {(!isEnemyTurn || !gauntletRunId) && targetCandidates.length > 0 && (
-                        <div className="mt-3 pt-2.5 border-t border-slate-800/80">
-                            <span className="text-[10px] text-[#c5a059]/80 uppercase tracking-wider font-cinzel font-bold block mb-1.5">
-                                Switch Target (1-Click):
-                            </span>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                {targetCandidates.map((cand) => {
-                                    const isSelected = targetId === cand.id.toString();
-                                    return (
-                                        <button
-                                            key={cand.id}
-                                            onClick={() => onSelectTarget(cand.id.toString())}
-                                            className={`px-2 py-1 rounded text-xs font-lora font-medium transition-all duration-150 flex items-center gap-1.5 border cursor-pointer ${
-                                                isSelected
-                                                    ? "bg-amber-500/25 border-amber-500 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
-                                                    : "bg-[#12141c] border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white"
-                                            }`}
-                                        >
-                                            <span className="font-semibold">{cand.name}</span>
-                                            <span className="text-[10px] font-fira-sans text-slate-400">
-                                                ({cand.current_hp} HP)
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                {/* Subtle reopen pill if target is selected but user closed the card */}
+                {!activeDefender && targetParticipant && targetParticipant.current_hp > 0 && targetParticipant.id !== currentParticipant?.id && (
+                    <button
+                        type="button"
+                        onClick={() => setIsClashLocked(true)}
+                        className="absolute top-2 right-2 sm:right-4 z-30 px-3 py-1.5 rounded-lg bg-[#12141c]/90 hover:bg-[#1c202e] border border-[#c5a059]/40 text-[#c5a059] hover:text-amber-300 text-xs font-cinzel font-bold shadow-lg transition-all flex items-center gap-1.5 cursor-pointer backdrop-blur-sm"
+                        title="Reopen Clash Card"
+                    >
+                        <span>⚔️</span>
+                        <span>Clash vs {targetParticipant.name.split(' ')[0]}</span>
+                    </button>
+                )}
             </div>
-            )}
         </div>
     );
 }

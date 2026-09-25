@@ -119,6 +119,7 @@ interface BattleGridProps {
     onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
     onCancelAoETargeting?: () => void;
     onSwitchToDuel?: () => void;
+    onHoverEnemy?: (enemy: CombatParticipant | null) => void;
 }
 
 const COLS = 10; // 0..45 ft in 5 ft steps (Cols A-J)
@@ -315,6 +316,7 @@ export function BattleGrid({
     onConfirmAoECast,
     onCancelAoETargeting,
     onSwitchToDuel,
+    onHoverEnemy,
 }: BattleGridProps) {
     const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number } | null>(null);
 
@@ -392,6 +394,21 @@ export function BattleGrid({
         });
         return map;
     }, [allParticipants, currentParticipant, optimisticPos, curCoords]);
+
+    // Notify parent component about hovered enemy for live Clash Card preview
+    useEffect(() => {
+        if (!onHoverEnemy) return;
+        if (!hoveredCell) {
+            onHoverEnemy(null);
+            return;
+        }
+        const occupant = cellOccupancy.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`);
+        if (occupant && occupant.participant_type !== currentParticipant?.participant_type && occupant.current_hp > 0) {
+            onHoverEnemy(occupant);
+        } else {
+            onHoverEnemy(null);
+        }
+    }, [hoveredCell, cellOccupancy, currentParticipant, onHoverEnemy]);
 
     // Map fallen participants / corpses (rendered as non-blocking markers on the ground)
     const corpseOccupancy = useMemo(() => {
@@ -714,6 +731,8 @@ export function BattleGrid({
                                 <button
                                     key={enemy.id}
                                     type="button"
+                                    onMouseEnter={() => onHoverEnemy?.(enemy)}
+                                    onMouseLeave={() => onHoverEnemy?.(null)}
                                     onClick={() => {
                                         onSelectTarget(enemy.id.toString());
                                         if (isMelee && onSwitchToDuel) {
