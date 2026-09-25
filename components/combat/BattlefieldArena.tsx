@@ -473,19 +473,6 @@ export function BattlefieldArena({
                         />
                     </div>
                 )}
-
-                {/* Subtle reopen pill if target is selected but user closed the card */}
-                {!activeDefender && targetParticipant && targetParticipant.current_hp > 0 && targetParticipant.id !== currentParticipant?.id && (
-                    <button
-                        type="button"
-                        onClick={() => setIsClashLocked(true)}
-                        className="absolute top-2 right-2 sm:right-4 z-30 px-3 py-1.5 rounded-lg bg-[#12141c]/90 hover:bg-[#1c202e] border border-[#c5a059]/40 text-[#c5a059] hover:text-amber-300 text-xs font-cinzel font-bold shadow-lg transition-all flex items-center gap-1.5 cursor-pointer backdrop-blur-sm"
-                        title="Reopen Clash Card"
-                    >
-                        <span>⚔️</span>
-                        <span>Clash vs {targetParticipant.name.split(' ')[0]}</span>
-                    </button>
-                )}
             </div>
         </div>
     );
