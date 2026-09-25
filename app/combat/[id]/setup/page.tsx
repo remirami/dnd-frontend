@@ -598,7 +598,7 @@ export default function CombatSetupPage() {
                                         ? `Encounter capacity reached (${MAX_TOTAL_PARTICIPANTS}/${MAX_TOTAL_PARTICIPANTS})`
                                         : filterCr || filterType
                                         ? "Search by name within filtered results..."
-                                        : "Search monsters — Goblin, Dragon, Beholder..."
+                                        : "Search monsters — Goblin, Dragon, Skeleton..."
                                 }
                                 disabled={isEnemyFull || isTotalFull}
                                 className="w-full pl-9 pr-4 py-2.5 bg-[#0e1017] border border-[#c5a059]/25 hover:border-[#c5a059]/50 focus:border-[#c5a059]/70 text-[#d1cdb8] placeholder-[#d1cdb8]/30 rounded text-sm font-lora outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
