@@ -21,7 +21,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Trophy, Swords, Shield, Skull, Flame, TreePine, Castle, Users, Play, Award, Check, ShieldAlert } from 'lucide-react';
+import { Trophy, Swords, Shield, Skull, Flame, TreePine, Castle, Users, Play, Award, Check, ShieldAlert, History, AlertTriangle, X } from 'lucide-react';
 
 interface ThemeOption {
     id: GauntletTheme;
@@ -47,9 +47,12 @@ export default function GauntletLobbyPage() {
     const [limitModalOpen, setLimitModalOpen] = useState(false);
     const [limitModalInfo, setLimitModalInfo] = useState({ title: '', description: '' });
 
-    // Leaderboard state
+    // User gauntlet runs state & tabs
+    const [userRuns, setUserRuns] = useState<GauntletRun[]>([]);
     const [leaderboard, setLeaderboard] = useState<GauntletRun[]>([]);
-    const [activeTab, setActiveTab] = useState<'lobby' | 'leaderboard'>('lobby');
+    const [activeTab, setActiveTab] = useState<'lobby' | 'history' | 'leaderboard'>('lobby');
+    const [abandonModalOpen, setAbandonModalOpen] = useState(false);
+    const [abandoning, setAbandoning] = useState(false);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -67,10 +70,11 @@ export default function GauntletLobbyPage() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [charsResp, lbResp, sessionsResp] = await Promise.all([
+            const [charsResp, lbResp, sessionsResp, runsResp] = await Promise.all([
                 charactersApi.getAll(),
                 gauntletApi.getLeaderboard(),
                 combatApi.getAll().catch(() => ({ data: [] as CombatSession[] })),
+                gauntletApi.getAllRuns().catch(() => ({ data: [] as GauntletRun[] })),
             ]);
 
             const charList: Character[] = Array.isArray(charsResp.data)
@@ -83,6 +87,11 @@ export default function GauntletLobbyPage() {
             }
 
             setLeaderboard(Array.isArray(lbResp.data) ? lbResp.data : []);
+
+            const runsList: GauntletRun[] = Array.isArray(runsResp.data)
+                ? runsResp.data
+                : (runsResp.data as any)?.results || [];
+            setUserRuns(runsList);
 
             const rawSessions: CombatSession[] = Array.isArray(sessionsResp.data)
                 ? sessionsResp.data
@@ -120,6 +129,52 @@ export default function GauntletLobbyPage() {
     const isAtActiveLimit = activeCombatCount >= 2;
     const isAtTotalLimit = totalCombatCount >= 10;
     const isAtCombatLimit = isAtActiveLimit || isAtTotalLimit;
+
+    const ongoingRun = userRuns.find(r => ['active', 'respite', 'preparing', 'ready_for_wave'].includes(r.status));
+    const pastRuns = userRuns.filter(r => ['completed', 'failed'].includes(r.status));
+
+    const handleResumeRun = async (run: GauntletRun) => {
+        if (run.status === 'respite') {
+            if (run.current_combat_session_id) {
+                router.push(`/combat/${run.current_combat_session_id}?gauntletRunId=${run.id}`);
+            } else {
+                try {
+                    const resp = await gauntletApi.nextWave(run.id);
+                    if (resp.data.combat_session_id) {
+                        router.push(`/combat/${resp.data.combat_session_id}?gauntletRunId=${run.id}`);
+                    }
+                } catch (e) {
+                    console.error("Failed to advance wave:", e);
+                }
+            }
+        } else if (run.current_combat_session_id) {
+            router.push(`/combat/${run.current_combat_session_id}?gauntletRunId=${run.id}`);
+        } else {
+            try {
+                const resp = await gauntletApi.nextWave(run.id);
+                if (resp.data.combat_session_id) {
+                    router.push(`/combat/${resp.data.combat_session_id}?gauntletRunId=${run.id}`);
+                }
+            } catch (e) {
+                console.error("Failed to launch wave:", e);
+            }
+        }
+    };
+
+    const handleAbandonRun = async () => {
+        if (!ongoingRun) return;
+        setAbandoning(true);
+        try {
+            await gauntletApi.abandonRun(ongoingRun.id);
+            await loadData();
+            setAbandonModalOpen(false);
+        } catch (e) {
+            console.error("Failed to abandon trial:", e);
+            alert("Failed to abandon trial.");
+        } finally {
+            setAbandoning(false);
+        }
+    };
 
     const handleStartGauntlet = async (autoDelete: boolean = false) => {
         if (selectedCharIds.length === 0) {
@@ -252,7 +307,7 @@ export default function GauntletLobbyPage() {
                     <div className="flex gap-2 p-1 bg-[#181a21] rounded-lg border border-[#c5a059]/30">
                         <button
                             onClick={() => setActiveTab('lobby')}
-                            className={`px-4 py-1.5 rounded text-xs font-cinzel font-bold tracking-wider transition-all ${
+                            className={`px-4 py-1.5 rounded text-xs font-cinzel font-bold tracking-wider transition-all cursor-pointer ${
                                 activeTab === 'lobby'
                                     ? 'bg-[#c5a059] text-slate-950 shadow-[0_0_12px_rgba(197,160,89,0.3)]'
                                     : 'text-slate-300 hover:text-white'
@@ -261,8 +316,26 @@ export default function GauntletLobbyPage() {
                             ⚔️ Arena Staging
                         </button>
                         <button
+                            onClick={() => setActiveTab('history')}
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded text-xs font-cinzel font-bold tracking-wider transition-all cursor-pointer ${
+                                activeTab === 'history'
+                                    ? 'bg-[#c5a059] text-slate-950 shadow-[0_0_12px_rgba(197,160,89,0.3)]'
+                                    : 'text-slate-300 hover:text-white'
+                            }`}
+                        >
+                            <History className="w-3.5 h-3.5" />
+                            <span>Run History</span>
+                            {pastRuns.length > 0 && (
+                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-fira-sans ${
+                                    activeTab === 'history' ? 'bg-slate-950 text-[#c5a059]' : 'bg-slate-800 text-slate-300'
+                                }`}>
+                                    {pastRuns.length}
+                                </span>
+                            )}
+                        </button>
+                        <button
                             onClick={() => setActiveTab('leaderboard')}
-                            className={`px-4 py-1.5 rounded text-xs font-cinzel font-bold tracking-wider transition-all ${
+                            className={`px-4 py-1.5 rounded text-xs font-cinzel font-bold tracking-wider transition-all cursor-pointer ${
                                 activeTab === 'leaderboard'
                                     ? 'bg-[#c5a059] text-slate-950 shadow-[0_0_12px_rgba(197,160,89,0.3)]'
                                     : 'text-slate-300 hover:text-white'
@@ -273,8 +346,127 @@ export default function GauntletLobbyPage() {
                     </div>
                 </div>
 
-                {activeTab === 'lobby' ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {activeTab === 'lobby' && (
+                    <div className="space-y-6">
+                        {/* Ongoing Run Card (Hero Banner) */}
+                        {ongoingRun && (
+                            <FantasyCard className="p-6 border-2 border-[#c5a059] bg-[radial-gradient(ellipse_at_top,#1f1a10_0%,#0e1017_100%)] shadow-[0_0_35px_rgba(197,160,89,0.25)]">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#c5a059]/30">
+                                    <div className="space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                                            <span className="font-cinzel text-xs uppercase tracking-widest text-[#c5a059] font-bold">
+                                                Ongoing Trial In Progress
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold uppercase font-fira-sans">
+                                                {ongoingRun.theme}
+                                            </span>
+                                            {ongoingRun.status === 'respite' ? (
+                                                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold uppercase font-fira-sans">
+                                                    ☕ Respite Intermission
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold uppercase font-fira-sans">
+                                                    ⚔️ Wave {ongoingRun.current_wave} of {ongoingRun.max_waves}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h2 className="font-cinzel-decorative text-2xl font-bold text-white tracking-wide">
+                                            {ongoingRun.name}
+                                        </h2>
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setAbandonModalOpen(true)}
+                                            className="px-3.5 py-2 rounded bg-rose-950/40 hover:bg-rose-900/60 border border-rose-700/50 text-rose-300 text-xs font-cinzel font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                            <span>Abandon Trial</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleResumeRun(ongoingRun)}
+                                            className="px-6 py-2.5 rounded bg-gradient-to-r from-[#c5a059] to-[#d6b16a] hover:brightness-110 text-slate-950 font-cinzel font-bold text-sm tracking-wider shadow-[0_0_20px_rgba(197,160,89,0.4)] transition-all cursor-pointer flex items-center gap-2"
+                                        >
+                                            <Play className="w-4 h-4 fill-current" />
+                                            <span>
+                                                {ongoingRun.status === 'respite'
+                                                    ? 'Resume Respite / Next Wave'
+                                                    : `Resume Wave ${ongoingRun.current_wave}`}
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Run Stats Bar */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4 p-3 rounded-lg bg-[#0c0d12]/70 border border-[#c5a059]/20 text-center font-fira-sans">
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 uppercase font-lora block">Current Score</span>
+                                        <span className="text-base font-bold text-[#c5a059]">{ongoingRun.score.toLocaleString()} PTS</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 uppercase font-lora block">Wave Progress</span>
+                                        <span className="text-base font-bold text-white">{ongoingRun.current_wave} / {ongoingRun.max_waves}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 uppercase font-lora block">Enemies Slain</span>
+                                        <span className="text-base font-bold text-white">{ongoingRun.enemies_killed}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 uppercase font-lora block">Rounds Endured</span>
+                                        <span className="text-base font-bold text-white">{ongoingRun.turns_elapsed}</span>
+                                    </div>
+                                </div>
+
+                                {/* Party Snapshot Preview */}
+                                {ongoingRun.snapshot_heroes && ongoingRun.snapshot_heroes.length > 0 && (
+                                    <div>
+                                        <div className="text-xs font-cinzel font-bold text-slate-300 uppercase tracking-wider mb-2">
+                                            Active Party Vitality ({ongoingRun.snapshot_heroes.filter(h => h.is_alive).length} / {ongoingRun.snapshot_heroes.length} Alive)
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                                            {ongoingRun.snapshot_heroes.map((hero) => {
+                                                const hpPercent = hero.max_hp > 0 ? Math.max(0, Math.min(100, Math.round((hero.current_hp / hero.max_hp) * 100))) : 0;
+                                                return (
+                                                    <div
+                                                        key={hero.id}
+                                                        className={`p-2.5 rounded border text-xs ${
+                                                            hero.is_alive
+                                                                ? 'bg-[#12141c] border-slate-700 text-slate-200'
+                                                                : 'bg-rose-950/20 border-rose-900/40 text-rose-300/80 opacity-60'
+                                                        }`}
+                                                    >
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="font-bold font-cinzel truncate">{hero.name}</span>
+                                                            <span className="text-[10px] text-slate-400">Lvl {hero.level}</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden mb-1">
+                                                            <div
+                                                                className={`h-full transition-all ${
+                                                                    hpPercent > 50 ? 'bg-emerald-500' : hpPercent > 20 ? 'bg-amber-500' : 'bg-rose-500'
+                                                                }`}
+                                                                style={{ width: `${hpPercent}%` }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex justify-between text-[10px] font-fira-sans text-slate-400">
+                                                            <span>{hero.character_class}</span>
+                                                            <span className={hero.is_alive ? 'text-white font-semibold' : 'text-rose-400 font-bold'}>
+                                                                {hero.is_alive ? `${hero.current_hp} / ${hero.max_hp} HP` : 'FALLEN'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </FantasyCard>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                         {/* Left Column (2 Cols): Party Staging & Theme */}
                         <div className="lg:col-span-2 space-y-6">
                             {/* 1. Hero Selection */}
@@ -450,8 +642,122 @@ export default function GauntletLobbyPage() {
                             </FantasyCard>
                         </div>
                     </div>
-                ) : (
-                    /* Leaderboard Tab */
+                </div>
+                )}
+
+                {/* Run History Tab */}
+                {activeTab === 'history' && (
+                    <FantasyCard className="p-6">
+                        <div className="flex items-center gap-2 pb-4 border-b border-[#c5a059]/30 mb-6">
+                            <History className="w-6 h-6 text-[#c5a059]" />
+                            <div>
+                                <h2 className="font-cinzel text-xl font-bold text-[#c5a059]">
+                                    My Gauntlet Chronicles
+                                </h2>
+                                <p className="text-xs text-slate-400 font-lora">
+                                    Historical records of your trials, cleared waves, and battlefield scores.
+                                </p>
+                            </div>
+                        </div>
+
+                        {pastRuns.length === 0 ? (
+                            <div className="text-center py-12 space-y-4">
+                                <Trophy className="w-12 h-12 text-[#c5a059]/30 mx-auto" />
+                                <p className="text-sm text-slate-400 font-lora">
+                                    No completed Gauntlet trials recorded yet.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('lobby')}
+                                    className="px-5 py-2 rounded bg-[#c5a059] text-slate-950 font-bold text-xs font-cinzel hover:brightness-110 cursor-pointer"
+                                >
+                                    Stage Your First Trial
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {pastRuns.map((run) => (
+                                    <FantasyCard key={run.id} className="p-5 space-y-4 border-slate-800 bg-[#0c0d12]/70">
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <h3 className="font-cinzel text-base font-bold text-[#c5a059]">
+                                                    {run.name}
+                                                </h3>
+                                                <span className="text-xs font-lora text-slate-400 capitalize">
+                                                    Theme: {run.theme} • Party Level {run.party_level}
+                                                </span>
+                                            </div>
+                                            <span
+                                                className={`px-2.5 py-1 rounded text-xs font-fira-sans border font-bold ${
+                                                    run.status === 'completed'
+                                                        ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                                        : 'bg-rose-950/40 text-rose-400 border-rose-500/50'
+                                                }`}
+                                            >
+                                                {run.status === 'completed' ? '🏆 Victory' : `💀 Wave ${run.current_wave} Defeat`}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-2 p-2.5 rounded bg-[#10121a] border border-slate-800 text-center font-fira-sans text-xs">
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 block uppercase">Final Score</span>
+                                                <span className="font-bold text-amber-300">{run.score.toLocaleString()}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 block uppercase">Waves Cleared</span>
+                                                <span className="font-bold text-white">{run.current_wave} / {run.max_waves}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 block uppercase">Enemies Slain</span>
+                                                <span className="font-bold text-white">{run.enemies_killed}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Snapshot Party Preview */}
+                                        {run.snapshot_heroes && run.snapshot_heroes.length > 0 && (
+                                            <div className="pt-2 border-t border-slate-800">
+                                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5 font-lora">
+                                                    Party Members
+                                                </span>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {run.snapshot_heroes.map((h) => (
+                                                        <span
+                                                            key={h.id}
+                                                            className={`text-[11px] px-2 py-0.5 rounded border font-fira-sans ${
+                                                                h.is_alive
+                                                                    ? 'bg-slate-800/80 text-slate-200 border-slate-700'
+                                                                    : 'bg-rose-950/20 text-rose-300/80 border-rose-900/40 line-through'
+                                                            }`}
+                                                        >
+                                                            {h.name} (Lvl {h.level} {h.character_class})
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Action footer */}
+                                        <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 font-fira-sans">
+                                            <span>
+                                                {run.created_at ? new Date(run.created_at).toLocaleDateString() : 'Archived'}
+                                            </span>
+                                            <Link
+                                                href="/combat"
+                                                className="text-[#c5a059] hover:underline flex items-center gap-1 font-semibold"
+                                            >
+                                                <span>War Archives</span>
+                                                <Play className="w-3 h-3 fill-current" />
+                                            </Link>
+                                        </div>
+                                    </FantasyCard>
+                                ))}
+                            </div>
+                        )}
+                    </FantasyCard>
+                )}
+
+                {/* Leaderboard Tab */}
+                {activeTab === 'leaderboard' && (
                     <FantasyCard className="p-6">
                         <div className="flex items-center gap-2 pb-4 border-b border-[#c5a059]/30 mb-6">
                             <Award className="w-6 h-6 text-[#c5a059]" />
@@ -516,6 +822,42 @@ export default function GauntletLobbyPage() {
                         )}
                     </FantasyCard>
                 )}
+
+                {/* Abandon Confirmation Dialog */}
+                <Dialog open={abandonModalOpen} onOpenChange={setAbandonModalOpen}>
+                    <DialogContent className="max-w-md bg-[#10121a] border border-rose-600/40 text-slate-100 shadow-[0_10px_35px_rgba(0,0,0,0.8)] p-6">
+                        <DialogHeader className="space-y-2">
+                            <div className="flex items-center gap-3 text-rose-400">
+                                <AlertTriangle className="w-6 h-6 shrink-0" />
+                                <DialogTitle className="font-cinzel text-xl text-rose-400">
+                                    Abandon Gauntlet Trial?
+                                </DialogTitle>
+                            </div>
+                            <DialogDescription className="font-lora text-sm text-[#d1cdb8]/85 leading-relaxed pt-2">
+                                Are you sure you wish to abandon this trial? Your progress on Wave {ongoingRun?.current_wave} will be ended and recorded in your War Archives. Snapshot heroes will be dismissed.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-800 font-lora">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setAbandonModalOpen(false)}
+                                className="w-full sm:w-auto bg-[#181a24] border-slate-700 text-[#d1cdb8] hover:bg-[#202330] hover:text-white"
+                            >
+                                Continue Trial
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleAbandonRun}
+                                disabled={abandoning}
+                                className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                            >
+                                {abandoning ? 'Abandoning...' : 'Abandon Trial'}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Battle Limit Confirmation Modal */}
                 <Dialog open={limitModalOpen} onOpenChange={setLimitModalOpen}>

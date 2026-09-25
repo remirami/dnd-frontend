@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CombatLog } from "./[id]/CombatLog";
-import { Swords, Plus, Trash2, ExternalLink, ShieldAlert, History, Play } from "lucide-react";
+import { Swords, Plus, Trash2, ExternalLink, ShieldAlert, History, Play, Trophy, FileText, Sparkles } from "lucide-react";
 import type { CombatSession } from "@/lib/types/combat";
 
 export default function CombatListPage() {
@@ -25,6 +25,7 @@ export default function CombatListPage() {
   const { user, isAuthenticated, fetchCurrentUser } = useAuthStore();
   const [sessions, setSessions] = useState<CombatSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'active' | 'history' | 'all'>('active');
 
   // Dialog state for viewing completed combat details
   const [selectedSession, setSelectedSession] = useState<CombatSession | null>(null);
@@ -268,169 +269,476 @@ export default function CombatListPage() {
           </div>
         </div>
 
-        {/* Active Encounters Section */}
-        {activeSessions.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-              <h2 className="font-cinzel-decorative text-xl font-bold text-[#c5a059] tracking-wide">
-                Active Skirmishes
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-              {activeSessions.map((session) => (
-                <div
-                  key={session.id}
-                  onClick={() => {
-                    if (session.status === "preparing") {
-                      router.push(`/combat/${session.id}/setup`);
-                    } else {
-                      router.push(`/combat/${session.id}`);
-                    }
-                  }}
-                  className="cursor-pointer group"
-                >
-                  <FantasyCard className="p-6 transition-all duration-300 group-hover:border-[#e0bc75] group-hover:shadow-[0_0_30px_rgba(197,160,89,0.3)]">
-                    <div className="flex justify-between items-start mb-3 pb-3 border-b border-[#c5a059]/20">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-fira-sans text-lg font-bold text-[#c5a059]">
-                            Encounter #{session.id}
-                          </span>
-                        </div>
-                        <span className="font-lora text-xs text-[#d1cdb8]/70 capitalize">
-                          {session.status === "preparing" ? "In Preparation" : "Battle Active"}
-                        </span>
-                      </div>
-
-                      <Badge className="bg-[#a63a3a]/20 text-[#a63a3a] border-[#a63a3a] font-fira-sans text-xs">
-                        Round {session.current_round}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-2 font-lora text-xs text-[#d1cdb8]">
-                      <div className="flex justify-between">
-                        <span className="text-[#d1cdb8]/70">Combatants:</span>
-                        <span className="font-fira-sans font-bold text-white">
-                          {session.participants?.length || 0}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between">
-                        <span className="text-[#d1cdb8]/70">Commenced:</span>
-                        <span className="font-fira-sans text-[#d1cdb8]">
-                          {session.started_at
-                            ? new Date(session.started_at).toLocaleTimeString()
-                            : "Preparing"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 pt-3 border-t border-[#c5a059]/15 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-[#c5a059] group-hover:underline flex items-center gap-1">
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>{session.status === "preparing" ? "Configure Encounter" : "Resume Battle"}</span>
-                      </span>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSession(session.id);
-                        }}
-                        className="text-[#d1cdb8]/50 hover:text-rose-400 p-1 transition-colors cursor-pointer"
-                        title="Delete Session"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </FantasyCard>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Completed Battles Section */}
-        {completedSessions.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center gap-2 mb-4">
-              <History className="w-4 h-4 text-[#c5a059]" />
-              <h2 className="font-cinzel-decorative text-xl font-bold text-[#c5a059] tracking-wide">
-                Completed Battles
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-              {completedSessions.map((session) => (
-                <div
-                  key={session.id}
-                  onClick={() => handleViewSession(session)}
-                  className="cursor-pointer group"
-                >
-                  <FantasyCard className="p-5 opacity-80 hover:opacity-100 transition-all duration-300">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-fira-sans text-base font-bold text-[#d1cdb8] group-hover:text-[#c5a059] transition-colors">
-                        Encounter #{session.id}
-                      </h3>
-                      <Badge className="bg-[#181a21] text-[#d1cdb8]/70 border-slate-700 font-fira-sans text-[10px]">
-                        Concluded
-                      </Badge>
-                    </div>
-
-                    <p className="font-lora text-xs text-[#d1cdb8]/70 mb-3">
-                      Endured {session.current_round} round{session.current_round === 1 ? "" : "s"}
-                    </p>
-
-                    <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-[11px] font-fira-sans text-[#d1cdb8]/60">
-                      <span>
-                        {session.ended_at
-                          ? new Date(session.ended_at).toLocaleDateString()
-                          : "Archived"}
-                      </span>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSession(session.id);
-                        }}
-                        className="text-[#d1cdb8]/40 hover:text-rose-400 p-1 transition-colors cursor-pointer"
-                        title="Delete Session"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </FantasyCard>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Empty State */}
-        {sessions.length === 0 && (
-          <FantasyCard className="max-w-xl mx-auto p-8 md:p-10 text-center space-y-6">
-            <div className="w-14 h-14 mx-auto rounded-full border border-[#c5a059] flex items-center justify-center text-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.2)]">
-              <Swords className="w-7 h-7" />
-            </div>
-
-            <div>
-              <h2 className="font-cinzel-decorative text-xl md:text-2xl font-bold text-[#c5a059] tracking-wider">
-                The Arena is Quiet
-              </h2>
-              <p className="font-lora text-sm text-[#d1cdb8]/80 mt-2 leading-relaxed">
-                No active encounters found. Create your first skirmish to configure initiative, add hero party members, and select monsters from the bestiary.
-              </p>
-            </div>
-
-            <button
-              onClick={() => handleCreateSession(false)}
-              className="px-6 py-2.5 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_20px_rgba(197,160,89,0.3)] inline-flex items-center gap-2 cursor-pointer font-lora"
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-8 border-b border-[#c5a059]/20 pb-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab("active")}
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-lg font-cinzel text-xs sm:text-sm font-bold tracking-wider transition-all cursor-pointer ${
+              activeTab === "active"
+                ? "bg-gradient-to-r from-[#c5a059]/25 to-[#e0bc75]/25 text-[#c5a059] border border-[#c5a059]/60 shadow-[0_0_15px_rgba(197,160,89,0.2)]"
+                : "text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a24]/50 border border-transparent"
+            }`}
+          >
+            <Swords className="w-4 h-4 text-[#c5a059]" />
+            <span>Active Skirmishes</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-fira-sans ${
+                activeTab === "active"
+                  ? "bg-[#c5a059] text-[#0c0d12] font-bold"
+                  : "bg-[#181a24] text-[#d1cdb8]/70"
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              <span>Create Your First Combat</span>
-            </button>
-          </FantasyCard>
+              {activeSessions.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-lg font-cinzel text-xs sm:text-sm font-bold tracking-wider transition-all cursor-pointer ${
+              activeTab === "history"
+                ? "bg-gradient-to-r from-[#c5a059]/25 to-[#e0bc75]/25 text-[#c5a059] border border-[#c5a059]/60 shadow-[0_0_15px_rgba(197,160,89,0.2)]"
+                : "text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a24]/50 border border-transparent"
+            }`}
+          >
+            <History className="w-4 h-4 text-[#c5a059]" />
+            <span>War Archives</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-fira-sans ${
+                activeTab === "history"
+                  ? "bg-[#c5a059] text-[#0c0d12] font-bold"
+                  : "bg-[#181a24] text-[#d1cdb8]/70"
+              }`}
+            >
+              {completedSessions.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-lg font-cinzel text-xs sm:text-sm font-bold tracking-wider transition-all cursor-pointer ${
+              activeTab === "all"
+                ? "bg-gradient-to-r from-[#c5a059]/25 to-[#e0bc75]/25 text-[#c5a059] border border-[#c5a059]/60 shadow-[0_0_15px_rgba(197,160,89,0.2)]"
+                : "text-[#d1cdb8]/60 hover:text-[#d1cdb8] hover:bg-[#181a24]/50 border border-transparent"
+            }`}
+          >
+            <span>All Encounters</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-fira-sans ${
+                activeTab === "all"
+                  ? "bg-[#c5a059] text-[#0c0d12] font-bold"
+                  : "bg-[#181a24] text-[#d1cdb8]/70"
+              }`}
+            >
+              {sessions.length}
+            </span>
+          </button>
+        </div>
+
+        {/* ACTIVE TAB CONTENT */}
+        {activeTab === "active" && (
+          <div>
+            {activeSessions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                {activeSessions.map((session) => {
+                  const isGauntlet = !!session.gauntlet_run;
+                  const gauntletInfo = session.gauntlet_run;
+                  return (
+                    <div
+                      key={session.id}
+                      onClick={() => {
+                        if (isGauntlet && gauntletInfo) {
+                          router.push(`/combat/${session.id}?gauntletRunId=${gauntletInfo.id}`);
+                        } else if (session.status === "preparing") {
+                          router.push(`/combat/${session.id}/setup`);
+                        } else {
+                          router.push(`/combat/${session.id}`);
+                        }
+                      }}
+                      className="cursor-pointer group"
+                    >
+                      <FantasyCard className="p-6 transition-all duration-300 group-hover:border-[#e0bc75] group-hover:shadow-[0_0_30px_rgba(197,160,89,0.3)]">
+                        <div className="flex justify-between items-start mb-3 pb-3 border-b border-[#c5a059]/20">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-fira-sans text-lg font-bold text-[#c5a059]">
+                                Encounter #{session.id}
+                              </span>
+                            </div>
+                            <span className="font-lora text-xs text-[#d1cdb8]/70 capitalize">
+                              {session.status === "preparing" ? "In Preparation" : "Battle Active"}
+                            </span>
+                            {isGauntlet && gauntletInfo && (
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                  <Trophy className="w-3 h-3 text-[#c5a059]" />
+                                  Gauntlet • Wave {gauntletInfo.current_wave}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <Badge className="bg-[#a63a3a]/20 text-[#a63a3a] border-[#a63a3a] font-fira-sans text-xs">
+                            Round {session.current_round}
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2 font-lora text-xs text-[#d1cdb8]">
+                          {isGauntlet && gauntletInfo && (
+                            <div className="flex justify-between text-amber-200/90 pb-1 border-b border-[#c5a059]/10">
+                              <span className="text-[#d1cdb8]/70">Trial:</span>
+                              <span className="font-semibold text-amber-300">
+                                {gauntletInfo.name} ({gauntletInfo.theme})
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between">
+                            <span className="text-[#d1cdb8]/70">Combatants:</span>
+                            <span className="font-fira-sans font-bold text-white">
+                              {session.participants?.length || 0}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="text-[#d1cdb8]/70">Commenced:</span>
+                            <span className="font-fira-sans text-[#d1cdb8]">
+                              {session.started_at
+                                ? new Date(session.started_at).toLocaleTimeString()
+                                : "Preparing"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 pt-3 border-t border-[#c5a059]/15 flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-[#c5a059] group-hover:underline flex items-center gap-1">
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span>
+                              {isGauntlet && gauntletInfo
+                                ? `Resume Gauntlet Wave ${gauntletInfo.current_wave}`
+                                : session.status === "preparing"
+                                ? "Configure Encounter"
+                                : "Resume Battle"}
+                            </span>
+                          </span>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteSession(session.id);
+                            }}
+                            className="text-[#d1cdb8]/50 hover:text-rose-400 p-1 transition-colors cursor-pointer"
+                            title="Delete Session"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </FantasyCard>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <FantasyCard className="max-w-xl mx-auto p-8 md:p-10 text-center space-y-5">
+                <div className="w-12 h-12 mx-auto rounded-full border border-[#c5a059]/50 flex items-center justify-center text-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.15)]">
+                  <Swords className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-cinzel-decorative text-lg md:text-xl font-bold text-[#c5a059]">
+                    No Active Skirmishes
+                  </h3>
+                  <p className="font-lora text-xs sm:text-sm text-[#d1cdb8]/75 mt-1 leading-relaxed">
+                    You have no tactical skirmishes currently underway. Start a new encounter below or review concluded battles in your War Archives.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => handleCreateSession(false)}
+                    className="px-5 py-2 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] inline-flex items-center gap-2 cursor-pointer font-lora"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Start New Encounter</span>
+                  </button>
+                  {completedSessions.length > 0 && (
+                    <button
+                      onClick={() => setActiveTab("history")}
+                      className="px-4 py-2 bg-[#181a24] hover:bg-[#202330] text-[#c5a059] border border-[#c5a059]/40 font-bold text-xs rounded transition-all inline-flex items-center gap-2 cursor-pointer font-lora"
+                    >
+                      <History className="w-4 h-4" />
+                      <span>View War Archives ({completedSessions.length})</span>
+                    </button>
+                  )}
+                </div>
+              </FantasyCard>
+            )}
+          </div>
+        )}
+
+        {/* HISTORY / PAST COMBATS TAB CONTENT */}
+        {activeTab === "history" && (
+          <div>
+            {completedSessions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                {completedSessions.map((session) => {
+                  const isGauntlet = !!session.gauntlet_run;
+                  const gauntletInfo = session.gauntlet_run;
+                  return (
+                    <div
+                      key={session.id}
+                      onClick={() => handleViewSession(session)}
+                      className="cursor-pointer group"
+                    >
+                      <FantasyCard className="p-5 opacity-90 hover:opacity-100 transition-all duration-300 group-hover:border-[#c5a059]/60 group-hover:shadow-[0_0_25px_rgba(197,160,89,0.2)]">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h3 className="font-fira-sans text-base font-bold text-[#d1cdb8] group-hover:text-[#c5a059] transition-colors flex items-center gap-2">
+                              <span>Encounter #{session.id}</span>
+                            </h3>
+                            {isGauntlet && gauntletInfo && (
+                              <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 mt-1">
+                                <Trophy className="w-3 h-3 text-[#c5a059]" />
+                                Gauntlet • Wave {gauntletInfo.current_wave}
+                              </span>
+                            )}
+                          </div>
+                          <Badge className="bg-[#181a21] text-[#d1cdb8]/70 border-slate-700 font-fira-sans text-[10px]">
+                            Concluded
+                          </Badge>
+                        </div>
+
+                        <div className="my-3 space-y-1.5 font-lora text-xs text-[#d1cdb8]/80">
+                          {isGauntlet && gauntletInfo && (
+                            <div className="flex justify-between text-amber-200/90 pb-1 border-b border-[#c5a059]/10">
+                              <span className="text-[#d1cdb8]/60">Trial:</span>
+                              <span className="font-semibold text-amber-300">
+                                {gauntletInfo.name} ({gauntletInfo.theme})
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between">
+                            <span className="text-[#d1cdb8]/60">Duration:</span>
+                            <span className="font-fira-sans text-white">
+                              Endured {session.current_round} round{session.current_round === 1 ? "" : "s"}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="text-[#d1cdb8]/60">Combatants:</span>
+                            <span className="font-fira-sans text-white">
+                              {session.participants?.length || 0} participants
+                            </span>
+                          </div>
+
+                          {isGauntlet && gauntletInfo && (
+                            <div className="flex justify-between text-amber-300">
+                              <span className="text-amber-300/70">Trial Score:</span>
+                              <span className="font-fira-sans font-bold">
+                                {gauntletInfo.score?.toLocaleString()} pts
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-800 flex justify-between items-center text-[11px] font-fira-sans">
+                          <span className="text-[#d1cdb8]/60">
+                            {session.ended_at
+                              ? new Date(session.ended_at).toLocaleDateString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "Archived"}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-semibold text-[#c5a059] group-hover:underline flex items-center gap-1">
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>Report</span>
+                            </span>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSession(session.id);
+                              }}
+                              className="text-[#d1cdb8]/40 hover:text-rose-400 p-1 transition-colors cursor-pointer"
+                              title="Delete Session"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </FantasyCard>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <FantasyCard className="max-w-xl mx-auto p-8 md:p-10 text-center space-y-5">
+                <div className="w-12 h-12 mx-auto rounded-full border border-[#c5a059]/50 flex items-center justify-center text-[#c5a059] shadow-[0_0_15px_rgba(197,160,89,0.15)]">
+                  <History className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-cinzel-decorative text-lg md:text-xl font-bold text-[#c5a059]">
+                    War Archives Empty
+                  </h3>
+                  <p className="font-lora text-xs sm:text-sm text-[#d1cdb8]/75 mt-1 leading-relaxed">
+                    No archived battles recorded yet. Once an encounter or Gauntlet wave finishes in victory or defeat, its full turn logs, damage rolls, and combatant telemetry will be cataloged here.
+                  </p>
+                </div>
+              </FantasyCard>
+            )}
+          </div>
+        )}
+
+        {/* ALL ENCOUNTERS TAB CONTENT */}
+        {activeTab === "all" && (
+          <div>
+            {sessions.length > 0 ? (
+              <div className="space-y-10">
+                {activeSessions.length > 0 && (
+                  <section>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <h2 className="font-cinzel-decorative text-lg font-bold text-[#c5a059]">
+                        Active Skirmishes ({activeSessions.length})
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                      {activeSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          onClick={() => {
+                            if (session.gauntlet_run) {
+                              router.push(`/combat/${session.id}?gauntletRunId=${session.gauntlet_run.id}`);
+                            } else if (session.status === "preparing") {
+                              router.push(`/combat/${session.id}/setup`);
+                            } else {
+                              router.push(`/combat/${session.id}`);
+                            }
+                          }}
+                          className="cursor-pointer group"
+                        >
+                          <FantasyCard className="p-6 transition-all duration-300 group-hover:border-[#e0bc75]">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <span className="font-fira-sans font-bold text-[#c5a059]">
+                                  Encounter #{session.id}
+                                </span>
+                                {session.gauntlet_run && (
+                                  <div className="text-[10px] uppercase font-bold text-amber-300">
+                                    Gauntlet Wave {session.gauntlet_run.current_wave}
+                                  </div>
+                                )}
+                              </div>
+                              <Badge className="bg-[#a63a3a]/20 text-[#a63a3a] border-[#a63a3a] text-xs">
+                                Round {session.current_round}
+                              </Badge>
+                            </div>
+                            <div className="mt-4 pt-3 border-t border-[#c5a059]/15 flex items-center justify-between text-xs text-[#c5a059]">
+                              <span className="flex items-center gap-1 font-semibold group-hover:underline">
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                                {session.gauntlet_run ? "Resume Wave" : "Resume Battle"}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSession(session.id);
+                                }}
+                                className="text-[#d1cdb8]/50 hover:text-rose-400 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </FantasyCard>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {completedSessions.length > 0 && (
+                  <section>
+                    <div className="flex items-center gap-2 mb-4">
+                      <History className="w-4 h-4 text-[#c5a059]" />
+                      <h2 className="font-cinzel-decorative text-lg font-bold text-[#c5a059]">
+                        War Archives ({completedSessions.length})
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                      {completedSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          onClick={() => handleViewSession(session)}
+                          className="cursor-pointer group"
+                        >
+                          <FantasyCard className="p-5 opacity-85 hover:opacity-100">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <span className="font-fira-sans font-bold text-[#d1cdb8] group-hover:text-[#c5a059]">
+                                  Encounter #{session.id}
+                                </span>
+                                {session.gauntlet_run && (
+                                  <div className="text-[10px] uppercase font-bold text-amber-300">
+                                    Gauntlet Wave {session.gauntlet_run.current_wave}
+                                  </div>
+                                )}
+                              </div>
+                              <Badge className="bg-[#181a21] text-[#d1cdb8]/70 border-slate-700 text-[10px]">
+                                Concluded
+                              </Badge>
+                            </div>
+                            <p className="font-lora text-xs text-[#d1cdb8]/70 mb-3">
+                              Endured {session.current_round} round{session.current_round === 1 ? "" : "s"}
+                            </p>
+                            <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-[11px]">
+                              <span className="text-[#c5a059] flex items-center gap-1 group-hover:underline">
+                                <FileText className="w-3 h-3" /> Report
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSession(session.id);
+                                }}
+                                className="text-[#d1cdb8]/40 hover:text-rose-400 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </FantasyCard>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+            ) : (
+              <FantasyCard className="max-w-xl mx-auto p-8 md:p-10 text-center space-y-6">
+                <div className="w-14 h-14 mx-auto rounded-full border border-[#c5a059] flex items-center justify-center text-[#c5a059]">
+                  <Swords className="w-7 h-7" />
+                </div>
+                <div>
+                  <h2 className="font-cinzel-decorative text-xl md:text-2xl font-bold text-[#c5a059]">
+                    The Arena is Quiet
+                  </h2>
+                  <p className="font-lora text-sm text-[#d1cdb8]/80 mt-2">
+                    No encounters found. Create your first skirmish to configure initiative and engage in tactical battle.
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleCreateSession(false)}
+                  className="px-6 py-2.5 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs rounded transition-all inline-flex items-center gap-2 cursor-pointer font-lora"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create Your First Combat</span>
+                </button>
+              </FantasyCard>
+            )}
+          </div>
         )}
 
         {/* Battle Detail Modal */}

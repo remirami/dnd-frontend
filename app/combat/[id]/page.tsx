@@ -34,7 +34,9 @@ export default function CombatPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionId = Number(params.id);
-    const gauntletRunId = searchParams?.get('gauntletRunId') ? Number(searchParams.get('gauntletRunId')) : null;
+    const initialGauntletRunId = searchParams?.get('gauntletRunId') ? Number(searchParams.get('gauntletRunId')) : null;
+    const [activeGauntletRunId, setActiveGauntletRunId] = useState<number | null>(initialGauntletRunId);
+    const gauntletRunId = activeGauntletRunId;
     const { isAuthenticated } = useAuthStore();
     const [session, setSession] = useState<CombatSession | null>(null);
     const [loading, setLoading] = useState(true);
@@ -259,6 +261,9 @@ export default function CombatPage() {
                 return;
             }
             setSession(response.data);
+            if (!activeGauntletRunId && response.data.gauntlet_run?.id) {
+                setActiveGauntletRunId(response.data.gauntlet_run.id);
+            }
             if (response.data.participants) {
                 checkCombatOutcome(response.data.participants);
             }

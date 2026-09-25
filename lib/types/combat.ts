@@ -282,6 +282,16 @@ export interface CombatSession {
     actions?: CombatAction[];
     current_participant?: CombatParticipant;
     status?: string;
+    gauntlet_run?: {
+        id: number;
+        name: string;
+        theme: string;
+        current_wave: number;
+        max_waves: number;
+        status: string;
+        score: number;
+        is_endless?: boolean;
+    } | null;
 }
 
 export interface CombatLogEntry {

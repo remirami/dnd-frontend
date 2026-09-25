@@ -66,4 +66,8 @@ export const gauntletApi = {
     // Get top high scores
     getLeaderboard: () =>
         apiClient.get<GauntletRun[]>('/gauntlet/leaderboard/'),
+
+    // Abandon in-progress Gauntlet run
+    abandonRun: (id: number) =>
+        apiClient.post<{ message: string; run: GauntletRun }>(`/gauntlet/${id}/abandon/`),
 };
