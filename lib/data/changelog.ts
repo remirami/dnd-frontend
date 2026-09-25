@@ -17,14 +17,81 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.9.0";
+export const CURRENT_VERSION = "v1.10.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.10.0",
+        date: "September 25, 2026",
+        title: "Tactical Combat Overhaul, Gauntlet Run Persistence & Class Weapon Arsenals",
+        tag: "Latest",
+        summary: "Activated the Combat Arena as a core homepage pillar and added universal header navigation. Enabled seamless resumption and lifecycle tracking for active Gauntlet runs alongside War Archives. Upgraded character creation with class proficiency-filtered starting weapon arsenals and polished the combat interface with draggable clash cards and streamlined HUD capsules.",
+        items: [
+            {
+                id: "1.10.0-1",
+                title: "🏛️ Combat Arena Discovery & Universal Header Navigation",
+                description: "Unlocked the Combat Arena as a primary pillar on the home portal and introduced persistent top-level navigation.",
+                category: "ui",
+                details: [
+                    "Activated the middle homepage pillar as 'Combat Arena' with crossed-swords heraldry, providing direct access to tactical skirmishes.",
+                    "Added global header links for Characters, Combat Arena, and The Gauntlet with active-page indicators across desktop and mobile.",
+                    "Mobile menu integration: Access any major game mode directly from the mobile navigation drawer."
+                ]
+            },
+            {
+                id: "1.10.0-2",
+                title: "🔄 Gauntlet Run Persistence & Trial Resumption",
+                description: "Never lose progress in an ongoing Gauntlet run when navigating away or exiting the arena.",
+                category: "feature",
+                details: [
+                    "Hero Banner: An 'Ongoing Trial in Progress' card in the Gauntlet lobby displays wave progress, current score, rounds endured, and snapshot hero vitality.",
+                    "1-Click Wave Resumption: Return straight into the active battle or respite intermission with full Gauntlet telemetry and HUD sync.",
+                    "Trial Abandonment: Cleanly conclude in-progress trials with a safety confirmation dialog.",
+                    "Run History Tab: Dedicated archives tracking past victories, wave defeats, final scores, and snapshot party rosters."
+                ]
+            },
+            {
+                id: "1.10.0-3",
+                title: "📜 Combat Arena Tabs & War Archives",
+                description: "Segmented the Combat Arena list into focused tabs for active skirmishes and historical battle records.",
+                category: "combat",
+                details: [
+                    "Three-tab layout: Switch smoothly between Active Skirmishes, War Archives, and All Encounters.",
+                    "Gauntlet Wave Badges: Skirmishes tied to Gauntlet runs feature distinct gold wave badges and trial details.",
+                    "After-Action Reports: Concluded battles include round-by-round combat logs, participant filtering, and damage roll telemetry.",
+                    "Empty states tailored to each tab with quick action buttons."
+                ]
+            },
+            {
+                id: "1.10.0-4",
+                title: "⚔️ 5E Starting Weapon Arsenal Selector",
+                description: "Replaced rigid starting gear defaults with an interactive weapon arsenal picker during character creation.",
+                category: "character",
+                details: [
+                    "Class Proficiency Filtering: Dynamically lists all Simple and Martial weapons permitted by the character's class.",
+                    "Weapon Stat Cards: View damage dice, damage type, properties (Finesse, Versatile, Heavy, Light, Reach), and weights.",
+                    "Dual-Weapon & Shield Loadouts: Configure primary weapon, secondary weapon, or defensive shield pairings.",
+                    "Backend Inventory Integration: Auto-equips chosen weapons and adds them directly to the character's active inventory."
+                ]
+            },
+            {
+                id: "1.10.0-5",
+                title: "🎯 Combat Arena Modernization & Draggable Clash Card",
+                description: "Streamlined the tactical battle interface for clearer battlefield communication and minimized clutter.",
+                category: "ui",
+                details: [
+                    "Draggable Clash Card: Move and reposition the combatant duel card anywhere on the battlefield with smooth pointer tracking and an instant reset button.",
+                    "Centered Gauntlet HUD Capsule: Centered area name, active enemy count, and score badge directly in the primary battle header.",
+                    "Categorized Action Dock: Organized attack, spell, maneuver, and movement capabilities into intuitive expandable trays."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.9.0",
         date: "September 23, 2026",
         title: "The Gauntlet Arena, 5E Turn Skipping & Cloud Realm Launch",
-        tag: "Latest",
+        tag: "Major",
         summary: "Introduced Pillar 1: The Gauntlet procedural wave survival arena with snapshot heroes and inter-wave respite boons. Resolved combat initiative to automatically skip fallen/unconscious combatants while preserving 5E healing revival mechanics. Launched the entire realm live to the internet on Neon PostgreSQL, Vercel, and Render.",
         items: [
             {
