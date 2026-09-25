@@ -17,7 +17,12 @@ import EquipmentSelectionStep from "./steps/EquipmentSelectionStep";
 import SpellSelectionStep from "./steps/SpellSelectionStep";
 import ReviewStep from "./steps/ReviewStep";
 
-import { getRecommendedWeapons } from "@/lib/data/weaponProficiencies";
+import {
+    getRecommendedWeapons,
+    rollRandomWeaponLoadout,
+    isWeaponProficient,
+    type WeaponItem,
+} from "@/lib/data/weaponProficiencies";
 
 export interface CharacterFormData {
     // Basic Info
@@ -138,7 +143,17 @@ export default function CharacterCreationWizard() {
                 ruleset_version: formData.ruleset_version
             });
             const data = res.data;
-            const recWeapons = getRecommendedWeapons(data.character_class_name);
+            let weaponLoadout = getRecommendedWeapons(data.character_class_name);
+            try {
+                const weaponsRes = await api.get('/weapons/');
+                const weapons = weaponsRes.data?.results || weaponsRes.data || [];
+                if (Array.isArray(weapons) && weapons.length > 0) {
+                    weaponLoadout = rollRandomWeaponLoadout(data.character_class_name, weapons);
+                }
+            } catch (wErr) {
+                console.warn("Could not fetch weapons for randomize all:", wErr);
+            }
+
             setFormData({
                 name: data.name || "",
                 ruleset_version: data.ruleset_version || "2014",
@@ -160,9 +175,9 @@ export default function CharacterCreationWizard() {
                 charisma: data.charisma ?? 10,
                 hp_method: data.hp_method || "fixed",
                 equipment_selections: data.equipment_selections || {},
-                primary_weapon: recWeapons.primary,
-                secondary_weapon: recWeapons.secondary,
-                include_shield: recWeapons.includeShield,
+                primary_weapon: weaponLoadout.primary,
+                secondary_weapon: weaponLoadout.secondary,
+                include_shield: weaponLoadout.includeShield,
                 cantrip_ids: data.cantrip_ids || [],
                 spell_ids: data.spell_ids || [],
                 language_ids: data.language_ids || [],
@@ -296,7 +311,7 @@ export default function CharacterCreationWizard() {
                     let bgASI: Record<string, number> = {};
                     if (formData.ruleset_version === '2024' && formData.background_id) {
                         try {
-                            const bgRes = await api.get(`/character-backgrounds/${formData.background_id}/`);
+                            const bgRes = await api.get(`/character-backgrounds/${formData.background_id}/?ruleset=${formData.ruleset_version || '2024'}`);
                             const bg = bgRes.data;
                             const options: string[] = (bg.ability_score_options || '').split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
                             if (options.length >= 2) {
@@ -341,8 +356,12 @@ export default function CharacterCreationWizard() {
                         break;
                     }
 
-                    const equipRes = await api.get(`/characters/starting_equipment_choices/?class_name=${clsName}`);
+                    const [equipRes, weaponsRes] = await Promise.all([
+                        api.get(`/characters/starting_equipment_choices/?class_name=${clsName}`),
+                        api.get('/weapons/'),
+                    ]);
                     const choices = equipRes.data?.choices || [];
+                    const weapons: WeaponItem[] = weaponsRes.data?.results || weaponsRes.data || [];
 
                     const newSelections: Record<string, string> = {};
                     for (const choice of choices) {
@@ -354,18 +373,30 @@ export default function CharacterCreationWizard() {
                             const randOpt = options[Math.floor(Math.random() * options.length)];
                             const choiceNum = choice.choice_number.toString();
                             newSelections[choiceNum] = randOpt.label;
+
+                            if (randOpt.additional_choice) {
+                                const count = randOpt.additional_choice.count || 1;
+                                const profWeapons = weapons.filter((w) => isWeaponProficient(clsName!, w));
+                                for (let i = 0; i < count; i++) {
+                                    if (profWeapons.length > 0) {
+                                        const subW = profWeapons[Math.floor(Math.random() * profWeapons.length)];
+                                        newSelections[`${choiceNum}_sub_${i}`] = subW.name;
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    const recWeapons = getRecommendedWeapons(clsName);
+                    const weaponLoadout = rollRandomWeaponLoadout(clsName, weapons);
                     updateFormData({
-                        primary_weapon: recWeapons.primary,
-                        secondary_weapon: recWeapons.secondary,
-                        include_shield: recWeapons.includeShield,
+                        primary_weapon: weaponLoadout.primary,
+                        secondary_weapon: weaponLoadout.secondary,
+                        include_shield: weaponLoadout.includeShield,
                         equipment_selections: newSelections,
                     });
                     break;
                 }
+
                 case 6: {
                     // Step 6: Spells Selection
                     let clsName = formData.character_class_name;

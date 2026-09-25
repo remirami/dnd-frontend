@@ -222,9 +222,12 @@ export interface CombatParticipant {
     reckless_attack_active?: boolean;
     has_reckless_attack?: boolean;
     is_fighter?: boolean;
+    has_action_surge?: boolean;
     second_wind_used?: boolean;
     action_surge_used?: boolean;
     action_surge_available?: boolean;
+    character_level?: number;
+    level?: number;
     is_rogue?: boolean;
     cunning_action_available?: boolean;
     feature_uses?: Record<string, any>;

@@ -1,24 +1,36 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import CharacterCreationWizard from "./CharacterCreationWizard";
 
-import { Suspense } from "react";
-
 export default function CreateCharacterPage() {
     const router = useRouter();
     const { isAuthenticated } = useAuthStore();
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        if (!isAuthenticated) {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (mounted && !isAuthenticated) {
             router.push("/login");
         }
-    }, [isAuthenticated, router]);
+    }, [mounted, isAuthenticated, router]);
+
+    if (!mounted) {
+        return (
+            <div className="min-h-screen bg-[#0c0d12] flex flex-col items-center justify-center space-y-4">
+                <div className="w-8 h-8 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+                <p className="font-lora text-sm text-[#d1cdb8]/70 italic">Preparing Character Creation Forge...</p>
+            </div>
+        );
+    }
 
     if (!isAuthenticated) {
-        return null; // Or a loading spinner
+        return null;
     }
 
     return (
@@ -34,3 +46,4 @@ export default function CreateCharacterPage() {
         </Suspense>
     );
 }
+

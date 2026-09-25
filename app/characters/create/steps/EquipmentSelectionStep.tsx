@@ -12,6 +12,8 @@ import {
     hasShieldProficiency,
     getRecommendedWeapons,
     normalizeClassName,
+    isTwoHandedWeapon,
+    rollRandomWeaponLoadout,
 } from "@/lib/data/weaponProficiencies";
 
 interface EquipmentChoice {
@@ -147,6 +149,29 @@ export default function EquipmentSelectionStep({
         return allWeapons.find((w) => w.name.toLowerCase() === (formData.secondary_weapon || "").toLowerCase());
     }, [allWeapons, formData.secondary_weapon]);
 
+    // Check if currently selected primary weapon is two-handed
+    const isPrimaryTwoHanded = useMemo(() => {
+        return isTwoHandedWeapon(selectedPrimaryObj);
+    }, [selectedPrimaryObj]);
+
+    // Auto-uncheck shield if primary weapon is two-handed
+    useEffect(() => {
+        if (isPrimaryTwoHanded && formData.include_shield) {
+            updateFormData({ include_shield: false });
+        }
+    }, [isPrimaryTwoHanded, formData.include_shield, updateFormData]);
+
+    // Quick randomize starting weapons arsenal
+    const handleRandomizeWeapons = () => {
+        if (proficientWeapons.length === 0) return;
+        const loadout = rollRandomWeaponLoadout(className, proficientWeapons);
+        updateFormData({
+            primary_weapon: loadout.primary,
+            secondary_weapon: loadout.secondary,
+            include_shield: loadout.includeShield,
+        });
+    };
+
     // Non-weapon equipment choices (e.g. Armor, Packs, Focus, Instruments)
     const nonWeaponChoices = useMemo(() => {
         if (!equipmentData?.choices) return [];
@@ -267,24 +292,6 @@ export default function EquipmentSelectionStep({
                             </span>
                         </p>
                     </div>
-                    {canUseShield && (
-                        <div className="flex items-center gap-2 bg-[#0c0d12]/70 border border-[#c5a059]/30 px-3 py-1.5 rounded-lg">
-                            <input
-                                type="checkbox"
-                                id="include-shield-toggle"
-                                checked={Boolean(formData.include_shield)}
-                                onChange={(e) => updateFormData({ include_shield: e.target.checked })}
-                                className="w-4 h-4 rounded border-[#c5a059]/60 text-[#c5a059] focus:ring-[#c5a059]/30 bg-[#181a21] cursor-pointer"
-                            />
-                            <label
-                                htmlFor="include-shield-toggle"
-                                className="text-xs text-[#d1cdb8] font-semibold cursor-pointer flex items-center gap-1.5"
-                            >
-                                <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>Equip Shield (+2 AC)</span>
-                            </label>
-                        </div>
-                    )}
                 </div>
 
                 {equipmentData && equipmentData.default_items && equipmentData.default_items.length > 0 && (
@@ -315,9 +322,20 @@ export default function EquipmentSelectionStep({
                             Starting Weapons Arsenal
                         </h4>
                     </div>
-                    <span className="text-[11px] text-slate-400">
-                        {proficientWeapons.length} proficient weapons available
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                        <span className="text-[11px] text-slate-400 hidden sm:inline">
+                            {proficientWeapons.length} proficient weapons
+                        </span>
+                        <button
+                            type="button"
+                            onClick={handleRandomizeWeapons}
+                            className="px-2.5 py-1 rounded bg-[#181a26] hover:bg-[#c5a059]/15 border border-[#c5a059]/40 text-[#c5a059] text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-[#c5a059]"
+                            title="Roll a random proficient starting weapon loadout"
+                        >
+                            <Dices className="w-3.5 h-3.5 text-[#c5a059]" />
+                            <span>Roll Random Weapons</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Weapons Slots Grid */}
@@ -502,6 +520,87 @@ export default function EquipmentSelectionStep({
                         )}
                     </div>
                 </div>
+
+                {/* Off-Hand / Shield Defense Section */}
+                {canUseShield ? (
+                    <div
+                        className={`p-3.5 rounded-lg border transition-all ${
+                            formData.include_shield && !isPrimaryTwoHanded
+                                ? "bg-[#0f1d16] border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
+                                : isPrimaryTwoHanded
+                                ? "bg-[#11131a] border-slate-800/80 opacity-70"
+                                : "bg-[#161822] border-[#c5a059]/25 hover:border-[#c5a059]/40"
+                        }`}
+                    >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                                <div
+                                    className={`p-2 rounded-lg border shrink-0 mt-0.5 ${
+                                        formData.include_shield && !isPrimaryTwoHanded
+                                            ? "bg-emerald-950/60 border-emerald-500/60 text-emerald-400"
+                                            : isPrimaryTwoHanded
+                                            ? "bg-slate-900 border-slate-800 text-slate-600"
+                                            : "bg-[#181a21] border-[#c5a059]/30 text-[#c5a059]"
+                                    }`}
+                                >
+                                    <Shield className="w-5 h-5" />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-xs font-bold font-cinzel uppercase tracking-wider text-slate-200">
+                                            Off-Hand Shield (+2 AC)
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold font-fira-sans bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
+                                            +2 AC Bonus
+                                        </span>
+                                        {isPrimaryTwoHanded && (
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold font-fira-sans bg-rose-950/60 border border-rose-500/40 text-rose-300">
+                                                Two-Handed Conflict
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-300 leading-relaxed font-lora">
+                                        {isPrimaryTwoHanded
+                                            ? `Cannot equip a shield: Your primary weapon (${formData.primary_weapon}) requires two hands to wield. Under 5E rules, wielding a two-handed weapon leaves no free hand to hold a shield.`
+                                            : "Equipping a shield occupies your off-hand and grants a +2 bonus to your Armor Class (AC). Any secondary weapon you carry will be stowed as a backup."}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <label
+                                className={`flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg border select-none transition-all shrink-0 cursor-pointer ${
+                                    isPrimaryTwoHanded
+                                        ? "opacity-50 cursor-not-allowed border-slate-800 bg-slate-900/60 text-slate-500"
+                                        : formData.include_shield
+                                        ? "bg-emerald-950/40 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                                        : "bg-[#181a21] border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/10"
+                                }`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="include-shield-toggle"
+                                    disabled={isPrimaryTwoHanded}
+                                    checked={Boolean(formData.include_shield) && !isPrimaryTwoHanded}
+                                    onChange={(e) => updateFormData({ include_shield: e.target.checked })}
+                                    className="w-4 h-4 rounded border-[#c5a059]/60 text-emerald-500 focus:ring-emerald-500/30 bg-[#181a21] cursor-pointer disabled:cursor-not-allowed"
+                                />
+                                <span className="text-xs font-bold font-cinzel">
+                                    {formData.include_shield && !isPrimaryTwoHanded ? "Shield Equipped" : "Equip Shield"}
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-3 rounded-lg border border-slate-800 bg-[#0d0e14] flex items-center justify-between text-xs text-slate-400">
+                        <div className="flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-slate-500 shrink-0" />
+                            <span>
+                                <strong className="text-slate-300">{className}</strong> is not proficient with shields. (Equipping a shield without proficiency imposes disadvantage on Strength/Dexterity checks and attacks, and blocks spellcasting).
+                            </span>
+                        </div>
+                        <span className="text-[10px] uppercase font-semibold text-slate-500 shrink-0 ml-2">No Shield Proficiency</span>
+                    </div>
+                )}
             </div>
 
             {/* REMAINING NON-WEAPON EQUIPMENT CHOICES (Armor, Packs, Tools) */}

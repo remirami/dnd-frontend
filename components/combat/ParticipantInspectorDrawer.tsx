@@ -230,7 +230,7 @@ export function ParticipantInspectorDrawer({
                                     </span>
                                 </div>
                             )}
-                            {participant.action_surge_available != null && (
+                            {(participant.has_action_surge || (participant.action_surge_available != null && (participant.character_level || participant.level || 1) >= 2)) && (
                                 <div className="px-3 py-2 rounded bg-[#181a24] border border-[#c5a059]/20 flex items-center justify-between">
                                     <span className="text-[#e0bc75] font-semibold">⚡ Action Surge</span>
                                     <span className={`font-fira-sans font-bold ${participant.action_surge_available ? 'text-amber-400' : 'text-slate-500'}`}>

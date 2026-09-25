@@ -820,8 +820,11 @@ export default function CombatPage() {
         try {
             await combatApi.end(sessionId);
             router.push("/combat");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to end combat:", error);
+            if (error?.response?.status === 400) {
+                router.push("/combat");
+            }
         }
     };
 
@@ -1216,14 +1219,25 @@ export default function CombatPage() {
                         </p>
                         <div className="flex gap-3 pt-2">
                             <Button
-                                onClick={() => router.push('/combat')}
+                                onClick={async () => {
+                                    try {
+                                        await combatApi.end(sessionId);
+                                    } catch (e) {
+                                        // Ignore if already ended
+                                    }
+                                    router.push('/combat');
+                                }}
                                 className="flex-1 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] border border-[#c5a059]/40 h-11 text-xs font-semibold rounded cursor-pointer"
                             >
                                 Back to Arena
                             </Button>
                             <Button
                                 onClick={async () => {
-                                    await combatApi.end(sessionId);
+                                    try {
+                                        await combatApi.end(sessionId);
+                                    } catch (e) {
+                                        // Ignore if already ended
+                                    }
                                     router.push('/combat');
                                 }}
                                 className={`flex-1 h-11 font-bold text-xs uppercase tracking-wider rounded cursor-pointer ${combatOutcome === 'victory'

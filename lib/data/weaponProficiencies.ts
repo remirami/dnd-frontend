@@ -120,6 +120,141 @@ export function isWeaponProficient(className: string, weapon: WeaponItem): boole
 }
 
 /**
+ * Checks if a weapon requires two hands
+ */
+export function isTwoHandedWeapon(weapon?: WeaponItem | null): boolean {
+    if (!weapon) return false;
+    if (weapon.two_handed) return true;
+    if (weapon.properties && Array.isArray(weapon.properties)) {
+        return weapon.properties.some((p) => p.name.toLowerCase().includes('two-handed'));
+    }
+    return false;
+}
+
+export interface WeaponLoadout {
+    primary: string;
+    secondary?: string;
+    includeShield: boolean;
+}
+
+/**
+ * Dynamically rolls a randomized starting weapon loadout compliant with 5E rules
+ */
+export function rollRandomWeaponLoadout(
+    className?: string | null,
+    weapons: WeaponItem[] = []
+): WeaponLoadout {
+    const norm = normalizeClassName(className);
+    const proficient = weapons.filter((w) => isWeaponProficient(norm, w));
+
+    if (!proficient.length) {
+        const rec = getRecommendedWeapons(norm);
+        return {
+            primary: rec.primary,
+            secondary: rec.secondary,
+            includeShield: Boolean(rec.includeShield && hasShieldProficiency(norm)),
+        };
+    }
+
+    // Exclude raw ammunition from weapon selection
+    const ammoNames = ['crossbow bolt', 'arrow', 'sling bullet', 'blowgun needle'];
+    const validWeapons = proficient.filter((w) => !ammoNames.includes(w.name.toLowerCase()));
+
+    const isRanged = (w: WeaponItem) => (w.weapon_type || '').includes('ranged');
+    const isThrown = (w: WeaponItem) => Boolean(w.thrown);
+    const isMelee = (w: WeaponItem) => (w.weapon_type || '').includes('melee');
+
+    const meleePool = validWeapons.filter(isMelee);
+    const rangedPool = validWeapons.filter((w) => isRanged(w) || isThrown(w));
+    const pureRangedPool = validWeapons.filter(isRanged);
+
+    // Classes with strong affinity for ranged primary weapons
+    const rangedFavoredClasses = ['ranger', 'rogue'];
+    const wantsRangedPrimary =
+        pureRangedPool.length > 0 &&
+        (rangedFavoredClasses.includes(norm) ? Math.random() < 0.65 : Math.random() < 0.25);
+
+    let primary: WeaponItem;
+    if (wantsRangedPrimary && pureRangedPool.length > 0) {
+        primary = pureRangedPool[Math.floor(Math.random() * pureRangedPool.length)];
+    } else if (meleePool.length > 0) {
+        primary = meleePool[Math.floor(Math.random() * meleePool.length)];
+    } else {
+        primary = validWeapons[Math.floor(Math.random() * validWeapons.length)];
+    }
+
+    const primaryTwoHanded = isTwoHandedWeapon(primary);
+    const canShield = hasShieldProficiency(norm);
+
+    let includeShield = false;
+    let secondary: string | undefined = undefined;
+
+    if (primaryTwoHanded) {
+        // Two-handed weapons (e.g. Greatsword, Longbow, Greataxe) occupy both hands -> no shield
+        includeShield = false;
+
+        if (isRanged(primary)) {
+            // Primary is ranged (e.g. Longbow, Heavy Crossbow) -> Secondary is melee sidearm
+            const meleeBackups = meleePool.filter((w) => !isTwoHandedWeapon(w) && w.name !== primary.name);
+            const pool = meleeBackups.length > 0 ? meleeBackups : validWeapons.filter((w) => w.name !== primary.name);
+            if (pool.length > 0) {
+                secondary = pool[Math.floor(Math.random() * pool.length)].name;
+            }
+        } else {
+            // Primary is two-handed melee (e.g. Greatsword, Greataxe) -> Secondary is ranged/thrown backup
+            const rangedBackups = rangedPool.filter((w) => w.name !== primary.name);
+            const pool = rangedBackups.length > 0 ? rangedBackups : validWeapons.filter((w) => w.name !== primary.name);
+            if (pool.length > 0) {
+                secondary = pool[Math.floor(Math.random() * pool.length)].name;
+            }
+        }
+    } else {
+        // One-handed or versatile primary weapon
+        if (canShield && Math.random() < 0.55) {
+            // 55% chance to wield a shield in off-hand
+            includeShield = true;
+            // With shield equipped, secondary weapon is a ranged or thrown backup
+            const rangedBackups = rangedPool.filter((w) => w.name !== primary.name);
+            const pool = rangedBackups.length > 0 ? rangedBackups : validWeapons.filter((w) => w.name !== primary.name);
+            if (pool.length > 0) {
+                secondary = pool[Math.floor(Math.random() * pool.length)].name;
+            }
+        } else {
+            // No shield
+            includeShield = false;
+
+            if (isRanged(primary)) {
+                // Primary is 1H ranged (e.g. Hand Crossbow, Sling) -> Secondary is melee
+                const meleeBackups = meleePool.filter((w) => w.name !== primary.name);
+                const pool = meleeBackups.length > 0 ? meleeBackups : validWeapons.filter((w) => w.name !== primary.name);
+                if (pool.length > 0) {
+                    secondary = pool[Math.floor(Math.random() * pool.length)].name;
+                }
+            } else {
+                // Primary is 1H melee -> 65% chance of ranged backup, 35% chance of off-hand light melee (dual-wield)
+                const lightMelee = meleePool.filter((w) => w.light && w.name !== primary.name);
+                if (lightMelee.length > 0 && Math.random() < 0.35) {
+                    secondary = lightMelee[Math.floor(Math.random() * lightMelee.length)].name;
+                } else {
+                    const rangedBackups = rangedPool.filter((w) => w.name !== primary.name);
+                    const pool = rangedBackups.length > 0 ? rangedBackups : validWeapons.filter((w) => w.name !== primary.name);
+                    if (pool.length > 0) {
+                        secondary = pool[Math.floor(Math.random() * pool.length)].name;
+                    }
+                }
+            }
+        }
+    }
+
+    return {
+        primary: primary.name,
+        secondary,
+        includeShield,
+    };
+}
+
+
+/**
  * Checks if class is proficient with shields
  */
 export function hasShieldProficiency(className?: string | null): boolean {

@@ -291,8 +291,10 @@ export function ActionDock({
     const recklessActive = !!currentParticipant?.reckless_attack_active;
     const canReckless = !!currentParticipant?.has_reckless_attack || (isBarbarian && (charData?.level || 1) >= 2);
 
+    const fighterLevel = charData?.level || currentParticipant?.character?.level || currentParticipant?.character_level || currentParticipant?.level || 1;
+    const hasActionSurge = !!currentParticipant?.has_action_surge || (isFighter && fighterLevel >= 2);
     const actionSurgeUsed = !!currentParticipant?.action_surge_used || !!currentParticipant?.feature_uses?.action_surge_used;
-    const canActionSurge = isFighter && (currentParticipant?.action_surge_available ?? (!actionSurgeUsed && (charData?.level || 1) >= 2));
+    const actionSurgeAvailable = currentParticipant?.action_surge_available ?? (!actionSurgeUsed && hasActionSurge);
     const secondWindUsed = !!currentParticipant?.second_wind_used || !!currentParticipant?.feature_uses?.second_wind_used;
 
     const canCunningAction = isRogue && ((charData?.level || 1) >= 2 || !!currentParticipant?.cunning_action_available);
@@ -341,7 +343,7 @@ export function ActionDock({
     const firstEnemyAttack = currentParticipant?.enemy_actions?.[0] || enemyAttacks?.[0];
 
     const totalSpellCount = Array.from(characterSpells.values()).reduce((sum, list) => sum + list.length, 0);
-    const totalFeatureCount = (isBarbarian ? 2 : 0) + (isFighter ? 2 : 0) + (isPaladin ? 1 : 0) + (isRogue ? 1 : 0) + characterFeats.length + (charFeatures.length || 0);
+    const totalFeatureCount = (isBarbarian ? (canReckless ? 2 : 1) : 0) + (isFighter ? (hasActionSurge ? 2 : 1) : 0) + (isPaladin ? 1 : 0) + (canCunningAction ? 1 : 0) + characterFeats.length + (charFeatures.length || 0);
 
     const getAttackOptions = (isMelee: boolean = true) => {
         if (openDrawer === 'test' && !gauntletRunId && dmOverrideMode !== 'auto') {
@@ -895,7 +897,7 @@ export function ActionDock({
                                 )}
 
                                 {/* Fighter: Action Surge */}
-                                {isFighter && (
+                                {hasActionSurge && (
                                     <div className={`p-3 rounded-lg border transition-all flex flex-col justify-between gap-2 ${
                                         !actionSurgeUsed
                                             ? 'bg-[#181a24] border-yellow-500/40 hover:border-yellow-400/60 shadow-[0_0_12px_rgba(234,179,8,0.12)]'
