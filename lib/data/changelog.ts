@@ -17,14 +17,69 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.11.0";
+export const CURRENT_VERSION = "v1.12.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.12.0",
+        date: "September 26, 2026",
+        title: "5E Active Buff System, Battle Grid Tactical Auras & Eldritch Targeting Correction",
+        tag: "Latest",
+        summary: "Implemented full D&D 5E mechanical enforcement and tactical visual indicators for positive buff spells. Buffs like Protection from Evil and Good, Shield of Faith, Bless, Mage Armor, Haste, and Heroism now actively modify Armor Class, attack rolls, and saving throws, while granting creature-type protections (Disadvantage on attacks from undead/fiends and charm/fear immunity). Buffed combatants now radiate a shimmering emerald tactical aura ring and star badge on the battle grid.",
+        items: [
+            {
+                id: "1.12.0-1",
+                title: "🛡️ 5E Active Buff Mechanics & Dynamic Stat Calculations",
+                description: "Positive spells cast on allies or self now impart authentic 5E rule mechanics directly to combat statistics.",
+                category: "combat",
+                details: [
+                    "Protection from Evil & Good: Undead, fiends, aberrations, celestials, elementals, and fey suffer Disadvantage on attack rolls against the buffed target. Target is also immune to charmed and frightened conditions.",
+                    "Shield of Faith: Bestows a direct +2 bonus to Armor Class (AC), dynamically factored into calculate_effective_ac().",
+                    "Bless: Adds +1d4 to all attack rolls and saving throws made by the blessed target.",
+                    "Mage Armor: Recomputes base unarmored AC to 13 + Dexterity modifier.",
+                    "Haste: Doubles walking speed, grants +2 AC, and gives Advantage on Dexterity saving throws.",
+                    "Barkskin: Guarantees a minimum Armor Class of 16 regardless of worn armor.",
+                    "Heroism: Grants immunity to frightened and provides starting-turn resilience."
+                ]
+            },
+            {
+                id: "1.12.0-2",
+                title: "✨ Battle Grid Tactical Auras & Shimmering Badges",
+                description: "Visual cues now clearly communicate which combatants have protective wards and divine enhancements.",
+                category: "ui",
+                details: [
+                    "Tactical Emerald Aura: Buffed allies radiate an emerald glowing ring on the battle grid for instant battlefield awareness.",
+                    "Shimmering Star Badge: Active buffs render a floating ✨ icon on the token with a tooltip detailing all active enhancements.",
+                    "Clash Card & HUD Integration: Buffs are categorized with dedicated golden/cyan styling and 5E rules tooltips instead of debuff styling."
+                ]
+            },
+            {
+                id: "1.12.0-3",
+                title: "🧠 Comprehensive Concentration Lifecycle Management",
+                description: "Concentration-dependent buffs are strictly tracked to their caster.",
+                category: "combat",
+                details: [
+                    "Automated Cleanup: When a caster takes damage and fails their DC concentration check, falls unconscious (0 HP), casts another concentration spell, or voluntarily drops concentration, all linked buffs on allies immediately expire.",
+                    "Multi-Target Tracking: Handles concentration buffs cast across individual or grouped targets without manual removal."
+                ]
+            },
+            {
+                id: "1.12.0-4",
+                title: "🎯 Eldritch Blast Single-Target Targeting Fix",
+                description: "Corrected Eldritch Blast spatial profile from an erroneous 20-ft blast sphere to authentic single-target ray aiming.",
+                category: "fix",
+                details: [
+                    "Removed erroneous AoE sphere configuration from Eldritch Blast in the action dock and targeting engine.",
+                    "Restored single-target ranged spell attack flow with standard range check and cover calculations."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.11.0",
         date: "September 26, 2026",
         title: "Universal 5E AoE Spell Grid Targeting & Persistent Environmental Effects",
-        tag: "Latest",
+        tag: "Major",
         summary: "Implemented centralized 5E Area of Effect (AoE) grid targeting across all 69 database spells spanning cantrips through 9th level. Enhanced the tactical battle grid with authentic 5E cone polygons, thematic radiant/necrotic/toxic/web/psychic/force shaders, and persistent battlefield environmental obstacles for Web, Darkness, Spike Growth, Sleet Storm, Entangle, Cloudkill, Stinking Cloud, Grease, and Fog Cloud.",
         items: [
             {
