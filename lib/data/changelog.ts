@@ -37,9 +37,11 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
                     "Shield of Faith: Bestows a direct +2 bonus to Armor Class (AC), dynamically factored into calculate_effective_ac().",
                     "Bless: Adds +1d4 to all attack rolls and saving throws made by the blessed target.",
                     "Mage Armor: Recomputes base unarmored AC to 13 + Dexterity modifier.",
-                    "Haste: Doubles walking speed, grants +2 AC, and gives Advantage on Dexterity saving throws.",
-                    "Barkskin: Guarantees a minimum Armor Class of 16 regardless of worn armor.",
-                    "Heroism: Grants immunity to frightened and provides starting-turn resilience."
+                    "Shield: Grants +5 bonus to AC until the start of next turn and provides complete immunity to Magic Missile.",
+                    "Blur: Attack rolls against the blurred caster suffer Disadvantage.",
+                    "Mirror Image: Generates 3 illusory duplicates to misdirect incoming attacks.",
+                    "False Life & Armor of Agathys: Bestows temporary hit points with cold retaliation damage.",
+                    "Self-Cast Auto-Targeting: Opening the spell modal for self-buffs automatically selects Allies & Self and targets the caster without needing manual selection."
                 ]
             },
             {

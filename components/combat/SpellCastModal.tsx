@@ -166,8 +166,25 @@ function SpellCastModalContent({
     const isMultiMissile = spellNameLower === "magic missile";
     const totalDarts = 3 + Math.max(0, selectedLevel - 1);
 
+    const isBuffSpell = useMemo(() => {
+        const clean = spellNameLower.trim();
+        const buffList = [
+            "mage armor", "shield", "shield of faith", "bless", "haste", "heroism", "barkskin",
+            "protection from evil and good", "protection from undead", "protect from undead",
+            "protect from evil and good", "guidance", "resistance", "invisibility",
+            "blur", "mirror image", "false life", "armor of agathys", "expeditious retreat", "fire shield"
+        ];
+        return buffList.includes(clean);
+    }, [spellNameLower]);
+
+    const isSelfSpell = useMemo(() => {
+        const clean = spellNameLower.trim();
+        const selfList = ["shield", "blur", "mirror image", "false life", "expeditious retreat", "fire shield", "armor of agathys", "blink"];
+        return selfList.includes(clean) || (mechanics.range?.toLowerCase().startsWith("self") && !mechanics.range?.toLowerCase().includes("("));
+    }, [spellNameLower, mechanics.range]);
+
     const [targetType, setTargetType] = useState<"enemies" | "allies">(
-        isHealingSpell ? "allies" : "enemies"
+        (isHealingSpell || isBuffSpell || isSelfSpell) ? "allies" : "enemies"
     );
 
     // Target arrays
@@ -176,8 +193,8 @@ function SpellCastModalContent({
     const displayedParticipants = targetType === "enemies" ? enemyParticipants : allyParticipants;
 
     const [selectedTargetId, setSelectedTargetId] = useState<number | null>(() => {
-        if (isHealingSpell) {
-            return caster.id; // healing defaults to caster self
+        if (isHealingSpell || isSelfSpell || (isBuffSpell && !initialTargetId)) {
+            return caster.id; // healing / self / buff defaults to caster self
         }
         if (initialTargetId) {
             return parseInt(initialTargetId);

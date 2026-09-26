@@ -337,6 +337,86 @@ export const CONDITIONS_REGISTRY: Record<string, ConditionData> = {
         ],
         severity: 'buff',
     },
+    shield: {
+        name: 'Shield',
+        icon: '🛡️',
+        header: '✦ SHIELD ✦',
+        description: 'An invisible barrier of magical force appears and protects you.',
+        rules: [
+            "+5 bonus to Armor Class (AC) until the start of your next turn",
+            "Negates all damage from Magic Missile",
+            "Casting time: 1 Reaction",
+        ],
+        severity: 'buff',
+    },
+    blur: {
+        name: 'Blur',
+        icon: '🌫️',
+        header: '✦ BLUR ✦',
+        description: 'Your body becomes blurred, shifting and wavering to all who can see you.',
+        rules: [
+            "Any creature has Disadvantage on attack rolls against you",
+            "Requires caster concentration (up to 1 minute)",
+        ],
+        severity: 'buff',
+    },
+    'mirror image': {
+        name: 'Mirror Image',
+        icon: '👥',
+        header: '✦ MIRROR IMAGE ✦',
+        description: 'Three illusory duplicates of yourself appear in your space.',
+        rules: [
+            "Attacks targeting you may hit an illusory duplicate instead",
+            "Does not require concentration (lasts 1 minute)",
+        ],
+        severity: 'buff',
+    },
+    'false life': {
+        name: 'False Life',
+        icon: '🩸',
+        header: '✦ FALSE LIFE ✦',
+        description: 'Bolstering yourself with a necromantic facsimile of life.',
+        rules: [
+            "Gain temporary hit points (1d4 + 4)",
+            "Lasts 1 hour without concentration",
+        ],
+        severity: 'buff',
+    },
+    'armor of agathys': {
+        name: 'Armor of Agathys',
+        icon: '❄️',
+        header: '✦ ARMOR OF AGATHYS ✦',
+        description: 'A protective magical force surrounds you, manifested as a spectral frost.',
+        rules: [
+            "Gain 5 temporary hit points",
+            "Melee attackers take 5 cold damage when hitting you while temp HP persists",
+            "Lasts 1 hour without concentration",
+        ],
+        severity: 'buff',
+    },
+    'expeditious retreat': {
+        name: 'Expeditious Retreat',
+        icon: '🏃',
+        header: '✦ EXPEDITIOUS RETREAT ✦',
+        description: 'Allows taking the Dash action as a bonus action each turn.',
+        rules: [
+            "Take the Dash action as a bonus action",
+            "Requires caster concentration (up to 10 minutes)",
+        ],
+        severity: 'buff',
+    },
+    'fire shield': {
+        name: 'Fire Shield',
+        icon: '🔥',
+        header: '✦ FIRE SHIELD ✦',
+        description: 'Thin and wispy flames wreathe your body, harming melee attackers.',
+        rules: [
+            "Melee attackers within 5 feet take 2d8 fire or cold damage",
+            "Grants resistance to cold or fire damage",
+            "Lasts 10 minutes without concentration",
+        ],
+        severity: 'buff',
+    },
 };
 
 export function getConditionData(nameOrObj: string | { name?: string; description?: string; is_buff?: boolean } | null | undefined): ConditionData {
