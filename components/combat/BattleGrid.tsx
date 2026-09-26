@@ -569,15 +569,43 @@ export function BattleGrid({
         return feat?.blocksMovement ?? false;
     }, [terrainMap]);
 
-    // Hostile enemy positions that block path traversal
+    // Living creature positions (moving through another creature's space counts as difficult terrain in 5e)
+    const otherCreatureCells = useMemo(() => {
+        const set = new Set<string>();
+        allParticipants.forEach((p) => {
+            if (p.id !== currentParticipant?.id && p.is_active && p.current_hp > 0) {
+                const coords = resolveParticipantCoords(p, allParticipants);
+                set.add(`${coords.col},${coords.row}`);
+            }
+        });
+        return set;
+    }, [allParticipants, currentParticipant]);
+
+    // Hostile enemy positions that block path traversal (respecting Halfling Nimbleness)
     const hostileBlockedCells = useMemo(() => {
         const set = new Set<string>();
+        const hasNimbleness = Boolean(
+            (currentParticipant as any)?.has_halfling_nimbleness ||
+            (currentParticipant as any)?.race_name?.includes('halfling') ||
+            (currentParticipant?.character?.race as any)?.name?.toLowerCase()?.includes('halfling') ||
+            currentParticipant?.character?.features?.some(f => f.name.toLowerCase().includes('nimbleness'))
+        );
+
         activeEnemies.forEach((e) => {
             const coords = resolveParticipantCoords(e, allParticipants);
+            if (hasNimbleness) {
+                // Halfling Nimbleness: Can move through space of creature of size larger than yours
+                // Halflings are Small (S). Medium (M), Large (L), Huge (H), Gargantuan (G) are larger.
+                const eSize = (e as any)?.size || (e as any)?.enemy_stats?.size || 'M';
+                const eSizeInitial = String(eSize).trim().toUpperCase().charAt(0);
+                if (['M', 'L', 'H', 'G'].includes(eSizeInitial)) {
+                    return; // Nimble Halfling can move through this space!
+                }
+            }
             set.add(`${coords.col},${coords.row}`);
         });
         return set;
-    }, [activeEnemies, allParticipants]);
+    }, [activeEnemies, allParticipants, currentParticipant]);
 
     // Tile-by-tile Dijkstra pathfinding (respects 10 ft / difficult square, solid blocks, enemies)
     const movementCostMap = useMemo(() => {
@@ -616,11 +644,12 @@ export function BattleGrid({
                     }
                 }
 
-                // Living hostile creatures block passage through their square
+                // Living hostile creatures block passage through their square (unless Halfling Nimbleness applies)
                 if (hostileBlockedCells.has(`${ncol},${nrow}`)) continue;
 
-                // 5e difficult terrain costs 10 ft per 5-ft square
-                const stepCost = isCellDifficult(ncol, nrow) ? 10 : 5;
+                // 5e difficult terrain costs 10 ft per 5-ft square (including traversing another creature's cell)
+                const isDifficult = isCellDifficult(ncol, nrow) || otherCreatureCells.has(`${ncol},${nrow}`);
+                const stepCost = isDifficult ? 10 : 5;
                 const newCost = current.cost + stepCost;
 
                 const nKey = `${ncol},${nrow}`;

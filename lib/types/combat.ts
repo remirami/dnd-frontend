@@ -133,6 +133,8 @@ export interface CharacterData {
     proficiency_bonus: number;
     character_class?: { id: number; name: string } | null;
     class_name?: string;
+    race?: { id: number; name: string; size?: string } | null;
+    race_name?: string;
     stats: CharacterStats;
     character_items: CharacterItem[];
     spells: CharacterSpell[];
@@ -231,6 +233,17 @@ export interface CombatParticipant {
     level?: number;
     is_rogue?: boolean;
     cunning_action_available?: boolean;
+    size?: string;
+    race_name?: string;
+    has_lucky_trait?: boolean;
+    has_halfling_nimbleness?: boolean;
+    has_relentless_endurance?: boolean;
+    relentless_endurance_used?: boolean;
+    has_fey_ancestry?: boolean;
+    has_brave_trait?: boolean;
+    has_gnome_cunning?: boolean;
+    has_dwarven_resilience?: boolean;
+    has_hellish_resistance?: boolean;
     feature_uses?: Record<string, any>;
     death_save_status?: {
         successes: number;
