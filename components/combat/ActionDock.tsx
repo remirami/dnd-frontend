@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CombatParticipant, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
+import { isAoESpell, getAoESpellConfig } from "@/lib/data/spellAoE";
 
 interface ActionDockProps {
     currentParticipant?: CombatParticipant | null;
@@ -584,57 +585,27 @@ export function ActionDock({
                                                     {spells.map((spell) => {
                                                         const noSlots = slots !== null && slots.remaining <= 0;
                                                         const disabled = !hasAttacksLeft || currentIsIncapacitated || isAttacking || (noSlots && !spell.is_ritual);
-                                                        const isAoE = /burning hands|thunderwave|shatter|sleep|fireball|lightning bolt|acid splash|grease|cone of cold|fog cloud/i.test(spell.name);
+                                                        const spellRange = spell.range || spell.spell_details?.range;
+                                                        const spellDesc = spell.description || spell.spell_details?.description;
+                                                        const isAoE = isAoESpell(spell.name, spellDesc, spellRange);
+                                                        const aoeConfig = getAoESpellConfig(spell.name, spellDesc, spellRange);
 
                                                         const handleAoECastDefault = () => {
-                                                            if (isAoE && onStartAoETargeting) {
-                                                                const nameLower = spell.name.toLowerCase();
-                                                                const shape = (
-                                                                    nameLower.includes("cone of cold") || nameLower.includes("burning hands") ? "cone" :
-                                                                    nameLower.includes("lightning bolt") ? "line" :
-                                                                    nameLower.includes("thunderwave") || nameLower.includes("grease") ? "cube" : "sphere"
-                                                                ) as "sphere" | "cube" | "cone" | "line";
-                                                                const size = (
-                                                                    nameLower.includes("cone of cold") ? 60 :
-                                                                    nameLower.includes("burning hands") ? 15 :
-                                                                    nameLower.includes("lightning bolt") ? 100 :
-                                                                    nameLower.includes("thunderwave") ? 15 :
-                                                                    nameLower.includes("grease") ? 10 :
-                                                                    nameLower.includes("shatter") ? 10 :
-                                                                    nameLower.includes("fog cloud") ? 20 :
-                                                                    nameLower.includes("acid splash") ? 5 : 20
-                                                                );
-                                                                const saveType = (
-                                                                    nameLower.includes("thunderwave") || nameLower.includes("shatter") ? "CON" : "DEX"
-                                                                ) as "DEX" | "CON" | "WIS" | "STR" | "INT" | "CHA";
-                                                                const damageFormula = (
-                                                                    nameLower.includes("burning hands") ? "3d6" :
-                                                                    nameLower.includes("thunderwave") ? "2d8" :
-                                                                    nameLower.includes("shatter") ? "3d8" :
-                                                                    nameLower.includes("fireball") ? "8d6" :
-                                                                    nameLower.includes("lightning bolt") ? "8d6" :
-                                                                    nameLower.includes("acid splash") ? "1d6" :
-                                                                    nameLower.includes("sleep") ? "5d8" :
-                                                                    nameLower.includes("cone of cold") ? "8d8" : undefined
-                                                                );
-                                                                const damageType = (
-                                                                    nameLower.includes("burning hands") || nameLower.includes("fireball") ? "fire" :
-                                                                    nameLower.includes("thunderwave") || nameLower.includes("shatter") ? "thunder" :
-                                                                    nameLower.includes("lightning bolt") ? "lightning" :
-                                                                    nameLower.includes("acid splash") ? "acid" :
-                                                                    nameLower.includes("cone of cold") ? "cold" : undefined
-                                                                );
+                                                            if (isAoE && onStartAoETargeting && aoeConfig) {
                                                                 onStartAoETargeting({
                                                                     spell,
                                                                     spellLevel: spell.level ?? (level || 1),
-                                                                    shape,
-                                                                    size,
-                                                                    saveType,
+                                                                    shape: aoeConfig.shape,
+                                                                    size: aoeConfig.size,
+                                                                    saveType: aoeConfig.saveType,
                                                                     saveDc: charData?.stats?.spell_save_dc || 13,
-                                                                    damageFormula: damageFormula || "",
-                                                                    damageType,
-                                                                    halfOnSave: !nameLower.includes("acid splash"),
-                                                                    castingTime: "1 action",
+                                                                    damageFormula: aoeConfig.damageFormula || "",
+                                                                    damageType: aoeConfig.damageType,
+                                                                    halfOnSave: aoeConfig.halfOnSave ?? true,
+                                                                    isHealing: aoeConfig.isHealing,
+                                                                    requiresConcentration: aoeConfig.requiresConcentration,
+                                                                    isBonusAction: aoeConfig.isBonusAction,
+                                                                    castingTime: aoeConfig.castingTime || "1 action",
                                                                 });
                                                                 setOpenDrawer(null);
                                                             } else if (onSelectSpell) {
@@ -659,7 +630,7 @@ export function ActionDock({
                                                                     type="button"
                                                                     onClick={handleAoECastDefault}
                                                                     disabled={disabled}
-                                                                    title={isAoE ? "Aim on Grid (Default)" : "Cast Spell"}
+                                                                    title={isAoE ? `Aim ${aoeConfig?.shape.toUpperCase() || 'AoE'} (${aoeConfig?.size || 20} ft) on Grid` : "Cast Spell"}
                                                                     className={`flex-1 text-left flex items-center gap-2 min-w-0 ${
                                                                         disabled ? 'cursor-not-allowed' : 'cursor-pointer'
                                                                     }`}
@@ -672,7 +643,7 @@ export function ActionDock({
                                                                         <div className="flex items-center gap-1.5 mt-0.5">
                                                                             {isAoE && (
                                                                                 <span className="text-[9px] px-1 rounded bg-cyan-950/90 border border-cyan-500/70 text-cyan-300 font-cinzel font-bold">
-                                                                                    Aim on Grid
+                                                                                    {aoeConfig ? `${aoeConfig.shape.toUpperCase()} ${aoeConfig.size}FT` : "Aim on Grid"}
                                                                                 </span>
                                                                             )}
                                                                             {spell.is_ritual && (

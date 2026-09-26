@@ -226,14 +226,56 @@ function getAoETheme(spellName: string, damageType?: string) {
             badge: "🧈 Slick Grease",
         };
     }
-    if (dt.includes("fire") || name.includes("fire") || name.includes("burning")) {
+    if (name.includes("web") || name.includes("entangle") || name.includes("spike growth") || name.includes("plant growth") || name.includes("thorns")) {
+        return {
+            aura: "bg-lime-900/45 border-2 border-lime-400 shadow-[0_0_15px_rgba(132,204,22,0.6)]",
+            svgColor: "#84cc16",
+            badge: "🕸️ Web & Briars",
+        };
+    }
+    if (dt.includes("radiant") || name.includes("moonbeam") || name.includes("sunbeam") || name.includes("sunburst") || name.includes("daylight") || name.includes("holy")) {
+        return {
+            aura: "bg-amber-400/35 border-2 border-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.6)]",
+            svgColor: "#fbbf24",
+            badge: "✨ Radiant Holy Area",
+        };
+    }
+    if (dt.includes("necrotic") || name.includes("darkness") || name.includes("shadow") || name.includes("circle of death") || name.includes("hadar")) {
+        return {
+            aura: "bg-purple-950/70 border-2 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.7)]",
+            svgColor: "#a855f7",
+            badge: "💀 Necrotic Void",
+        };
+    }
+    if (dt.includes("poison") || dt.includes("acid") || name.includes("poison") || name.includes("acid") || name.includes("stinking")) {
+        return {
+            aura: "bg-emerald-600/35 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.6)]",
+            svgColor: "#10b981",
+            badge: "🧪 Toxic Area",
+        };
+    }
+    if (dt.includes("psychic") || name.includes("mind") || name.includes("hypnotic") || name.includes("fear") || name.includes("confusion") || name.includes("weird") || name.includes("calm emotions") || name.includes("slow")) {
+        return {
+            aura: "bg-pink-600/35 border-2 border-pink-400 shadow-[0_0_18px_rgba(236,72,153,0.6)]",
+            svgColor: "#ec4899",
+            badge: "🧠 Psychic Mind Blast",
+        };
+    }
+    if (dt.includes("force") || name.includes("force") || name.includes("resilient") || name.includes("forcecage")) {
+        return {
+            aura: "bg-indigo-600/35 border-2 border-indigo-400 shadow-[0_0_18px_rgba(99,102,241,0.6)]",
+            svgColor: "#6366f1",
+            badge: "🛡️ Kinetic Force",
+        };
+    }
+    if (dt.includes("fire") || name.includes("fire") || name.includes("burning") || name.includes("flame")) {
         return {
             aura: "bg-orange-600/35 border-2 border-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)]",
             svgColor: "#f97316",
             badge: "🔥 Fire Area",
         };
     }
-    if (dt.includes("cold") || name.includes("cold") || name.includes("ice") || name.includes("frost")) {
+    if (dt.includes("cold") || name.includes("cold") || name.includes("ice") || name.includes("frost") || name.includes("sleet")) {
         return {
             aura: "bg-cyan-600/35 border-2 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]",
             svgColor: "#06b6d4",
@@ -898,12 +940,28 @@ export function BattleGrid({
                                     tileCost <= dashPotential;
 
                                 const isGreasedTile = environmentalEffects?.some(eff => 
-                                    eff.is_active !== false && eff.effect_type === 'terrain' && eff.cover_area_x != null && eff.cover_area_y != null &&
+                                    eff.is_active !== false && eff.effect_type === 'terrain' && eff.terrain_type === 'mud' && eff.cover_area_x != null && eff.cover_area_y != null &&
                                     Math.max(Math.abs(tileX - eff.cover_area_x), Math.abs(tileY - eff.cover_area_y)) <= (eff.cover_area_radius ?? 5)
                                 );
                                 const isFoggedTile = environmentalEffects?.some(eff => 
                                     eff.is_active !== false && eff.effect_type === 'weather' && eff.lighting_area_x != null && eff.lighting_area_y != null &&
                                     Math.hypot(tileX - eff.lighting_area_x, tileY - eff.lighting_area_y) <= ((eff.lighting_area_radius ?? 20) + 1.0)
+                                );
+                                const isWebbedTile = environmentalEffects?.some(eff =>
+                                    eff.is_active !== false && eff.effect_type === 'terrain' && (eff.description?.toLowerCase().includes('web') || eff.terrain_type === 'thick_vegetation') && eff.cover_area_x != null && eff.cover_area_y != null &&
+                                    Math.max(Math.abs(tileX - eff.cover_area_x), Math.abs(tileY - eff.cover_area_y)) <= (eff.cover_area_radius ?? 10)
+                                );
+                                const isDarknessTile = environmentalEffects?.some(eff =>
+                                    eff.is_active !== false && eff.effect_type === 'lighting' && (eff.lighting_type === 'darkness' || eff.lighting_type === 'magical_darkness') && eff.lighting_area_x != null && eff.lighting_area_y != null &&
+                                    Math.hypot(tileX - eff.lighting_area_x, tileY - eff.lighting_area_y) <= ((eff.lighting_area_radius ?? 15) + 1.0)
+                                );
+                                const isSpikeGrowthTile = environmentalEffects?.some(eff =>
+                                    eff.is_active !== false && eff.effect_type === 'terrain' && eff.description?.toLowerCase().includes('spike') && eff.cover_area_x != null && eff.cover_area_y != null &&
+                                    Math.hypot(tileX - eff.cover_area_x, tileY - eff.cover_area_y) <= ((eff.cover_area_radius ?? 20) + 1.0)
+                                );
+                                const isToxicGasTile = environmentalEffects?.some(eff =>
+                                    eff.is_active !== false && eff.effect_type === 'hazard' && eff.hazard_type === 'poison_gas' && eff.hazard_area_x != null && eff.hazard_area_y != null &&
+                                    Math.hypot(tileX - eff.hazard_area_x, tileY - eff.hazard_area_y) <= ((eff.hazard_area_radius ?? 20) + 1.0)
                                 );
 
                                 const distFromCur = getChebyshevDist(curX, curY, tileX, tileY);
@@ -939,8 +997,16 @@ export function BattleGrid({
                                                     : "bg-amber-950/20 border-2 border-amber-700/30 hover:bg-amber-900/30"
                                                 : isSolidTerrain
                                                 ? "bg-[#0b0c10] border-2 border-slate-700/80 shadow-inner"
+                                                : isDarknessTile
+                                                ? "bg-black/95 border-2 border-purple-900/70 shadow-[inset_0_0_12px_rgba(88,28,135,0.6)]"
                                                 : isGreasedTile
                                                 ? "bg-[#25180e]/90 border-2 border-amber-600/50 shadow-[inset_0_0_8px_rgba(217,119,6,0.3)] hover:border-amber-400"
+                                                : isWebbedTile
+                                                ? "bg-[#182414]/90 border-2 border-lime-700/50 shadow-[inset_0_0_8px_rgba(132,204,22,0.3)] hover:border-lime-400"
+                                                : isSpikeGrowthTile
+                                                ? "bg-[#241a12]/90 border-2 border-emerald-800/50 shadow-[inset_0_0_8px_rgba(16,185,129,0.3)]"
+                                                : isToxicGasTile
+                                                ? "bg-[#0d2218]/90 border-2 border-emerald-600/50 shadow-[inset_0_0_8px_rgba(16,185,129,0.3)]"
                                                 : isFoggedTile
                                                 ? "bg-[#1e2330]/85 border-2 border-slate-400/40 backdrop-blur-[1px] hover:border-slate-300"
                                                 : terrain?.cover === "half"
@@ -1100,8 +1166,16 @@ export function BattleGrid({
                                             </div>
                                         )}
 
-                                        {/* Environmental Ground Markers (Grease, Fog Cloud) */}
-                                        {!occupant && !terrain && isGreasedTile && (
+                                        {/* Environmental Ground Markers */}
+                                        {!occupant && !terrain && isDarknessTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs leading-none filter drop-shadow">🌑</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-purple-300 bg-purple-950/90 px-0.5 rounded-sm mt-0.5 border border-purple-700/60 leading-tight">
+                                                    Darkness
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!occupant && !terrain && !isDarknessTile && isGreasedTile && (
                                             <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
                                                 <span className="text-xs leading-none filter drop-shadow">🧈</span>
                                                 <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-amber-300 bg-amber-950/90 px-0.5 rounded-sm mt-0.5 border border-amber-700/60 leading-tight">
@@ -1109,7 +1183,31 @@ export function BattleGrid({
                                                 </span>
                                             </div>
                                         )}
-                                        {!occupant && !terrain && !isGreasedTile && isFoggedTile && (
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && isWebbedTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs leading-none filter drop-shadow">🕸️</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-lime-300 bg-lime-950/90 px-0.5 rounded-sm mt-0.5 border border-lime-700/60 leading-tight">
+                                                    Web
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isWebbedTile && isSpikeGrowthTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs leading-none filter drop-shadow">🌵</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-emerald-300 bg-emerald-950/90 px-0.5 rounded-sm mt-0.5 border border-emerald-700/60 leading-tight">
+                                                    Spikes
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isWebbedTile && !isSpikeGrowthTile && isToxicGasTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs leading-none filter drop-shadow">☠️</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-emerald-300 bg-emerald-950/90 px-0.5 rounded-sm mt-0.5 border border-emerald-700/60 leading-tight">
+                                                    Toxic
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isWebbedTile && !isSpikeGrowthTile && !isToxicGasTile && isFoggedTile && (
                                             <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none opacity-80">
                                                 <span className="text-xs leading-none filter drop-shadow">🌫️</span>
                                                 <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-slate-300 bg-slate-900/90 px-0.5 rounded-sm mt-0.5 border border-slate-700 leading-tight">
@@ -1119,7 +1217,7 @@ export function BattleGrid({
                                         )}
 
                                         {/* Empty Reachable Indicator Pip */}
-                                        {!occupant && !terrain && !isGreasedTile && !isFoggedTile && isReachable && (
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isWebbedTile && !isSpikeGrowthTile && !isToxicGasTile && !isFoggedTile && isReachable && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shadow-[0_0_6px_rgba(34,211,238,0.7)]" />
                                         )}
 
@@ -1243,19 +1341,51 @@ export function BattleGrid({
                                     />
                                 )}
 
-                                {/* Cone AoE Vector */}
-                                {aoeTargeting.shape === "cone" && (
-                                    <line
-                                        x1={`${((curCol + 0.5) / COLS) * 100}%`}
-                                        y1={`${((curRow + 0.5) / ROWS) * 100}%`}
-                                        x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
-                                        y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                        stroke={aoeTheme.svgColor}
-                                        strokeWidth="3"
-                                        strokeDasharray="4 2"
-                                        strokeLinecap="round"
-                                    />
-                                )}
+                                {/* Cone AoE Vector & Polygon */}
+                                {aoeTargeting.shape === "cone" && (() => {
+                                    const hCol = Math.round(hoveredCell.x / 5);
+                                    const hRow = Math.round(hoveredCell.y / 5);
+                                    const dx = (hCol - curCol);
+                                    const dy = (hRow - curRow);
+                                    const dist = Math.hypot(dx, dy);
+                                    if (dist <= 0) return null;
+                                    const theta = Math.atan2(dy, dx);
+                                    const rSquares = aoeTargeting.size / 5;
+                                    const halfAngle = 0.4636; // ~26.56 deg (5e standard: cone width = distance)
+                                    const cLeft = curCol + 0.5 + rSquares * Math.cos(theta - halfAngle);
+                                    const rLeft = curRow + 0.5 + rSquares * Math.sin(theta - halfAngle);
+                                    const cRight = curCol + 0.5 + rSquares * Math.cos(theta + halfAngle);
+                                    const rRight = curRow + 0.5 + rSquares * Math.sin(theta + halfAngle);
+                                    const cCenter = curCol + 0.5 + rSquares * Math.cos(theta);
+                                    const rCenter = curRow + 0.5 + rSquares * Math.sin(theta);
+                                    const pOrigin = `${((curCol + 0.5) / COLS) * 100}%,${((curRow + 0.5) / ROWS) * 100}%`;
+                                    const pLeft = `${(cLeft / COLS) * 100}%,${(rLeft / ROWS) * 100}%`;
+                                    const pCenter = `${(cCenter / COLS) * 100}%,${(rCenter / ROWS) * 100}%`;
+                                    const pRight = `${(cRight / COLS) * 100}%,${(rRight / ROWS) * 100}%`;
+
+                                    return (
+                                        <>
+                                            <polygon
+                                                points={`${pOrigin} ${pLeft} ${pCenter} ${pRight}`}
+                                                fill="url(#aoeBlastGrad)"
+                                                stroke={aoeTheme.svgColor}
+                                                strokeWidth="2"
+                                                strokeDasharray="6 4"
+                                                className="animate-pulse"
+                                            />
+                                            <line
+                                                x1={`${((curCol + 0.5) / COLS) * 100}%`}
+                                                y1={`${((curRow + 0.5) / ROWS) * 100}%`}
+                                                x2={`${((hCol + 0.5) / COLS) * 100}%`}
+                                                y2={`${((hRow + 0.5) / ROWS) * 100}%`}
+                                                stroke={aoeTheme.svgColor}
+                                                strokeWidth="2"
+                                                strokeDasharray="3 2"
+                                                strokeLinecap="round"
+                                            />
+                                        </>
+                                    );
+                                })()}
                             </svg>
                         )}
 

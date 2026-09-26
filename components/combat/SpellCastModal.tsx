@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
 import type { CombatParticipant, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
+import { isAoESpell, getAoESpellConfig } from "@/lib/data/spellAoE";
 
 interface SpellMechanic {
     saveType?: "DEX" | "CON" | "WIS" | "STR" | "INT" | "CHA";
@@ -155,9 +156,12 @@ function SpellCastModalContent({
     const [isRitual, setIsRitual] = useState<boolean>(false);
 
     // Target selection state
-    const isHealingSpell = !!mechanics.isHealing;
-    const isAoE = !!mechanics.isAoE;
-    const isBonusAction = !!mechanics.isBonusAction || (mechanics.castingTime?.toLowerCase().includes("bonus") ?? false);
+    const aoeDef = useMemo(() => {
+        return getAoESpellConfig(spell.name, (spell as any).description, mechanics.range);
+    }, [spell.name, (spell as any).description, mechanics.range]);
+    const isHealingSpell = !!mechanics.isHealing || !!aoeDef?.isHealing;
+    const isAoE = !!mechanics.isAoE || isAoESpell(spell.name, (spell as any).description, mechanics.range);
+    const isBonusAction = !!mechanics.isBonusAction || !!aoeDef?.isBonusAction || (mechanics.castingTime?.toLowerCase().includes("bonus") ?? false);
     const isMultiMissile = spellNameLower === "magic missile";
     const totalDarts = 3 + Math.max(0, selectedLevel - 1);
 
@@ -794,43 +798,33 @@ function SpellCastModalContent({
                                 type="button"
                                 disabled={!hasSlotsRemaining || isCasting}
                                 onClick={() => {
-                                    const rangeStr = (mechanics.range || "").toLowerCase();
-                                    const shape = (
-                                        rangeStr.includes("cone") ? "cone" :
-                                        rangeStr.includes("line") ? "line" :
-                                        (rangeStr.includes("cube") || rangeStr.includes("square")) ? "cube" : "sphere"
+                                    const shape = aoeDef?.shape || (
+                                        (mechanics.range || "").toLowerCase().includes("cone") ? "cone" :
+                                        (mechanics.range || "").toLowerCase().includes("line") ? "line" :
+                                        ((mechanics.range || "").toLowerCase().includes("cube") || (mechanics.range || "").toLowerCase().includes("square")) ? "cube" : "sphere"
                                     );
-                                    const size = (
-                                        spellNameLower.includes("cone of cold") ? 60 :
-                                        spellNameLower.includes("burning hands") ? 15 :
-                                        spellNameLower.includes("lightning bolt") ? 100 :
-                                        spellNameLower.includes("thunderwave") ? 15 :
-                                        spellNameLower.includes("grease") ? 10 :
-                                        spellNameLower.includes("shatter") ? 10 :
-                                        spellNameLower.includes("fog cloud") ? 20 :
-                                        spellNameLower.includes("acid splash") ? 5 : 20
-                                    );
+                                    const size = aoeDef?.size || 20;
                                     onStartAoETargeting({
                                         spell,
                                         spellLevel: selectedLevel,
                                         shape,
                                         size,
-                                        saveType: mechanics.saveType,
+                                        saveType: mechanics.saveType || aoeDef?.saveType,
                                         saveDc: spellSaveDc,
-                                        damageFormula: computedFormula,
-                                        damageType: mechanics.damageType,
-                                        isHealing: mechanics.isHealing,
-                                        halfOnSave: mechanics.halfOnSave ?? true,
-                                        requiresConcentration: mechanics.requiresConcentration,
+                                        damageFormula: computedFormula || aoeDef?.damageFormula || "",
+                                        damageType: mechanics.damageType || aoeDef?.damageType,
+                                        isHealing: isHealingSpell,
+                                        halfOnSave: mechanics.halfOnSave ?? aoeDef?.halfOnSave ?? true,
+                                        requiresConcentration: mechanics.requiresConcentration || aoeDef?.requiresConcentration,
                                         isBonusAction: isBonusAction,
-                                        castingTime: mechanics.castingTime,
+                                        castingTime: mechanics.castingTime || aoeDef?.castingTime,
                                     });
                                     onClose();
                                 }}
                                 className="h-9 px-4 font-cinzel font-bold text-xs uppercase tracking-wider rounded bg-cyan-600 hover:bg-cyan-500 border border-cyan-400 text-white shadow-[0_0_18px_rgba(6,182,212,0.5)] cursor-pointer flex items-center gap-1.5 transition-all"
                             >
                                 <span>🎯</span>
-                                <span>Aim on Grid (Default)</span>
+                                <span>Aim {aoeDef?.shape.toUpperCase() || 'AoE'} ({aoeDef?.size || 20} FT) on Grid</span>
                             </Button>
                         )}
 

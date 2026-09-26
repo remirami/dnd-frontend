@@ -122,6 +122,7 @@ export interface CharacterSpell {
     is_prepared: boolean;
     is_ritual: boolean;
     description?: string | null;
+    range?: string | null;
     spell_details: CharacterSpellDetails | null;
 }
 
@@ -278,12 +279,17 @@ export interface EnvironmentalEffect {
     effect_type_display?: string;
     terrain_type?: string | null;
     weather_type?: string | null;
+    lighting_type?: string | null;
+    hazard_type?: string | null;
     cover_area_x?: number | null;
     cover_area_y?: number | null;
     cover_area_radius?: number | null;
     lighting_area_x?: number | null;
     lighting_area_y?: number | null;
     lighting_area_radius?: number | null;
+    hazard_area_x?: number | null;
+    hazard_area_y?: number | null;
+    hazard_area_radius?: number | null;
     description?: string;
     is_active?: boolean;
 }
