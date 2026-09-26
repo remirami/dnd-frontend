@@ -684,14 +684,48 @@ export const AOE_SPELL_REGISTRY: Record<string, AoESpellDefinition> = {
 };
 
 /**
+ * Explicit list of known single-target spells that should never be classified as Area of Effect (AoE).
+ * Prevents false-positives on spell names or descriptions containing words like "blast" (e.g. Eldritch Blast).
+ */
+export const SINGLE_TARGET_SPELL_EXCLUSIONS = new Set([
+    "eldritch blast",
+    "fire bolt",
+    "ray of frost",
+    "shocking grasp",
+    "sacred flame",
+    "toll the dead",
+    "vicious mockery",
+    "poison spray",
+    "magic missile",
+    "guiding bolt",
+    "inflict wounds",
+    "witch bolt",
+    "scorching ray",
+    "acid arrow",
+    "spiritual weapon",
+    "cure wounds",
+    "healing word",
+    "hold person",
+    "blindness/deafness",
+    "charm person",
+    "cause fear",
+    "hold monster",
+    "disintegrate",
+    "blight",
+    "power word kill",
+    "power word stun",
+]);
+
+/**
  * Check if a spell is known or detected as an Area of Effect (AoE) spell.
  */
 export function isAoESpell(spellName: string, description?: string | null, range?: string | null): boolean {
     if (!spellName) return false;
     const clean = spellName.trim().toLowerCase();
+    if (SINGLE_TARGET_SPELL_EXCLUSIONS.has(clean)) return false;
     if (AOE_SPELL_REGISTRY[clean]) return true;
 
-    // Dynamic fallback checking description / range for 5e AoE patterns
+    // Dynamic fallback checking description / range for genuine 5e AoE patterns
     const combined = `${spellName} ${range || ""} ${description || ""}`.toLowerCase();
     return (
         combined.includes("cone") ||
@@ -699,8 +733,7 @@ export function isAoESpell(spellName: string, description?: string | null, range
         combined.includes("cube") ||
         combined.includes("cylinder") ||
         (combined.includes("line") && !combined.includes("line of sight")) ||
-        combined.includes("square") ||
-        combined.includes("blast")
+        (combined.includes("square") && !combined.includes("square foot"))
     );
 }
 
@@ -714,6 +747,7 @@ export function getAoESpellConfig(
 ): AoESpellDefinition | null {
     if (!spellName) return null;
     const clean = spellName.trim().toLowerCase();
+    if (SINGLE_TARGET_SPELL_EXCLUSIONS.has(clean)) return null;
     if (AOE_SPELL_REGISTRY[clean]) {
         return AOE_SPELL_REGISTRY[clean];
     }

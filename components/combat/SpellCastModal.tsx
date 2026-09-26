@@ -161,7 +161,7 @@ function SpellCastModalContent({
         return getAoESpellConfig(spell.name, spellDescription, mechanics.range);
     }, [spell.name, spellDescription, mechanics.range]);
     const isHealingSpell = !!mechanics.isHealing || !!aoeDef?.isHealing;
-    const isAoE = !!mechanics.isAoE || isAoESpell(spell.name, spellDescription, mechanics.range);
+    const isAoE = (!!mechanics.isAoE || isAoESpell(spell.name, spellDescription, mechanics.range)) && (!!aoeDef || !!mechanics.isAoE);
     const isBonusAction = !!mechanics.isBonusAction || !!aoeDef?.isBonusAction || (mechanics.castingTime?.toLowerCase().includes("bonus") ?? false);
     const isMultiMissile = spellNameLower === "magic missile";
     const totalDarts = 3 + Math.max(0, selectedLevel - 1);
@@ -794,17 +794,13 @@ function SpellCastModalContent({
                             Cancel
                         </Button>
 
-                        {isAoE && onStartAoETargeting && (
+                        {isAoE && onStartAoETargeting && aoeDef && (
                             <Button
                                 type="button"
                                 disabled={!hasSlotsRemaining || isCasting}
                                 onClick={() => {
-                                    const shape = aoeDef?.shape || (
-                                        (mechanics.range || "").toLowerCase().includes("cone") ? "cone" :
-                                        (mechanics.range || "").toLowerCase().includes("line") ? "line" :
-                                        ((mechanics.range || "").toLowerCase().includes("cube") || (mechanics.range || "").toLowerCase().includes("square")) ? "cube" : "sphere"
-                                    );
-                                    const size = aoeDef?.size || 20;
+                                    const shape = aoeDef.shape;
+                                    const size = aoeDef.size;
                                     onStartAoETargeting({
                                         spell,
                                         spellLevel: selectedLevel,
@@ -825,7 +821,7 @@ function SpellCastModalContent({
                                 className="h-9 px-4 font-cinzel font-bold text-xs uppercase tracking-wider rounded bg-cyan-600 hover:bg-cyan-500 border border-cyan-400 text-white shadow-[0_0_18px_rgba(6,182,212,0.5)] cursor-pointer flex items-center gap-1.5 transition-all"
                             >
                                 <span>🎯</span>
-                                <span>Aim {aoeDef?.shape.toUpperCase() || 'AoE'} ({aoeDef?.size || 20} FT) on Grid</span>
+                                <span>Aim {aoeDef.shape.toUpperCase()} ({aoeDef.size} FT) on Grid</span>
                             </Button>
                         )}
 
