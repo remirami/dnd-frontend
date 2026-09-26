@@ -195,9 +195,151 @@ export const CONDITIONS_REGISTRY: Record<string, ConditionData> = {
         ],
         severity: 'debuff',
     },
+    'protection from evil and good': {
+        name: 'Protection from Evil & Good',
+        icon: '🛡️',
+        header: '✦ PROTECTION FROM EVIL & GOOD ✦',
+        description: 'A willing creature is protected against aberrations, celestials, elementals, fey, fiends, and undead.',
+        rules: [
+            "Aberrations, celestials, elementals, fey, fiends, and undead have Disadvantage on attack rolls against the target",
+            "Target cannot be charmed, frightened, or possessed by these creature types",
+            "Requires caster concentration (up to 10 minutes)",
+        ],
+        severity: 'buff',
+    },
+    'protection from evil & good': {
+        name: 'Protection from Evil & Good',
+        icon: '🛡️',
+        header: '✦ PROTECTION FROM EVIL & GOOD ✦',
+        description: 'A willing creature is protected against aberrations, celestials, elementals, fey, fiends, and undead.',
+        rules: [
+            "Aberrations, celestials, elementals, fey, fiends, and undead have Disadvantage on attack rolls against the target",
+            "Target cannot be charmed, frightened, or possessed by these creature types",
+            "Requires caster concentration (up to 10 minutes)",
+        ],
+        severity: 'buff',
+    },
+    'protection from undead': {
+        name: 'Protection from Evil & Good',
+        icon: '🛡️',
+        header: '✦ PROTECTION FROM EVIL & GOOD ✦',
+        description: 'A willing creature is protected against aberrations, celestials, elementals, fey, fiends, and undead.',
+        rules: [
+            "Aberrations, celestials, elementals, fey, fiends, and undead have Disadvantage on attack rolls against the target",
+            "Target cannot be charmed, frightened, or possessed by these creature types",
+            "Requires caster concentration (up to 10 minutes)",
+        ],
+        severity: 'buff',
+    },
+    'protect from undead': {
+        name: 'Protection from Evil & Good',
+        icon: '🛡️',
+        header: '✦ PROTECTION FROM EVIL & GOOD ✦',
+        description: 'A willing creature is protected against aberrations, celestials, elementals, fey, fiends, and undead.',
+        rules: [
+            "Aberrations, celestials, elementals, fey, fiends, and undead have Disadvantage on attack rolls against the target",
+            "Target cannot be charmed, frightened, or possessed by these creature types",
+            "Requires caster concentration (up to 10 minutes)",
+        ],
+        severity: 'buff',
+    },
+    'shield of faith': {
+        name: 'Shield of Faith',
+        icon: '✨',
+        header: '✦ SHIELD OF FAITH ✦',
+        description: 'A shimmering field of divine light surrounds the creature, granting magical warding.',
+        rules: [
+            "+2 bonus to Armor Class (AC)",
+            "Requires caster concentration (up to 10 minutes)",
+        ],
+        severity: 'buff',
+    },
+    bless: {
+        name: 'Bless',
+        icon: '🙏',
+        header: '✦ BLESS ✦',
+        description: 'Target receives divine blessing and supernatural accuracy in battle.',
+        rules: [
+            "Add +1d4 to all attack rolls",
+            "Add +1d4 to all saving throws",
+            "Requires caster concentration (up to 1 minute)",
+        ],
+        severity: 'buff',
+    },
+    'mage armor': {
+        name: 'Mage Armor',
+        icon: '🔮',
+        header: '✦ MAGE ARMOR ✦',
+        description: 'An unarmored creature is protected by an invisible protective barrier of magical force.',
+        rules: [
+            "Base Armor Class becomes 13 + Dexterity modifier",
+            "Ends if the target dons armor or dismisses the spell",
+            "Does not require concentration (lasts 8 hours)",
+        ],
+        severity: 'buff',
+    },
+    haste: {
+        name: 'Haste',
+        icon: '⚡',
+        header: '✦ HASTE ✦',
+        description: 'Target creature moves and acts with supernatural, exhilarating speed.',
+        rules: [
+            "+2 bonus to Armor Class (AC)",
+            "Walking speed is doubled",
+            "Advantage on Dexterity saving throws",
+            "Gains one additional action each turn",
+            "Requires caster concentration (up to 1 minute)",
+        ],
+        severity: 'buff',
+    },
+    heroism: {
+        name: 'Heroism',
+        icon: '🦁',
+        header: '✦ HEROISM ✦',
+        description: 'A willing creature is imbued with courage and supernatural resilience.',
+        rules: [
+            "Immune to being frightened",
+            "Gains temporary hit points at the start of each of its turns",
+            "Requires caster concentration (up to 1 minute)",
+        ],
+        severity: 'buff',
+    },
+    barkskin: {
+        name: 'Barkskin',
+        icon: '🪵',
+        header: '✦ BARKSKIN ✦',
+        description: 'Target\'s skin takes on the rough appearance and toughness of oak bark.',
+        rules: [
+            "Target\'s AC cannot be less than 16, regardless of armor worn",
+            "Requires caster concentration (up to 1 hour)",
+        ],
+        severity: 'buff',
+    },
+    guidance: {
+        name: 'Guidance',
+        icon: '🌟',
+        header: '✦ GUIDANCE ✦',
+        description: 'You touch an ally and bestow a touch of divine guidance.',
+        rules: [
+            "Add +1d4 bonus to one ability check",
+            "Requires caster concentration (up to 1 minute)",
+        ],
+        severity: 'buff',
+    },
+    resistance: {
+        name: 'Resistance',
+        icon: '🛡️',
+        header: '✦ RESISTANCE ✦',
+        description: 'You touch an ally and bestow a touch of protective divine warding.',
+        rules: [
+            "Add +1d4 bonus to one saving throw",
+            "Requires caster concentration (up to 1 minute)",
+        ],
+        severity: 'buff',
+    },
 };
 
-export function getConditionData(nameOrObj: string | { name?: string; description?: string } | null | undefined): ConditionData {
+export function getConditionData(nameOrObj: string | { name?: string; description?: string; is_buff?: boolean } | null | undefined): ConditionData {
     if (!nameOrObj) {
         return {
             name: 'Condition',
@@ -216,15 +358,17 @@ export function getConditionData(nameOrObj: string | { name?: string; descriptio
         return CONDITIONS_REGISTRY[cleanKey];
     }
 
-    // Fallback for custom or unmapped conditions
-    const customDesc = typeof nameOrObj === 'object' && nameOrObj.description ? nameOrObj.description : 'A condition affecting combat statistics.';
+    const isBuff = typeof nameOrObj === 'object' && Boolean(nameOrObj.is_buff);
+
+    // Fallback for custom or unmapped conditions / buffs
+    const customDesc = typeof nameOrObj === 'object' && nameOrObj.description ? nameOrObj.description : (isBuff ? 'A positive magical buff aiding the combatant.' : 'A condition affecting combat statistics.');
     return {
-        name: rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1) : 'Condition',
-        icon: '✦',
-        header: `✦ ${(rawName || 'CONDITION').toUpperCase()} ✦`,
+        name: rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1) : (isBuff ? 'Buff' : 'Condition'),
+        icon: isBuff ? '✨' : '✦',
+        header: `✦ ${(rawName || (isBuff ? 'BUFF' : 'CONDITION')).toUpperCase()} ✦`,
         description: customDesc,
         rules: [],
-        severity: 'debuff',
+        severity: isBuff ? 'buff' : 'debuff',
     };
 }
 
@@ -234,3 +378,13 @@ export function isIncapacitating(nameOrObj: string | { name?: string } | null | 
     const key = rawName.trim().toLowerCase();
     return ['incapacitated', 'paralyzed', 'petrified', 'stunned', 'unconscious'].includes(key);
 }
+
+export function isBuffCondition(nameOrObj: string | { name?: string; is_buff?: boolean } | null | undefined): boolean {
+    if (!nameOrObj) return false;
+    if (typeof nameOrObj === 'object' && nameOrObj.is_buff) return true;
+    const rawName = typeof nameOrObj === 'string' ? nameOrObj : (nameOrObj.name || '');
+    const key = rawName.trim().toLowerCase();
+    const data = CONDITIONS_REGISTRY[key];
+    return data?.severity === 'buff';
+}
+

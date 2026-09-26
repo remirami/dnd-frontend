@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { CombatParticipant, AoETargetingConfig, EnvironmentalEffect } from "@/lib/types/combat";
-import { isIncapacitating } from "@/lib/data/conditions";
+import { isIncapacitating, isBuffCondition } from "@/lib/data/conditions";
 
 export interface TerrainFeature {
     col: number;
@@ -1056,9 +1056,18 @@ export function BattleGrid({
                                         {occupant && (() => {
                                             const isEnemyOccupant = occupant.participant_type !== currentParticipant?.participant_type;
                                             const isMeleeEnemy = Boolean(isEnemyOccupant && distFromCur <= 5 && distFromCur > 0);
+
+                                            const activeBuffs = (occupant as any).active_buffs || [];
+                                            const buffConditions = (occupant.conditions || []).filter((c: any) => isBuffCondition(c));
+                                            const hasActiveBuff = activeBuffs.length > 0 || buffConditions.length > 0;
+                                            const buffNames = [
+                                                ...activeBuffs.map((b: any) => b.name),
+                                                ...buffConditions.map((c: any) => typeof c === 'string' ? c : c.name || '')
+                                            ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+
                                             return (
                                             <div
-                                                title={isMeleeEnemy ? `${occupant.name} (Melee Reach • Click to Duel Focus)` : occupant.name}
+                                                title={`${isMeleeEnemy ? `${occupant.name} (Melee Reach • Click to Duel Focus)` : occupant.name}${hasActiveBuff ? ` • [Buffs: ${buffNames.join(', ')}]` : ''}`}
                                                 className={`relative w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs shadow-md transition-transform duration-200 ${
                                                     isOAThreateningEnemy
                                                         ? "scale-110 ring-3 ring-red-500 shadow-[0_0_16px_rgba(239,68,68,0.9)] animate-pulse"
@@ -1068,6 +1077,8 @@ export function BattleGrid({
                                                         ? "scale-110 ring-4 ring-amber-400 shadow-[0_0_22px_rgba(251,191,36,0.95)] animate-pulse"
                                                         : occupant.id === currentParticipant?.id
                                                         ? "scale-105 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]"
+                                                        : hasActiveBuff
+                                                        ? "ring-2 ring-emerald-400/90 shadow-[0_0_14px_rgba(52,211,153,0.7)]"
                                                         : ""
                                                 } ${
                                                     isTarget && !isAoEEnemyTarget && !isAoEAllyTarget && !isOAThreateningEnemy
@@ -1130,6 +1141,16 @@ export function BattleGrid({
                                                 {occupant.id === currentParticipant?.id && (
                                                     <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] drop-shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-bounce">
                                                         👑
+                                                    </span>
+                                                )}
+
+                                                {/* Shimmering Active Buff Indicator Badge */}
+                                                {hasActiveBuff && (
+                                                    <span
+                                                        className="absolute -top-2 -left-1 text-[11px] drop-shadow-[0_0_6px_rgba(52,211,153,0.95)] animate-pulse cursor-help select-none z-10"
+                                                        title={`Active Buffs: ${buffNames.join(', ')}`}
+                                                    >
+                                                        ✨
                                                     </span>
                                                 )}
 
