@@ -17,14 +17,71 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.10.0";
+export const CURRENT_VERSION = "v1.11.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.11.0",
+        date: "September 26, 2026",
+        title: "Universal 5E AoE Spell Grid Targeting & Persistent Environmental Effects",
+        tag: "Latest",
+        summary: "Implemented centralized 5E Area of Effect (AoE) grid targeting across all 69 database spells spanning cantrips through 9th level. Enhanced the tactical battle grid with authentic 5E cone polygons, thematic radiant/necrotic/toxic/web/psychic/force shaders, and persistent battlefield environmental obstacles for Web, Darkness, Spike Growth, Sleet Storm, Entangle, Cloudkill, Stinking Cloud, Grease, and Fog Cloud.",
+        items: [
+            {
+                id: "1.11.0-1",
+                title: "🎯 Universal 5E AoE Grid Targeting (All 69 Spells)",
+                description: "Extended spatial grid targeting to every Area of Effect spell in the database, with full support for spheres, cones, lines, cubes, and cylinders.",
+                category: "spell",
+                details: [
+                    "Complete 5E Registry: Cataloged all 69 AoE spells across cantrips through 9th level with authentic dimensions, ranges, save types, and damage expressions.",
+                    "Quick Aim Badges: Spell cards in the Action Dock feature dynamic shape & size badges (e.g. CONE 15FT, CUBE 20FT, LINE 100FT, CYLINDER 40FT) with 1-click grid aiming.",
+                    "Spell Cast Modal Integration: Aim on Grid button dynamically configures shapes and sizes instead of defaulting to generic spheres.",
+                    "Dynamic Fallback Engine: Intelligently parses description and range text to automatically support custom or homebrew AoE spells."
+                ]
+            },
+            {
+                id: "1.11.0-2",
+                title: "✨ Dynamic Thematic AoE Shaders & Cone Polygons",
+                description: "Customized visual aura shaders and SVG overlays tailored to each spell's damage type and school of magic.",
+                category: "combat",
+                details: [
+                    "Radiant / Holy: Golden solar glow (#fbbf24) for Moonbeam, Flame Strike, Sunbeam, Sunburst, Daylight, and Holy Aura.",
+                    "Necrotic / Void: Dark purple shadow aura (#a855f7) for Darkness, Circle of Death, and Arms of Hadar.",
+                    "Toxic Acid & Poison: Toxic emerald green (#10b981) for Cloudkill, Acid Splash, and Stinking Cloud.",
+                    "Nature & Briars: Amber-lime foliage (#84cc16) for Web, Entangle, Spike Growth, and Wall of Thorns.",
+                    "Psychic & Force: Magenta mind surges (#ec4899) and indigo force barriers (#6366f1) for Hypnotic Pattern, Fear, Confusion, and Wall of Force.",
+                    "Authentic Cone Polygon: Upgraded cone targeting from a simple centerline to a true 5E 53-degree cone polygon overlay with pulse shader."
+                ]
+            },
+            {
+                id: "1.11.0-3",
+                title: "🌪️ Persistent Battlefield Environmental Effects",
+                description: "Spells with lingering effects now create persistent tactical obstacles directly on the battle grid.",
+                category: "combat",
+                details: [
+                    "Ground Effect Generation: Casting Web, Darkness, Spike Growth, Sleet Storm, Entangle, Cloudkill, Stinking Cloud, Grease, or Fog Cloud spawns persistent session environmental effects.",
+                    "Tactical Tile Markers: Rendered distinct tile icons for Web (🕸️), Darkness (🌑), Spikes (🌵), Toxic Gas (☠️), Grease (🧈), and Fog (🌫️).",
+                    "Difficult Terrain Integration: Ground hazards automatically cost 10 ft per 5-ft cell, seamlessly factored into the Dijkstra pathfinding calculator."
+                ]
+            },
+            {
+                id: "1.11.0-4",
+                title: "🎲 Backend Multi-Target Resolution & Half-Damage Saves",
+                description: "Rigorous 5E rules resolution for spatial spell strikes across multiple combatants.",
+                category: "combat",
+                details: [
+                    "Single Damage Roll: Damage formula is rolled once per 5E rules and applied across all targets caught in the blast area.",
+                    "Save & Half-Damage: Automatic ability modifier and proficiency calculations, granting half damage on successful saves (or 0 when halfOnSave is false).",
+                    "Damage Resistances & Immunities: Targets with damage vulnerabilities, resistances, or immunities receive adjusted damage and combat log tags."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.10.0",
         date: "September 25, 2026",
         title: "Tactical Combat Overhaul, Gauntlet Run Persistence & Class Weapon Arsenals",
-        tag: "Latest",
+        tag: "Major",
         summary: "Activated the Combat Arena as a core homepage pillar and added universal header navigation. Enabled seamless resumption and lifecycle tracking for active Gauntlet runs alongside War Archives. Upgraded character creation with class proficiency-filtered starting weapon arsenals and polished the combat interface with draggable clash cards and streamlined HUD capsules.",
         items: [
             {
