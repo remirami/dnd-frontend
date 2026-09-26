@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { CombatParticipant, AoETargetingConfig, EnvironmentalEffect } from "@/lib/types/combat";
+import { isIncapacitating } from "@/lib/data/conditions";
 
 export interface TerrainFeature {
     col: number;
