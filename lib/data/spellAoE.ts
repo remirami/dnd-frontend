@@ -1,5 +1,3 @@
-import type { CharacterSpell, AoETargetingConfig } from '@/lib/types/combat';
-
 export interface AoESpellDefinition {
     shape: 'sphere' | 'cone' | 'line' | 'cube' | 'cylinder';
     size: number; // in feet

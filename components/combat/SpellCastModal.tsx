@@ -156,11 +156,12 @@ function SpellCastModalContent({
     const [isRitual, setIsRitual] = useState<boolean>(false);
 
     // Target selection state
+    const spellDescription = spell.description || spell.spell_details?.description;
     const aoeDef = useMemo(() => {
-        return getAoESpellConfig(spell.name, (spell as any).description, mechanics.range);
-    }, [spell.name, (spell as any).description, mechanics.range]);
+        return getAoESpellConfig(spell.name, spellDescription, mechanics.range);
+    }, [spell.name, spellDescription, mechanics.range]);
     const isHealingSpell = !!mechanics.isHealing || !!aoeDef?.isHealing;
-    const isAoE = !!mechanics.isAoE || isAoESpell(spell.name, (spell as any).description, mechanics.range);
+    const isAoE = !!mechanics.isAoE || isAoESpell(spell.name, spellDescription, mechanics.range);
     const isBonusAction = !!mechanics.isBonusAction || !!aoeDef?.isBonusAction || (mechanics.castingTime?.toLowerCase().includes("bonus") ?? false);
     const isMultiMissile = spellNameLower === "magic missile";
     const totalDarts = 3 + Math.max(0, selectedLevel - 1);
