@@ -234,8 +234,8 @@ export function ActionDock({
         setOpenDrawer(null);
     }, [currentParticipant?.id]);
 
-    // If it's an enemy turn in Gauntlet, display the Autonomous AI indicator card with interactive overrides
-    if (isEnemyTurn && gauntletRunId) {
+    // If it's an enemy turn, display the Autonomous AI indicator card with interactive controls
+    if (isEnemyTurn) {
         return (
             <div className="w-full bg-[#10121a]/95 border-t border-red-900/50 backdrop-blur-md px-6 py-3 shadow-[0_-4px_25px_rgba(0,0,0,0.6)] z-20">
                 <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 py-2 px-4 rounded-lg bg-[#181317] border border-red-800/40">

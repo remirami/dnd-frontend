@@ -17,14 +17,44 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.13.0";
+export const CURRENT_VERSION = "v1.13.1";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.13.1",
+        date: "September 30, 2026",
+        title: "Autonomous Enemy Turn Automation & Real-Time Position Cache Sync",
+        tag: "Latest",
+        summary: "Resolved first-round AI initiative control locks so enemies rolling higher initiative immediately take their turns autonomously across all combat modes. Fixed Django prefetch cache desynchronization where stale participant coordinates caused enemies to unexpectedly snap or glide across the grid during player turns.",
+        items: [
+            {
+                id: "1.13.1-1",
+                title: "⚡ First-Round Autonomous AI Initiative Execution",
+                description: "Ensured monster participants who win initiative automatically start and execute their turns on Round 1 without requiring manual player input or exposing monster controls.",
+                category: "combat",
+                details: [
+                    "Round 1 Turn Trigger: Fixed session initialization to automatically invoke step-by-step AI turn sequencing whenever the opening participant in Round 1 is an enemy.",
+                    "Universal AI Dock Lock: ActionDock now consistently displays the Autonomous AI indicator card and disables player weapon/spell/movement docks during all enemy turns.",
+                    "Grid Tile Click Guard: Disallowed grid movement clicks when the active combatant is not a player character."
+                ]
+            },
+            {
+                id: "1.13.1-2",
+                title: "🔄 Real-Time Position Cache Invalidation & Mid-Turn Movement Desync Fix",
+                description: "Eliminated mid-turn token desync where monsters appeared to slide or snap to the player during the player's own turn.",
+                category: "fix",
+                details: [
+                    "Prefetch Cache Invalidation: Cleared Django's _prefetched_objects_cache and re-queried fresh session instances after AI turns, turn advances, and grid initializations so serialized participant coordinates reflect their true database state.",
+                    "Multi-Move Coordinate Sync: Updated frontend AI turn processing to handle cumulative movement and maintain synced position references throughout attack lingering phases."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.13.0",
         date: "September 30, 2026",
         title: "Animated Battle Grid Token Overlays & Movement-First Tactical Monster AI",
-        tag: "Latest",
+        tag: "Patch",
         summary: "Upgraded the 2D tactical battle grid with a dedicated animated token overlay layer featuring fluid 450ms CSS coordinate transitions, completely eliminating token teleportation. Re-architected Monster AI turn sequencing into a strict movement-first pipeline: melee monsters dynamically evaluate reachability, charge into melee reach (5 ft) before rolling attacks, and avoid swinging from out of range. Ranged monsters and spell casters intelligently maintain 15–60 ft distance and tactically reposition backwards when trapped in melee to eliminate 5E ranged attack disadvantage.",
         items: [
             {

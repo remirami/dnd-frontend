@@ -75,9 +75,9 @@ export default function CombatPage() {
         sessionRef.current = session;
     }, [session]);
 
-    // In Gauntlet, automatically trigger autonomous enemy turns when it is an enemy's turn
+    // Automatically trigger autonomous enemy turns when it is an enemy's turn
     useEffect(() => {
-        if (!session || !gauntletRunId || isAiRunningRef.current) return;
+        if (!session || isAiRunningRef.current) return;
         if (session.status === 'ended' || combatOutcome) return;
 
         const current = getCurrentParticipant();
@@ -86,10 +86,10 @@ export default function CombatPage() {
                 if (!isAiRunningRef.current) {
                     stepByStepEnemyTurns();
                 }
-            }, 500);
+            }, 600);
             return () => clearTimeout(timer);
         }
-    }, [session?.current_turn_index, session?.current_round, session?.id, gauntletRunId, combatOutcome, session?.participants]);
+    }, [session?.current_turn_index, session?.current_round, session?.id, combatOutcome, session?.participants]);
 
     const formatAiActionSummary = (aiActions: any[]) => {
         if (!aiActions || aiActions.length === 0) return null;
@@ -264,12 +264,22 @@ export default function CombatPage() {
                 router.replace(`/combat/${sessionId}/setup`);
                 return;
             }
+            sessionRef.current = response.data;
             setSession(response.data);
             if (!activeGauntletRunId && response.data.gauntlet_run?.id) {
                 setActiveGauntletRunId(response.data.gauntlet_run.id);
             }
             if (response.data.participants) {
                 checkCombatOutcome(response.data.participants);
+            }
+            // Auto-trigger enemy turns if initial active participant is an enemy (e.g. Round 1 AI initiative)
+            const activeParticipant = response.data.current_participant;
+            if (activeParticipant && activeParticipant.participant_type === 'enemy' && activeParticipant.current_hp > 0 && response.data.status === 'active') {
+                setTimeout(() => {
+                    if (!isAiRunningRef.current) {
+                        stepByStepEnemyTurns();
+                    }
+                }, 600);
             }
         } catch (error) {
             console.error("Failed to load combat session:", error);
@@ -346,22 +356,24 @@ export default function CombatPage() {
 
                     // ── Phase 1: Animate Movement ──
                     // If the AI moved, show the position change FIRST before any damage
-                    const moveAction = res.data.actions?.find((a: any) => a.type === 'move');
-                    if (moveAction && moveAction.to_x != null && moveAction.to_y != null) {
+                    const moveActions = (res.data.actions || []).filter((a: any) => a.type === 'move' && a.to_x != null && a.to_y != null);
+                    const lastMoveAction = moveActions.length > 0 ? moveActions[moveActions.length - 1] : null;
+                    if (lastMoveAction) {
+                        const totalDistance = moveActions.reduce((sum: number, m: any) => sum + (m.distance ?? 0), 0);
                         // Create an intermediate state: update ONLY position (keep old HP/conditions)
-                        const movingParticipants = (currentSession.participants || []).map(p => {
+                        const movingParticipants = (sessionRef.current?.participants || currentSession.participants || []).map(p => {
                             if (p.id === active.id || p.name === active.name) {
                                 return {
                                     ...p,
-                                    position_x: moveAction.to_x!,
-                                    position_y: moveAction.to_y!,
-                                    movement_used: (p.movement_used ?? 0) + (moveAction.distance ?? 0),
+                                    position_x: lastMoveAction.to_x!,
+                                    position_y: lastMoveAction.to_y!,
+                                    movement_used: (p.movement_used ?? 0) + totalDistance,
                                 };
                             }
                             return p;
                         });
                         const movementSession: CombatSession = {
-                            ...currentSession,
+                            ...(sessionRef.current || currentSession),
                             participants: movingParticipants,
                         };
                         setSession(movementSession);
@@ -470,6 +482,10 @@ export default function CombatPage() {
         const current = getCurrentParticipant();
         if (!current || !targetId) {
             alert("Please select a target for the attack");
+            return;
+        }
+        if (current.participant_type === 'enemy') {
+            alert("Cannot manually attack during an enemy's turn.");
             return;
         }
         if (currentIsIncapacitated) {
@@ -868,6 +884,10 @@ export default function CombatPage() {
         setAoeTargeting(null);
         const current = getCurrentParticipant();
         if (!current || !sessionId) return;
+        if (current.participant_type === 'enemy') {
+            console.warn("Cannot move enemy participant manually");
+            return;
+        }
         setIsMoving(true);
 
         // Instant optimistic update on local state so the token moves with 0ms latency

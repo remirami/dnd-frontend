@@ -788,6 +788,11 @@ export function BattleGrid({
             return;
         }
 
+        // Only player characters can be moved by clicking grid tiles
+        if (currentParticipant?.participant_type !== 'character') {
+            return;
+        }
+
         // Empty tile or tile with corpse: Move there via calculated Dijkstra path
         const targetCol = Math.round(x / 5);
         const targetRow = Math.round(y / 5);
