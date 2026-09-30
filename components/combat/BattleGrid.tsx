@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import type { CombatParticipant, AoETargetingConfig, EnvironmentalEffect } from "@/lib/types/combat";
 import { isIncapacitating, isBuffCondition } from "@/lib/data/conditions";
 
@@ -399,6 +399,12 @@ export function BattleGrid({
         });
         return map;
     }, [currentLayout]);
+
+    // Ref to the grid container for measuring cell sizes for the token overlay
+    const gridContainerRef = useRef<HTMLDivElement>(null);
+
+    // Track previous positions for each participant to enable CSS transition animation
+    const prevPositionsRef = useRef<Map<number, { col: number; row: number }>>(new Map());
 
     // Instant optimistic coordinate tracking for zero-latency token movement
     const [optimisticPos, setOptimisticPos] = useState<{ id: number; col: number; row: number } | null>(null);
@@ -935,6 +941,7 @@ export function BattleGrid({
 
                     {/* Main Tile Matrix */}
                     <div
+                        ref={gridContainerRef}
                         className="relative grid grid-cols-10 gap-0.5 sm:gap-1 bg-[#090b10] p-1 sm:p-1.5 rounded-lg border border-slate-800 shadow-inner"
                         onMouseLeave={() => setHoveredCell(null)}
                         onContextMenu={(e) => {
@@ -1052,130 +1059,9 @@ export function BattleGrid({
                                         {/* Stone Tile Texture */}
                                         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:8px_8px] pointer-events-none rounded-md" />
 
-                                        {/* Living Occupant Token */}
-                                        {occupant && (() => {
-                                            const isEnemyOccupant = occupant.participant_type !== currentParticipant?.participant_type;
-                                            const isMeleeEnemy = Boolean(isEnemyOccupant && distFromCur <= 5 && distFromCur > 0);
-
-                                            const activeBuffs = (occupant as any).active_buffs || [];
-                                            const buffConditions = (occupant.conditions || []).filter((c: any) => isBuffCondition(c));
-                                            const hasActiveBuff = activeBuffs.length > 0 || buffConditions.length > 0;
-                                            const buffNames = [
-                                                ...activeBuffs.map((b: any) => b.name),
-                                                ...buffConditions.map((c: any) => typeof c === 'string' ? c : c.name || '')
-                                            ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
-
-                                            return (
-                                            <div
-                                                title={`${isMeleeEnemy ? `${occupant.name} (Melee Reach • Click to Duel Focus)` : occupant.name}${hasActiveBuff ? ` • [Buffs: ${buffNames.join(', ')}]` : ''}`}
-                                                className={`relative w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs shadow-md transition-transform duration-200 ${
-                                                    isOAThreateningEnemy
-                                                        ? "scale-110 ring-3 ring-red-500 shadow-[0_0_16px_rgba(239,68,68,0.9)] animate-pulse"
-                                                        : isAoEEnemyTarget
-                                                        ? "scale-110 ring-4 ring-red-500 shadow-[0_0_22px_rgba(239,68,68,0.95)] animate-pulse"
-                                                        : isAoEAllyTarget
-                                                        ? "scale-110 ring-4 ring-amber-400 shadow-[0_0_22px_rgba(251,191,36,0.95)] animate-pulse"
-                                                        : occupant.id === currentParticipant?.id
-                                                        ? "scale-105 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]"
-                                                        : hasActiveBuff
-                                                        ? "ring-2 ring-emerald-400/90 shadow-[0_0_14px_rgba(52,211,153,0.7)]"
-                                                        : ""
-                                                } ${
-                                                    isTarget && !isAoEEnemyTarget && !isAoEAllyTarget && !isOAThreateningEnemy
-                                                        ? "ring-3 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.85)] scale-105"
-                                                        : ""
-                                                } ${
-                                                    isMeleeEnemy && !isTarget
-                                                        ? "ring-2 ring-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
-                                                        : ""
-                                                } ${
-                                                    occupant.participant_type === "character"
-                                                        ? "bg-gradient-to-b from-[#2a2416] to-[#14120f] border-2 border-[#c5a059] text-amber-200"
-                                                        : "bg-gradient-to-b from-[#2e1215] to-[#15090a] border-2 border-red-600 text-red-200"
-                                                }`}
-                                            >
-                                                {/* Mini Circular HP Ring */}
-                                                {occupant.max_hp > 0 && occupant.current_hp > 0 && (
-                                                    <svg className="absolute inset-[-2px] w-[calc(100%+4px)] h-[calc(100%+4px)] -rotate-90 pointer-events-none">
-                                                        <circle
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            r="46%"
-                                                            fill="none"
-                                                            stroke="#1e2230"
-                                                            strokeWidth="2"
-                                                        />
-                                                        <circle
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            r="46%"
-                                                            fill="none"
-                                                            stroke={
-                                                                occupant.current_hp / occupant.max_hp > 0.5
-                                                                    ? "#10b981"
-                                                                    : occupant.current_hp / occupant.max_hp > 0.2
-                                                                    ? "#f59e0b"
-                                                                    : "#ef4444"
-                                                            }
-                                                            strokeWidth="2"
-                                                            strokeDasharray="100"
-                                                            strokeDashoffset={
-                                                                100 -
-                                                                Math.round(
-                                                                    (occupant.current_hp / occupant.max_hp) * 100
-                                                                )
-                                                            }
-                                                            strokeLinecap="round"
-                                                        />
-                                                    </svg>
-                                                )}
-
-                                                {/* Token Icon */}
-                                                {occupant.participant_type === "character" ? (
-                                                    <span className="text-xs sm:text-sm">🛡️</span>
-                                                ) : (
-                                                    <span className="text-xs sm:text-sm">👹</span>
-                                                )}
-
-                                                {/* Active Crown Marker */}
-                                                {occupant.id === currentParticipant?.id && (
-                                                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] drop-shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-bounce">
-                                                        👑
-                                                    </span>
-                                                )}
-
-                                                {/* Shimmering Active Buff Indicator Badge */}
-                                                {hasActiveBuff && (
-                                                    <span
-                                                        className="absolute -top-2 -left-1 text-[11px] drop-shadow-[0_0_6px_rgba(52,211,153,0.95)] animate-pulse cursor-help select-none z-10"
-                                                        title={`Active Buffs: ${buffNames.join(', ')}`}
-                                                    >
-                                                        ✨
-                                                    </span>
-                                                )}
-
-                                                {/* Opportunity Attack Reaction Threat Badge */}
-                                                {isOAThreateningEnemy && (
-                                                    <span className="absolute -top-2 -right-1 text-[10px] drop-shadow-[0_0_6px_rgba(239,68,68,0.95)] animate-bounce" title="Will take Opportunity Attack">
-                                                        ⚔️
-                                                    </span>
-                                                )}
-
-                                                {/* Target Crosshairs */}
-                                                {isTarget && !isOAThreateningEnemy && (
-                                                    <span className="absolute -bottom-1 -right-1 text-[10px] drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse">
-                                                        🎯
-                                                    </span>
-                                                )}
-                                            </div>
-                                            );
-                                        })()}
-
-                                        {/* Token Name Label Beneath */}
+                                        {/* Living Occupant Token (rendered in overlay for animation; cell shows invisible placeholder for layout) */}
                                         {occupant && (
-                                            <span className="text-[7px] sm:text-[8px] font-fira-sans font-bold truncate max-w-full text-center px-0.5 mt-0.5 text-slate-300 leading-none">
-                                                {occupant.name.split(" ")[0]}
-                                            </span>
+                                            <div className="w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 pointer-events-none opacity-0" aria-hidden="true" />
                                         )}
 
                                         {/* Terrain Feature Icon & Cover Badge */}
@@ -1313,6 +1199,145 @@ export function BattleGrid({
                                 );
                             })
                         )}
+
+                        {/* ═══ Animated Token Overlay Layer ═══
+                             Tokens rendered with absolute positioning + CSS transitions
+                             so they smoothly slide when participant positions change (e.g., AI enemy turns). */}
+                        <div className="absolute inset-0 pointer-events-none overflow-visible" style={{ zIndex: 15 }}>
+                            {allParticipants.filter(p => p.current_hp > 0 && p.is_active).map(p => {
+                                // Resolve current coordinates (respecting optimistic placement)
+                                let coords = resolveParticipantCoords(p, allParticipants);
+                                if (optimisticPos && p.id === optimisticPos.id) {
+                                    coords = { x: optimisticPos.col * 5, y: optimisticPos.row * 5, col: optimisticPos.col, row: optimisticPos.row };
+                                } else if (currentParticipant && p.id === currentParticipant.id) {
+                                    coords = curCoords;
+                                }
+
+                                // Update position tracking ref for next render cycle
+                                prevPositionsRef.current.set(p.id, { col: coords.col, row: coords.row });
+
+                                // Per-token combat state
+                                const isEnemyOccupant = p.participant_type !== currentParticipant?.participant_type;
+                                const pDist = getChebyshevDist(curX, curY, coords.col * 5, coords.row * 5);
+                                const isMeleeEnemy = Boolean(isEnemyOccupant && pDist <= 5 && pDist > 0);
+                                const pIsTarget = p.id.toString() === targetId;
+                                const pIsAoEEnemy = aoeTargets.enemies.some(e => e.id === p.id);
+                                const pIsAoEAlly = aoeTargets.allies.some(a => a.id === p.id);
+                                const pIsOAThreat = Boolean(hoveredOARisk && hoveredOARisk.some(e => e.id === p.id));
+
+                                const activeBuffs = (p as any).active_buffs || [];
+                                const buffConditions = (p.conditions || []).filter((c: any) => isBuffCondition(c));
+                                const hasActiveBuff = activeBuffs.length > 0 || buffConditions.length > 0;
+                                const buffNames = [
+                                    ...activeBuffs.map((b: any) => b.name),
+                                    ...buffConditions.map((c: any) => typeof c === 'string' ? c : c.name || '')
+                                ].filter(Boolean).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
+
+                                // Position as percentage of the grid (matches SVG overlay coordinate system)
+                                const leftPct = ((coords.col + 0.5) / COLS) * 100;
+                                const topPct = ((coords.row + 0.5) / ROWS) * 100;
+
+                                return (
+                                    <div
+                                        key={`token-overlay-${p.id}`}
+                                        className="absolute pointer-events-auto cursor-pointer"
+                                        style={{
+                                            left: `${leftPct}%`,
+                                            top: `${topPct}%`,
+                                            transform: 'translate(-50%, -50%)',
+                                            transition: 'left 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                                            zIndex: p.id === currentParticipant?.id ? 25 : pIsTarget ? 24 : 15,
+                                        }}
+                                        onClick={() => {
+                                            if (p.id === currentParticipant?.id) {
+                                                onInspectParticipant(p);
+                                            } else if (isEnemyOccupant) {
+                                                onSelectTarget(p.id.toString());
+                                                if (pDist <= 5 && onSwitchToDuel) onSwitchToDuel();
+                                            } else {
+                                                onInspectParticipant(p);
+                                            }
+                                        }}
+                                    >
+                                        {/* Token Circle */}
+                                        <div
+                                            title={`${isMeleeEnemy ? `${p.name} (Melee Reach • Click to Duel Focus)` : p.name}${hasActiveBuff ? ` • [Buffs: ${buffNames.join(', ')}]` : ''}`}
+                                            className={`relative w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 lg:w-9.5 lg:h-9.5 rounded-full flex flex-col items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs shadow-md transition-transform duration-200 ${
+                                                pIsOAThreat
+                                                    ? "scale-110 ring-3 ring-red-500 shadow-[0_0_16px_rgba(239,68,68,0.9)] animate-pulse"
+                                                    : pIsAoEEnemy
+                                                    ? "scale-110 ring-4 ring-red-500 shadow-[0_0_22px_rgba(239,68,68,0.95)] animate-pulse"
+                                                    : pIsAoEAlly
+                                                    ? "scale-110 ring-4 ring-amber-400 shadow-[0_0_22px_rgba(251,191,36,0.95)] animate-pulse"
+                                                    : p.id === currentParticipant?.id
+                                                    ? "scale-105 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]"
+                                                    : hasActiveBuff
+                                                    ? "ring-2 ring-emerald-400/90 shadow-[0_0_14px_rgba(52,211,153,0.7)]"
+                                                    : ""
+                                            } ${
+                                                pIsTarget && !pIsAoEEnemy && !pIsAoEAlly && !pIsOAThreat
+                                                    ? "ring-3 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.85)] scale-105"
+                                                    : ""
+                                            } ${
+                                                isMeleeEnemy && !pIsTarget
+                                                    ? "ring-2 ring-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+                                                    : ""
+                                            } ${
+                                                p.participant_type === "character"
+                                                    ? "bg-gradient-to-b from-[#2a2416] to-[#14120f] border-2 border-[#c5a059] text-amber-200"
+                                                    : "bg-gradient-to-b from-[#2e1215] to-[#15090a] border-2 border-red-600 text-red-200"
+                                            }`}
+                                        >
+                                            {/* Mini Circular HP Ring */}
+                                            {p.max_hp > 0 && p.current_hp > 0 && (
+                                                <svg className="absolute inset-[-2px] w-[calc(100%+4px)] h-[calc(100%+4px)] -rotate-90 pointer-events-none">
+                                                    <circle cx="50%" cy="50%" r="46%" fill="none" stroke="#1e2230" strokeWidth="2" />
+                                                    <circle
+                                                        cx="50%" cy="50%" r="46%" fill="none"
+                                                        stroke={p.current_hp / p.max_hp > 0.5 ? "#10b981" : p.current_hp / p.max_hp > 0.2 ? "#f59e0b" : "#ef4444"}
+                                                        strokeWidth="2" strokeDasharray="100"
+                                                        strokeDashoffset={100 - Math.round((p.current_hp / p.max_hp) * 100)}
+                                                        strokeLinecap="round"
+                                                    />
+                                                </svg>
+                                            )}
+
+                                            {/* Token Icon */}
+                                            {p.participant_type === "character" ? (
+                                                <span className="text-xs sm:text-sm">🛡️</span>
+                                            ) : (
+                                                <span className="text-xs sm:text-sm">👹</span>
+                                            )}
+
+                                            {/* Active Crown Marker */}
+                                            {p.id === currentParticipant?.id && (
+                                                <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] drop-shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-bounce">👑</span>
+                                            )}
+
+                                            {/* Buff Badge */}
+                                            {hasActiveBuff && (
+                                                <span className="absolute -top-2 -left-1 text-[11px] drop-shadow-[0_0_6px_rgba(52,211,153,0.95)] animate-pulse cursor-help select-none z-10" title={`Active Buffs: ${buffNames.join(', ')}`}>✨</span>
+                                            )}
+
+                                            {/* Opportunity Attack Threat Badge */}
+                                            {pIsOAThreat && (
+                                                <span className="absolute -top-2 -right-1 text-[10px] drop-shadow-[0_0_6px_rgba(239,68,68,0.95)] animate-bounce" title="Will take Opportunity Attack">⚔️</span>
+                                            )}
+
+                                            {/* Target Crosshairs */}
+                                            {pIsTarget && !pIsOAThreat && (
+                                                <span className="absolute -bottom-1 -right-1 text-[10px] drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse">🎯</span>
+                                            )}
+                                        </div>
+
+                                        {/* Token Name Label */}
+                                        <span className="text-[7px] sm:text-[8px] font-fira-sans font-bold truncate max-w-[3rem] text-center px-0.5 mt-0.5 text-slate-300 leading-none block">
+                                            {p.name.split(" ")[0]}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
 
                         {/* 5E AoE Spell Spatial Blast Overlay (Clipped to grid bounds to prevent viewport expansion) */}
                         {aoeTargeting && hoveredCell && (

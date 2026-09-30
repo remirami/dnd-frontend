@@ -353,7 +353,7 @@ export interface HealingPayload {
 }
 
 export interface AIActionResult {
-    type: 'attack' | 'skip';
+    type: 'attack' | 'skip' | 'move' | 'special_action';
     attacker?: string;
     attacker_id?: number;
     target?: string;
@@ -372,6 +372,17 @@ export interface AIActionResult {
     target_hp_after?: number;
     target_killed?: boolean;
     message?: string;
+    // Move action fields (returned by AI movement)
+    from_x?: number;
+    from_y?: number;
+    to_x?: number;
+    to_y?: number;
+    distance?: number;
+    // Advantage/disadvantage flags
+    pack_tactics?: boolean;
+    is_advantage?: boolean;
+    is_disadvantage?: boolean;
+    condition_applied?: string | { name: string };
 }
 
 export interface AITurnResponse {

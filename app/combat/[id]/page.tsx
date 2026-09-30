@@ -344,6 +344,34 @@ export default function CombatPage() {
                     const res = await combatApi.aiTurn(sessionId);
                     const updatedSession = res.data.session;
 
+                    // ── Phase 1: Animate Movement ──
+                    // If the AI moved, show the position change FIRST before any damage
+                    const moveAction = res.data.actions?.find((a: any) => a.type === 'move');
+                    if (moveAction && moveAction.to_x != null && moveAction.to_y != null) {
+                        // Create an intermediate state: update ONLY position (keep old HP/conditions)
+                        const movingParticipants = (currentSession.participants || []).map(p => {
+                            if (p.id === active.id || p.name === active.name) {
+                                return {
+                                    ...p,
+                                    position_x: moveAction.to_x!,
+                                    position_y: moveAction.to_y!,
+                                    movement_used: (p.movement_used ?? 0) + (moveAction.distance ?? 0),
+                                };
+                            }
+                            return p;
+                        });
+                        const movementSession: CombatSession = {
+                            ...currentSession,
+                            participants: movingParticipants,
+                        };
+                        setSession(movementSession);
+                        sessionRef.current = movementSession;
+
+                        // Wait for CSS transition to complete (token slides across grid)
+                        await sleep(500);
+                    }
+
+                    // ── Phase 2: Show Attack Results & Damage ──
                     // Display actionable summary banner
                     const summary = formatAiActionSummary(res.data.actions);
                     if (summary) {
