@@ -17,14 +17,57 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.12.0";
+export const CURRENT_VERSION = "v1.13.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.13.0",
+        date: "September 30, 2026",
+        title: "Animated Battle Grid Token Overlays & Movement-First Tactical Monster AI",
+        tag: "Latest",
+        summary: "Upgraded the 2D tactical battle grid with a dedicated animated token overlay layer featuring fluid 450ms CSS coordinate transitions, completely eliminating token teleportation. Re-architected Monster AI turn sequencing into a strict movement-first pipeline: melee monsters dynamically evaluate reachability, charge into melee reach (5 ft) before rolling attacks, and avoid swinging from out of range. Ranged monsters and spell casters intelligently maintain 15–60 ft distance and tactically reposition backwards when trapped in melee to eliminate 5E ranged attack disadvantage.",
+        items: [
+            {
+                id: "1.13.0-1",
+                title: "🎬 Animated Battle Grid Token Overlay & Smooth Movement Interpolation",
+                description: "Extracted combatant tokens from rigid grid cells into a dedicated CSS-interpolated overlay layer with sub-pixel percentage coordinates.",
+                category: "ui",
+                details: [
+                    "Fluid Coordinate Transitions: Participant tokens glide smoothly across the battle grid using a custom cubic-bezier timing curve (0.45s) instead of teleporting between grid tiles.",
+                    "Decoupled Grid Cells: Replaced in-cell token mounts with invisible structural placeholders, preserving exact tile grid proportions while rendering live tokens on a dedicated top layer (z-15/z-25).",
+                    "Optimistic & Dynamic Syncing: Player movement clicks and AI turns alike trigger instant CSS slide animations that seamlessly sync with server position coordinates without flicker."
+                ]
+            },
+            {
+                id: "1.13.0-2",
+                title: "🐾 Movement-First Enemy AI Turn Sequencing",
+                description: "Decoupled enemy turn execution into distinct animated phases: tactical advance first, attack resolution second.",
+                category: "combat",
+                details: [
+                    "Phased Turn Lifecycle: When an enemy moves, an intermediate state update animates token movement with a 500ms slide delay before attack banners or floating damage numbers trigger.",
+                    "Battlefield Readability: Attack results, rolls, and HP bar damage flashes linger for 1.2 seconds, giving players clear visual feedback on which enemy attacked and who took damage.",
+                    "Multiattack Relocation: If a primary target falls during a multiattack routine, the monster advances using remaining movement to engage the next available target."
+                ]
+            },
+            {
+                id: "1.13.0-3",
+                title: "🧠 Grid-Aware Tactical Target Selection & Monster Archetypes",
+                description: "Monster AI now factors in 5E movement budgets, Chebyshev grid distance, and weapon reach when choosing targets.",
+                category: "combat",
+                details: [
+                    "Reachability Scoring: Melee monsters heavily prioritize targets they can reach and strike this turn (+60 priority for adjacent targets), preventing them from ignoring nearby foes to chase unreachable targets across the arena.",
+                    "Accurate Archetype Profiling: High-strength brutes with secondary thrown weapons (e.g. Orc with Greataxe + Javelin) now correctly identify as melee brutes and charge into melee rather than standing at range.",
+                    "Tactical Ranged Repositioning: Archers and snipers maintain optimal firing distance (15–60 ft); if cornered in melee (<= 5 ft), they tactically back up to break the 5E ranged attack disadvantage penalty before firing.",
+                    "Out-of-Range Attack Safeguards: Monsters will not roll phantom melee attacks from 20 ft away; if unable to close distance, they advance into tactical position and hold defensively."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.12.0",
         date: "September 26, 2026",
         title: "5E Active Buff System, Battle Grid Tactical Auras & Eldritch Targeting Correction",
-        tag: "Latest",
+        tag: "Major",
         summary: "Implemented full D&D 5E mechanical enforcement and tactical visual indicators for positive buff spells. Buffs like Protection from Evil and Good, Shield of Faith, Bless, Mage Armor, Haste, and Heroism now actively modify Armor Class, attack rolls, and saving throws, while granting creature-type protections (Disadvantage on attacks from undead/fiends and charm/fear immunity). Buffed combatants now radiate a shimmering emerald tactical aura ring and star badge on the battle grid.",
         items: [
             {
