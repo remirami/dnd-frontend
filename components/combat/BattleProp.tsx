@@ -8,6 +8,7 @@ interface BattlePropProps {
     feature: TerrainFeature;
     cameraMode?: CameraMode;
     cameraRotation?: number;
+    isDraggingCamera?: boolean;
 }
 
 /**
@@ -78,7 +79,7 @@ function renderPropGraphic(feature: TerrainFeature, isTall: boolean) {
     );
 }
 
-function BattlePropComponent({ feature, cameraMode = "2.5d", cameraRotation = 0 }: BattlePropProps) {
+function BattlePropComponent({ feature, cameraMode = "2.5d", cameraRotation = 0, isDraggingCamera = false }: BattlePropProps) {
     const isSolid = feature.blocksMovement || feature.cover === "total";
     const isHalfCover = feature.cover === "half" || feature.cover === "three-quarters";
     const isDifficult = feature.difficultTerrain;
@@ -118,9 +119,9 @@ function BattlePropComponent({ feature, cameraMode = "2.5d", cameraRotation = 0 
 
             {/* 3. Upright Billboard Prop Standee (Counter-Rotated in 2.5D Perspective to face camera) */}
             <div
-                className={`relative flex flex-col items-center justify-end transition-transform duration-300 pointer-events-none ${
-                    isTall ? "-mb-1" : "-mb-0.5"
-                }`}
+                className={`relative flex flex-col items-center justify-end pointer-events-none ${
+                    isDraggingCamera ? "" : "transition-transform duration-200"
+                } ${isTall ? "-mb-1" : "-mb-0.5"}`}
                 style={{
                     transformStyle: "preserve-3d",
                     transform: cameraMode === "2.5d"

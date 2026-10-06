@@ -13,6 +13,7 @@ interface BattleTokenProps {
     viewMode?: TokenViewMode;
     cameraMode?: CameraMode;
     cameraRotation?: number;
+    isDraggingCamera?: boolean;
     isCurrent?: boolean;
     isTarget?: boolean;
     isOAThreat?: boolean;
@@ -32,6 +33,7 @@ function BattleTokenComponent({
     viewMode = "standee",
     cameraMode = "2.5d",
     cameraRotation = 0,
+    isDraggingCamera = false,
     isCurrent = false,
     isTarget = false,
     isOAThreat = false,
@@ -126,7 +128,9 @@ function BattleTokenComponent({
 
                     {/* Upright Miniature Standee Card */}
                     <div
-                        className={`relative w-[92%] ${standeeHeightClasses} -mb-1 flex flex-col items-center justify-end rounded-t-2xl rounded-b-md overflow-hidden border transition-all duration-200 transform-gpu group-hover:scale-105 ${
+                        className={`relative w-[92%] ${standeeHeightClasses} -mb-1 flex flex-col items-center justify-end rounded-t-2xl rounded-b-md overflow-hidden border ${
+                            isDraggingCamera ? "" : "transition-all duration-200"
+                        } transform-gpu group-hover:scale-105 ${
                             isHero
                                 ? "border-[#c5a059]/80 shadow-[0_8px_24px_rgba(0,0,0,0.9)] bg-gradient-to-t from-[#15161f] via-[#10121a]/80 to-transparent"
                                 : "border-red-600/80 shadow-[0_8px_24px_rgba(0,0,0,0.9)] bg-gradient-to-t from-[#200f12] via-[#150a0c]/80 to-transparent"
@@ -161,7 +165,9 @@ function BattleTokenComponent({
             ) : (
                 /* VIEW MODE 2: CLASSIC CIRCULAR MEDALLION DISC */
                 <div
-                    className={`relative ${baseDiameterClasses} rounded-full flex items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs transition-transform duration-200 overflow-hidden ${ringEffects} ${
+                    className={`relative ${baseDiameterClasses} rounded-full flex items-center justify-center font-cinzel font-bold text-[10px] sm:text-xs ${
+                        isDraggingCamera ? "" : "transition-transform duration-200"
+                    } overflow-hidden ${ringEffects} ${
                         isHero
                             ? "bg-gradient-to-b from-[#2a2416] via-[#1a1712] to-[#0c0d12] border-2 border-[#c5a059] border-b-[3px] border-b-[#7a5a20] shadow-[0_4px_0_#07080c,0_8px_16px_rgba(0,0,0,0.85)] text-amber-200"
                             : "bg-gradient-to-b from-[#2e1215] via-[#1c0d0f] to-[#0c0d12] border-2 border-red-600 border-b-[3px] border-b-[#5a1015] shadow-[0_4px_0_#07080c,0_8px_16px_rgba(0,0,0,0.85)] text-red-200"

@@ -220,6 +220,19 @@ function getChebyshevDist(x1: number, y1: number, x2: number, y2: number): numbe
     return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
 }
 
+// Convert 360° rotation bearing into 8-point compass cardinal heading
+function getCompassHeading(deg: number): string {
+    const normalized = ((deg % 360) + 360) % 360;
+    if (normalized >= 337.5 || normalized < 22.5) return "N";
+    if (normalized >= 22.5 && normalized < 67.5) return "NE";
+    if (normalized >= 67.5 && normalized < 112.5) return "E";
+    if (normalized >= 112.5 && normalized < 157.5) return "SE";
+    if (normalized >= 157.5 && normalized < 202.5) return "S";
+    if (normalized >= 202.5 && normalized < 247.5) return "SW";
+    if (normalized >= 247.5 && normalized < 292.5) return "W";
+    return "NW";
+}
+
 // Calculate cells affected by 5E Area of Effect template
 function getAoECells(
     targetCol: number,
@@ -474,6 +487,7 @@ function BattleGridComponent({
         width: number;
         height: number;
     } | null>(null);
+    const hoveredTileRef = useRef<{ col: number; row: number } | null>(null);
     const rootContainerRef = useRef<HTMLDivElement>(null);
 
     // Escape key listener to quickly dismiss AoE grid targeting
@@ -574,19 +588,91 @@ function BattleGridComponent({
     // 2.5D Perspective Camera Mode: '2.5d' (angled tactical diorama) or 'top-down' (classic 2D flat blueprint)
     const [cameraMode, setCameraMode] = useState<CameraMode>("2.5d");
 
-    // Battlefield Camera Rotation in degrees (0°, 90°, 180°, 270°)
+    // Battlefield Camera Rotation in degrees (0° to 360°)
     const [cameraRotation, setCameraRotation] = useState<number>(0);
+    const cameraRotationRef = useRef<number>(0);
+    useEffect(() => {
+        cameraRotationRef.current = cameraRotation;
+    }, [cameraRotation]);
+
+    // Track middle mouse button camera dragging state
+    const [isDraggingCamera, setIsDraggingCamera] = useState<boolean>(false);
+    const dragRef = useRef<{ isDragging: boolean; startX: number; startRotation: number }>({
+        isDragging: false,
+        startX: 0,
+        startRotation: 0,
+    });
 
     const handleRotateLeft = useCallback(() => {
-        setCameraRotation((prev) => (prev - 90 + 360) % 360);
+        setCameraRotation((prev) => (Math.round((prev - 45 + 360) / 45) * 45) % 360);
     }, []);
 
     const handleRotateRight = useCallback(() => {
-        setCameraRotation((prev) => (prev + 90) % 360);
+        setCameraRotation((prev) => (Math.round((prev + 45) / 45) * 45) % 360);
     }, []);
 
     const handleResetRotation = useCallback(() => {
         setCameraRotation(0);
+    }, []);
+
+    // Middle mouse button 360° camera drag orbit controls
+    useEffect(() => {
+        const el = rootContainerRef.current || viewportContainerRef.current;
+        if (!el) return;
+
+        const handleMouseDown = (e: MouseEvent) => {
+            if (e.button === 1) { // Middle mouse button
+                e.preventDefault();
+                dragRef.current = {
+                    isDragging: true,
+                    startX: e.clientX,
+                    startRotation: cameraRotationRef.current,
+                };
+                setIsDraggingCamera(true);
+                document.body.style.cursor = "grabbing";
+                document.body.style.userSelect = "none";
+            }
+        };
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!dragRef.current.isDragging) return;
+            e.preventDefault();
+            const deltaX = e.clientX - dragRef.current.startX;
+            // Sensitivity: 0.5 degrees of camera orbit per horizontal pixel dragged
+            const SENSITIVITY = 0.5;
+            const newRotation = (dragRef.current.startRotation + deltaX * SENSITIVITY) % 360;
+            const normalized = (newRotation + 360) % 360;
+            setCameraRotation(Math.round(normalized * 10) / 10);
+        };
+
+        const handleMouseUp = (e: MouseEvent) => {
+            if (dragRef.current.isDragging && (e.button === 1 || (e.buttons & 4) === 0)) {
+                dragRef.current.isDragging = false;
+                setIsDraggingCamera(false);
+                document.body.style.cursor = "";
+                document.body.style.userSelect = "";
+            }
+        };
+
+        const handleAuxClick = (e: MouseEvent) => {
+            if (e.button === 1) {
+                e.preventDefault();
+            }
+        };
+
+        el.addEventListener("mousedown", handleMouseDown);
+        window.addEventListener("mousemove", handleMouseMove, { passive: false });
+        window.addEventListener("mouseup", handleMouseUp);
+        el.addEventListener("auxclick", handleAuxClick);
+
+        return () => {
+            el.removeEventListener("mousedown", handleMouseDown);
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+            el.removeEventListener("auxclick", handleAuxClick);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
     }, []);
 
     // Tactical Zoom Level (0.6x to 1.6x)
@@ -634,6 +720,7 @@ function BattleGridComponent({
 
     // Reset pixel hover anchor whenever camera perspective, rotation, or zoom level adjusts
     useEffect(() => {
+        hoveredTileRef.current = null;
         setHoveredTilePixelPos(null);
     }, [zoomLevel, cameraMode, cameraRotation]);
 
@@ -1212,13 +1299,13 @@ function BattleGridComponent({
 
                     {/* Right: Tactical Controls Toolbar (Prominent, High-Visibility Buttons) */}
                     <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap flex-shrink-0">
-                        {/* Camera Rotation Controls (90° increments with live compass indicator) */}
+                        {/* Camera Rotation Controls (360° MMB drag or 45° step buttons) */}
                         <div className="flex items-center bg-[#090b12] border border-[#c5a059]/50 rounded-lg p-0.5 shadow-sm">
                             <button
                                 type="button"
                                 onClick={handleRotateLeft}
                                 className="px-2 py-1 sm:py-1.5 rounded-md font-cinzel font-bold text-xs sm:text-sm text-slate-300 hover:text-amber-200 hover:bg-slate-800/60 transition-all cursor-pointer flex items-center justify-center"
-                                title="Rotate Camera Left 90° (Hotkey: Q or [)"
+                                title="Turn Camera Left 45° (Hotkey: Q or [ • Tip: Drag MMB for 360° orbit)"
                             >
                                 <span className="text-sm">⟲</span>
                             </button>
@@ -1230,20 +1317,20 @@ function BattleGridComponent({
                                         ? "bg-amber-500/25 text-amber-300 border border-amber-500/40"
                                         : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
                                 }`}
-                                title={`Current Angle: ${cameraRotation}° (Click to Reset North / Hotkey: R)`}
+                                title={`Current Heading: ${getCompassHeading(cameraRotation)} (${Math.round(cameraRotation)}°) • Click to Reset North (Hotkey: R)`}
                             >
                                 <span className="text-xs transition-transform duration-300 inline-block" style={{ transform: `rotate(${cameraRotation}deg)` }}>
                                     🧭
                                 </span>
                                 <span className="font-fira-sans font-semibold text-[11px] min-w-[28px] text-center">
-                                    {cameraRotation === 0 ? "N" : cameraRotation === 90 ? "E" : cameraRotation === 180 ? "S" : "W"} ({cameraRotation}°)
+                                    {getCompassHeading(cameraRotation)} ({Math.round(cameraRotation)}°)
                                 </span>
                             </button>
                             <button
                                 type="button"
                                 onClick={handleRotateRight}
                                 className="px-2 py-1 sm:py-1.5 rounded-md font-cinzel font-bold text-xs sm:text-sm text-slate-300 hover:text-amber-200 hover:bg-slate-800/60 transition-all cursor-pointer flex items-center justify-center"
-                                title="Rotate Camera Right 90° (Hotkey: E or ])"
+                                title="Turn Camera Right 45° (Hotkey: E or ] • Tip: Drag MMB for 360° orbit)"
                             >
                                 <span className="text-sm">⟳</span>
                             </button>
@@ -1337,14 +1424,14 @@ function BattleGridComponent({
                     </div>
                 </div>
 
-                {/* Row 2: Dynamic Tactical Context & Keyboard Shortcuts Bar (Expands smoothly for cover/props with zero overlap) */}
-                <div className="w-full pt-1.5 border-t border-[#c5a059]/20 flex flex-wrap items-center justify-between gap-y-1.5 gap-x-3 text-xs font-fira-sans">
-                    {/* Left/Center: Dynamic Terrain or Cover Inspector */}
-                    <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                {/* Row 2: Fixed-Height Tactical Context & Keyboard Shortcuts Bar (Zero layout-shift, zero jitter) */}
+                <div className="w-full h-8 min-h-[32px] max-h-[32px] pt-1.5 border-t border-[#c5a059]/20 flex items-center justify-between gap-x-3 text-xs font-fira-sans overflow-hidden whitespace-nowrap">
+                    {/* Left/Center: Dynamic Terrain or Cover Inspector (Strict Single-Line Truncation) */}
+                    <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                         {hoveredCell && terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`) ? (() => {
                             const feat = terrainMap.get(`${Math.round(hoveredCell.x / 5)},${Math.round(hoveredCell.y / 5)}`)!;
                             return (
-                                <div className="flex items-center gap-2 flex-wrap min-w-0 animate-in fade-in duration-150">
+                                <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden animate-in fade-in duration-150">
                                     <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-cyan-950/90 border border-cyan-500/60 text-cyan-200 shadow-xs flex-shrink-0">
                                         <span className="text-sm flex-shrink-0 drop-shadow">{feat.icon}</span>
                                         <span className="font-bold text-cyan-300 font-cinzel text-xs flex-shrink-0">{feat.name}</span>
@@ -1357,13 +1444,15 @@ function BattleGridComponent({
                                             {feat.blocksMovement ? '🧱 Impassable (+5 AC)' : feat.cover === 'half' ? '🛡️ Half Cover (+2 AC)' : feat.difficultTerrain ? '💧 Difficult Terrain' : 'Obstacle'}
                                         </span>
                                     </div>
-                                    <span className="text-slate-300 text-xs italic truncate max-w-[500px]">
-                                        "{feat.description}"
-                                    </span>
+                                    {feat.description && (
+                                        <span className="text-slate-300 text-xs italic truncate min-w-0 flex-1" title={feat.description}>
+                                            "{feat.description}"
+                                        </span>
+                                    )}
                                 </div>
                             );
                         })() : hoveredCover ? (
-                            <div className="flex items-center gap-2 flex-wrap min-w-0 animate-in fade-in duration-150">
+                            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden animate-in fade-in duration-150">
                                 <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-500/60 text-amber-200 shadow-xs flex-shrink-0">
                                     <span className="text-sm flex-shrink-0">🛡️</span>
                                     <span className="font-bold text-amber-300 font-cinzel text-xs flex-shrink-0">Cover Active:</span>
@@ -1372,30 +1461,35 @@ function BattleGridComponent({
                                     </span>
                                     <span className="text-slate-400 text-[11px] flex-shrink-0">from {hoveredCover.source}</span>
                                 </div>
-                                <span className="text-amber-300/80 text-[11px]">
-                                    • Grants {hoveredCover.bonus > 0 ? `+${hoveredCover.bonus}` : '+2'} bonus to Armor Class and Dexterity saving throws
+                                <span className="text-amber-300/80 text-[11px] truncate min-w-0 flex-1">
+                                    • Grants {hoveredCover.bonus > 0 ? `+${hoveredCover.bonus}` : '+2'} bonus to AC & Dex saves
                                 </span>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-                                <span className="text-amber-400/80">💡</span>
-                                <span>Hover over battlefield props or terrain to inspect tactical cover & movement rules</span>
+                            <div className="flex items-center gap-2 text-slate-400 text-[11px] truncate min-w-0 flex-1">
+                                <span className="text-amber-400/80 flex-shrink-0">💡</span>
+                                <span className="truncate">Hover over battlefield props or terrain to inspect tactical cover & movement rules</span>
                             </div>
                         )}
                     </div>
 
-                    {/* Right: Prominent Keyboard Shortcuts Helper */}
+                    {/* Right: Prominent Keyboard & Mouse Shortcuts Helper */}
                     <div className="flex items-center gap-1.5 bg-[#090b12]/95 px-2.5 py-1 rounded-lg border border-slate-700/80 text-slate-300 ml-auto flex-shrink-0 shadow-sm">
-                        <span className="text-amber-400 font-cinzel font-bold text-[10px] uppercase tracking-wider">Shortcuts:</span>
+                        <span className="text-amber-400 font-cinzel font-bold text-[10px] uppercase tracking-wider">Controls:</span>
+                        <div className="flex items-center gap-1 text-[11px] text-amber-300 font-medium bg-amber-950/70 border border-amber-600/50 px-1.5 py-0.5 rounded shadow-xs" title="Hold middle mouse button and drag horizontally to freely rotate camera 360°">
+                            <span>🖱️</span>
+                            <span>MMB Drag: Orbit 360°</span>
+                        </div>
+                        <span className="text-slate-600">•</span>
                         <div className="flex items-center gap-1">
                             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-[10px] text-amber-200 border border-slate-600 font-mono font-bold shadow-xs">Q</kbd>
                             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-[10px] text-amber-200 border border-slate-600 font-mono font-bold shadow-xs">E</kbd>
-                            <span className="text-slate-300 text-[11px]">Rotate 90°</span>
+                            <span className="text-slate-300 text-[11px]">Turn 45°</span>
                         </div>
                         <span className="text-slate-600">•</span>
                         <div className="flex items-center gap-1">
                             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-[10px] text-amber-200 border border-slate-600 font-mono font-bold shadow-xs">R</kbd>
-                            <span className="text-slate-300 text-[11px]">Reset North</span>
+                            <span className="text-slate-300 text-[11px]">North</span>
                         </div>
                         <span className="text-slate-600">•</span>
                         <span className="text-slate-300 text-[11px] flex items-center gap-1">
@@ -1469,7 +1563,7 @@ function BattleGridComponent({
                             ? `rotateX(36deg) rotateZ(${cameraRotation}deg) scale(${0.96 * zoomLevel})`
                             : `rotateZ(${cameraRotation}deg) scale(${zoomLevel}) translateY(${Math.round(44 + Math.max(0, (zoomLevel - 1) * 320))}px)`,
                         transformOrigin: "50% 50%",
-                        transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                        transition: isDraggingCamera ? "none" : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
                     }}
                 >
                     {/* Dungeon Corner Ornaments */}
@@ -1484,6 +1578,7 @@ function BattleGridComponent({
                         className="relative grid grid-cols-10 gap-1 sm:gap-1.5 bg-[#090b10] p-1.5 sm:p-2.5 rounded-xl border border-slate-800 shadow-inner w-fit mx-auto"
                         style={{ transformStyle: "preserve-3d" }}
                         onMouseLeave={() => {
+                            hoveredTileRef.current = null;
                             setHoveredCell(null);
                             setHoveredTilePixelPos(null);
                         }}
@@ -1543,10 +1638,13 @@ function BattleGridComponent({
                                         key={`${col}-${row}`}
                                         onClick={() => handleCellClick(tileX, tileY, occupant)}
                                         onMouseEnter={(e) => {
-                                            setHoveredCell({ x: tileX, y: tileY });
-                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const target = e.currentTarget;
+                                            if (!target) return;
+                                            hoveredTileRef.current = { col, row };
+                                            setHoveredCell((prev) => (prev && prev.x === tileX && prev.y === tileY ? prev : { x: tileX, y: tileY }));
                                             const rootEl = rootContainerRef.current;
                                             if (rootEl) {
+                                                const rect = target.getBoundingClientRect();
                                                 const rootRect = rootEl.getBoundingClientRect();
                                                 setHoveredTilePixelPos({
                                                     x: rect.left + rect.width / 2 - rootRect.left,
@@ -1559,9 +1657,16 @@ function BattleGridComponent({
                                             }
                                         }}
                                         onMouseMove={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            if (dragRef.current.isDragging) return;
+                                            if (hoveredTileRef.current?.col === col && hoveredTileRef.current?.row === row && hoveredTilePixelPos) {
+                                                return;
+                                            }
+                                            const target = e.currentTarget;
+                                            if (!target) return;
+                                            hoveredTileRef.current = { col, row };
                                             const rootEl = rootContainerRef.current;
                                             if (rootEl) {
+                                                const rect = target.getBoundingClientRect();
                                                 const rootRect = rootEl.getBoundingClientRect();
                                                 setHoveredTilePixelPos({
                                                     x: rect.left + rect.width / 2 - rootRect.left,
@@ -1710,7 +1815,7 @@ function BattleGridComponent({
                                             zIndex: depthZIndex,
                                         }}
                                     >
-                                        <BattleProp feature={feature} cameraMode={cameraMode} cameraRotation={cameraRotation} />
+                                        <BattleProp feature={feature} cameraMode={cameraMode} cameraRotation={cameraRotation} isDraggingCamera={isDraggingCamera} />
                                     </div>
                                 );
                             })}
@@ -1822,6 +1927,7 @@ function BattleGridComponent({
                                             viewMode={tokenViewMode}
                                             cameraMode={cameraMode}
                                             cameraRotation={cameraRotation}
+                                            isDraggingCamera={isDraggingCamera}
                                             isCurrent={p.id === currentParticipant?.id}
                                             isTarget={pIsTarget && !pIsAoEEnemy && !pIsAoEAlly && !pIsOAThreat}
                                             isOAThreat={pIsOAThreat}
@@ -1839,7 +1945,9 @@ function BattleGridComponent({
                                             const pCover = p.cover || getCoverForPosition(sessionId, coords.col, coords.row, pAlt);
                                             return (
                                                 <div
-                                                    className="flex flex-col items-center mt-1 pointer-events-none mx-auto select-none transition-transform duration-300"
+                                                    className={`flex flex-col items-center mt-1 pointer-events-none mx-auto select-none ${
+                                                        isDraggingCamera ? "" : "transition-transform duration-200"
+                                                    }`}
                                                     style={{
                                                         transform: cameraMode === "2.5d"
                                                             ? `rotateZ(${-cameraRotation}deg) rotateX(-36deg)`
