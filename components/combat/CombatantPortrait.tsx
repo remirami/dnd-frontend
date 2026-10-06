@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import type { CombatParticipant } from "@/lib/types/combat";
+import { resolveParticipantToken } from "@/lib/utils/tokenResolver";
 
 interface CombatantPortraitProps {
     participant?: CombatParticipant | null;
@@ -160,6 +161,8 @@ export function CombatantPortrait({
         lg: "w-8 h-8 text-xs -bottom-1.5 -right-2",
     }[size];
 
+    const tokenInfo = resolveParticipantToken(participant);
+
     return (
         <div className="relative inline-block flex-shrink-0 select-none">
             {/* Portrait Outer Bezel */}
@@ -181,7 +184,15 @@ export function CombatantPortrait({
                     }`}
                 >
                     {isHero ? (
-                        hasClassIcon ? (
+                        tokenInfo.imageUrl ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                                src={tokenInfo.imageUrl}
+                                alt={participant.name}
+                                className="w-[140%] h-[140%] max-w-none object-cover object-[center_20%] filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                                draggable={false}
+                            />
+                        ) : hasClassIcon ? (
                             <Image
                                 src={`/icons/classes/${className}.png`}
                                 alt={participant.name}
@@ -208,21 +219,29 @@ export function CombatantPortrait({
             </div>
 
             {/* Classic RPG Shield AC Badge */}
-            {showAc && participant.armor_class != null && (
-                <div
-                    title={`Armor Class: ${participant.armor_class}`}
-                    className={`absolute ${acBadgeSizes} z-10 flex items-center justify-center font-fira-sans font-extrabold rounded-md shadow-[0_2px_8px_rgba(0,0,0,0.8)] ${
-                        isHero
-                            ? "bg-[#181a24] text-[#e0bc75] border border-[#c5a059] shadow-[0_0_8px_rgba(197,160,89,0.4)]"
-                            : "bg-[#1a1315] text-amber-300 border border-amber-600/70 shadow-[0_0_8px_rgba(217,119,6,0.3)]"
-                    }`}
-                    style={{
-                        clipPath: "polygon(50% 0%, 100% 20%, 100% 75%, 50% 100%, 0% 75%, 0% 20%)",
-                    }}
-                >
-                    <span className="leading-none pt-0.5">{participant.armor_class}</span>
-                </div>
-            )}
+            {showAc && participant.armor_class != null && (() => {
+                const effAc = participant.effective_ac ?? participant.armor_class;
+                const isBuffed = participant.effective_ac != null && participant.effective_ac > participant.armor_class;
+                const coverInfo = participant.cover ? ` (+${participant.cover.bonus} ${participant.cover.source})` : '';
+                return (
+                    <div
+                        title={`Armor Class: ${effAc}${isBuffed ? ` (Base: ${participant.armor_class}${coverInfo})` : ''}`}
+                        className={`absolute ${acBadgeSizes} z-10 flex items-center justify-center font-fira-sans font-extrabold rounded-md shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-colors ${
+                            isBuffed
+                                ? "bg-emerald-950 text-emerald-300 border border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                                : isHero
+                                    ? "bg-[#181a24] text-[#e0bc75] border border-[#c5a059] shadow-[0_0_8px_rgba(197,160,89,0.4)]"
+                                    : "bg-[#1a1315] text-amber-300 border border-amber-600/70 shadow-[0_0_8px_rgba(217,119,6,0.3)]"
+                        }`}
+                        style={{
+                            clipPath: "polygon(50% 0%, 100% 20%, 100% 75%, 50% 100%, 0% 75%, 0% 20%)",
+                        }}
+                    >
+                        <span className="leading-none pt-0.5">{effAc}</span>
+                    </div>
+                );
+            })()}
+
         </div>
     );
 }

@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import type { CombatParticipant } from "@/lib/types/combat";
+import { resolveParticipantToken } from "@/lib/utils/tokenResolver";
 
 interface InitiativeRibbonProps {
     participants: CombatParticipant[];
@@ -58,8 +59,8 @@ export function InitiativeRibbon({
                 </span>
             </div>
 
-            {/* Center: Scrollable Initiative Track */}
-            <div className="flex-1 flex items-center gap-2 overflow-x-auto py-1 scrollbar-thin scrollbar-thumb-[#c5a059]/20 scrollbar-track-transparent">
+            {/* Center: Dynamic Centered Initiative Track */}
+            <div className="flex-1 flex items-center justify-center gap-2.5 sm:gap-3 overflow-x-auto py-1.5 px-2 scrollbar-thin scrollbar-thumb-[#c5a059]/20 scrollbar-track-transparent">
                 {participants.map((p) => {
                     const isCurrent = currentParticipant?.id === p.id;
                     const isTarget = targetId === p.id.toString();
@@ -68,6 +69,7 @@ export function InitiativeRibbon({
                     const isDamaged = damagedParticipantIds.has(p.id);
                     const isViewing = viewingParticipantId === p.id;
                     const hpPct = p.max_hp > 0 ? Math.max(0, Math.min(100, (p.current_hp / p.max_hp) * 100)) : 0;
+                    const tokenInfo = resolveParticipantToken(p);
 
                     return (
                         <div
@@ -82,55 +84,104 @@ export function InitiativeRibbon({
                                 }
                                 onInspectParticipant(p);
                             }}
-                            className={`relative group flex-shrink-0 rounded-md transition-all duration-200 cursor-pointer border flex flex-col justify-between p-1.5 w-32 sm:w-36 h-14 ${
+                            className={`relative group flex-shrink-0 rounded-xl transition-all duration-200 cursor-pointer border flex items-center gap-2.5 p-2 min-w-[175px] sm:min-w-[205px] h-17 sm:h-19 ${
                                 isCurrent
                                     ? isPlayer
-                                        ? 'bg-[#1a1f2c] border-[#c5a059] shadow-[0_0_14px_rgba(197,160,89,0.45)] ring-1 ring-[#c5a059]/50 scale-[1.02]'
-                                        : 'bg-[#281518] border-red-500 shadow-[0_0_14px_rgba(239,68,68,0.45)] ring-1 ring-red-500/50 scale-[1.02]'
+                                        ? 'bg-gradient-to-r from-[#1c2233] to-[#12141f] border-[#c5a059] shadow-[0_0_18px_rgba(197,160,89,0.5)] ring-2 ring-[#c5a059]/60 scale-105 z-10'
+                                        : 'bg-gradient-to-r from-[#2c1418] to-[#180c0f] border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.5)] ring-2 ring-red-500/60 scale-105 z-10'
                                     : isTarget
-                                        ? 'bg-[#221c17] border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                                        ? 'bg-[#221c17] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
                                         : isDead
-                                            ? 'bg-[#0c0d12]/50 border-stone-800/80 opacity-40 grayscale'
+                                            ? 'bg-[#0c0d12]/60 border-stone-800/80 opacity-40 grayscale'
                                             : isViewing
                                                 ? 'bg-[#181a21] border-[#c5a059]/50'
-                                                : 'bg-[#141620]/80 border-slate-800 hover:border-[#c5a059]/40 hover:bg-[#181a21]'
+                                                : 'bg-[#12141d]/90 border-slate-800/90 hover:border-[#c5a059]/40 hover:bg-[#181a24]'
                             }`}
                         >
-                            {/* Turn Arrow indicator */}
+                            {/* Turn Crown indicator */}
                             {isCurrent && (
-                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-[#c5a059]" />
+                                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs drop-shadow-[0_0_6px_rgba(197,160,89,0.9)] animate-bounce z-20">
+                                    👑
+                                </span>
                             )}
 
-                            {/* Top row: Init badge, name, AC */}
-                            <div className="flex items-center justify-between gap-1">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className={`text-[10px] font-fira-sans font-bold px-1 rounded ${
-                                        isPlayer ? 'bg-[#c5a059]/20 text-[#c5a059]' : 'bg-red-950/60 text-red-300'
-                                    }`}>
-                                        {p.initiative}
+                            {/* Left: Cameo Portrait with Initiative Badge */}
+                            <div className="relative w-11 h-11 sm:w-13 sm:h-13 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border-2 border-slate-700/80 bg-black/60 shadow-md">
+                                {tokenInfo.imageUrl ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                        src={tokenInfo.imageUrl}
+                                        alt={p.name}
+                                        className="w-full h-full object-cover object-[center_20%] select-none pointer-events-none"
+                                    />
+                                ) : (
+                                    <span className="text-xl sm:text-2xl select-none filter drop-shadow">
+                                        {tokenInfo.fallbackIcon}
                                     </span>
-                                    <span className={`text-xs font-lora font-semibold truncate ${
-                                        isDead ? 'line-through text-slate-500' : 'text-slate-200'
-                                    }`}>
-                                        {p.name}
-                                    </span>
-                                </div>
-                                <span className="text-[10px] font-fira-sans text-[#c5a059]/90 flex-shrink-0 flex items-center">
-                                    🛡{p.armor_class}
+                                )}
+
+                                {/* Initiative Badge on Portrait Corner */}
+                                <span className={`absolute -bottom-1 -left-1 text-[9px] font-fira-sans font-bold px-1 rounded-full border shadow-xs ${
+                                    isPlayer ? 'bg-amber-950/95 border-[#c5a059] text-amber-200' : 'bg-red-950/95 border-red-500 text-red-200'
+                                }`}>
+                                    {p.initiative}
                                 </span>
                             </div>
 
-                            {/* Bottom row: HP Bar & numerical values */}
-                            <div className="space-y-0.5 mt-auto">
-                                <div className="flex items-center justify-between text-[9px] font-fira-sans text-[#d1cdb8]/70">
-                                    <span>{isDead ? 'DEAD' : `${p.current_hp}/${p.max_hp}`}</span>
+                            {/* Right: Info Column */}
+                            <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
+                                {/* Top: Name & AC */}
+                                <div className="flex items-center justify-between gap-1">
+                                    <span className={`text-xs sm:text-sm font-cinzel font-bold truncate ${
+                                        isDead ? 'line-through text-slate-500' : 'text-slate-100'
+                                    }`}>
+                                        {p.name}
+                                    </span>
+                                    {(() => {
+                                        const effAc = p.effective_ac ?? p.armor_class;
+                                        const hasBuffedAc = p.effective_ac != null && p.effective_ac > p.armor_class;
+                                        const coverText = p.cover ? ` (+${p.cover.bonus} ${p.cover.source})` : '';
+                                        return (
+                                            <span
+                                                className={`text-[10px] font-fira-sans font-bold px-1.5 py-0.2 rounded border flex-shrink-0 flex items-center gap-1 transition-colors ${
+                                                    hasBuffedAc
+                                                        ? 'text-emerald-300 bg-emerald-950/80 border-emerald-500/70 shadow-xs'
+                                                        : 'text-amber-300 bg-amber-950/60 border-amber-700/40'
+                                                }`}
+                                                title={`Armor Class: ${effAc}${hasBuffedAc ? ` (Base: ${p.armor_class}${coverText})` : ''}`}
+                                            >
+                                                <span>🛡️</span>
+                                                <span>{effAc}</span>
+                                                {hasBuffedAc && (
+                                                    <span className="text-[8px] text-emerald-400 font-extrabold leading-none">
+                                                        +{effAc - p.armor_class}
+                                                    </span>
+                                                )}
+                                            </span>
+                                        );
+                                    })()}
+
+                                </div>
+
+                                {/* Middle: HP Numeric + Target Badge */}
+                                <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-fira-sans font-bold">
+                                    <span className={`${
+                                        isDead ? 'text-red-400 font-extrabold' :
+                                        hpPct > 50 ? 'text-emerald-400' :
+                                        hpPct > 20 ? 'text-amber-400' :
+                                        'text-rose-400 animate-pulse'
+                                    }`}>
+                                        {isDead ? '💀 FALLEN' : `HP ${p.current_hp}/${p.max_hp}`}
+                                    </span>
                                     {isTarget && (
-                                        <span className="text-amber-400 text-[8px] font-bold uppercase tracking-wider font-cinzel">
-                                            🎯 Target
+                                        <span className="text-amber-400 text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider font-cinzel flex items-center gap-0.5">
+                                            <span>🎯</span> TARGET
                                         </span>
                                     )}
                                 </div>
-                                <div className="w-full h-1 bg-[#0c0d12] rounded-full overflow-hidden border border-slate-800/80">
+
+                                {/* Bottom: Health Progress Bar */}
+                                <div className="w-full h-1.5 sm:h-2 bg-black/90 rounded-full overflow-hidden border border-slate-700/80 shadow-inner">
                                     <div
                                         className={`h-full transition-all duration-300 bg-gradient-to-r ${
                                             isDamaged ? 'from-red-600 to-red-400 animate-pulse' : hpColor(p.current_hp, p.max_hp)
@@ -142,7 +193,7 @@ export function InitiativeRibbon({
 
                             {/* Mini conditions row */}
                             {p.conditions && p.conditions.length > 0 && (
-                                <div className="absolute -bottom-2 right-1 flex items-center gap-0.5">
+                                <div className="absolute -bottom-1.5 right-2 flex items-center gap-0.5">
                                     {p.conditions.slice(0, 2).map((c: any, cI: number) => (
                                         <span
                                             key={cI}

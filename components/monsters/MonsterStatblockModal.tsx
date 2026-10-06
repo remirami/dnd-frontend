@@ -3,6 +3,7 @@
 import React from 'react';
 import { CombatParticipant } from '@/lib/types/combat';
 import { ConditionBadge } from '@/components/combat/ConditionBadge';
+import { resolveSizeDisplay, getSizeFootprint } from '@/lib/utils';
 
 interface MonsterStatblockModalProps {
     participant?: CombatParticipant | null;
@@ -18,6 +19,17 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
     const multiattack = participant.multiattack;
     const rechargeState = participant.recharge_state || {};
     const resistances = participant.enemy_resistances || [];
+
+    const sizeName = resolveSizeDisplay(
+        participant.size || stats?.size,
+        participant.size_display || stats?.size_display || participant.size_dimensions?.name
+    );
+    const footprint = participant.size_dimensions?.feet
+        ? `${participant.size_dimensions.feet}×${participant.size_dimensions.feet} ft.`
+        : getSizeFootprint(sizeName);
+    const creatureType = participant.creature_type || (participant.participant_type === 'enemy' ? 'Creature' : (participant.character?.race_name || 'Humanoid'));
+    const alignment = participant.alignment || '';
+    const crDisplay = participant.challenge_rating ?? (participant.character ? participant.character.level : '—');
 
     const formatModifier = (score: number = 10) => {
         const mod = Math.floor((score - 10) / 2);
@@ -41,13 +53,18 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
                 </button>
 
                 {/* Header */}
-                <div className="border-b border-[#c5a059]/40 pb-3 mb-3">
+                <div className="border-b border-[#c5a059]/40 pb-3 mb-3 pr-8">
                     <h2 className="text-2xl sm:text-3xl font-bold font-cinzel text-[#c5a059] tracking-wide">
                         {participant.name}
                     </h2>
-                    <p className="text-xs sm:text-sm italic text-slate-400 font-lora">
-                        Challenge Rating: <span className="text-[#c5a059] font-semibold">{participant.character?.level || '—'}</span>
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between text-xs sm:text-sm italic text-slate-400 font-lora mt-0.5 gap-2">
+                        <span>
+                            {sizeName} {creatureType}{alignment ? `, ${alignment}` : ''}
+                        </span>
+                        <span className="not-italic text-xs font-cinzel text-slate-300">
+                            Challenge Rating: <span className="text-[#c5a059] font-bold font-fira-sans">{crDisplay}</span>
+                        </span>
+                    </div>
                 </div>
 
                 {/* Top Vitals */}
@@ -65,9 +82,20 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
                             {participant.current_hp} / {participant.max_hp}
                         </span>
                     </div>
+                    <div>
+                        <strong className="text-white">Size & Space:</strong>{' '}
+                        <span className="text-slate-200 font-semibold">{sizeName}</span>
+                        <span className="text-xs text-slate-400 ml-1.5 font-fira-sans">({footprint} space)</span>
+                        {participant.is_flying && (
+                            <span className="text-xs text-sky-400 font-semibold ml-2 font-fira-sans">🪽 Airborne ({participant.altitude ?? 0} ft)</span>
+                        )}
+                    </div>
                     {stats?.speed && (
                         <div>
                             <strong className="text-white">Speed:</strong> <span>{stats.speed}</span>
+                            {participant.fly_speed && !stats.speed.toLowerCase().includes('fly') ? (
+                                <span className="text-slate-300 ml-1.5">, fly {participant.fly_speed} ft.{participant.has_hover ? ' (hover)' : ''}</span>
+                            ) : null}
                         </div>
                     )}
                     {participant.conditions && participant.conditions.length > 0 && (

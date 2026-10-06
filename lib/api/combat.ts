@@ -183,4 +183,11 @@ export const combatApi = {
             participant: any;
             session?: CombatSession;
         }>(`/combat/sessions/${sessionId}/dodge/`, data),
+
+    setAltitude: (sessionId: number, data: { participant_id: number; altitude: number }) =>
+        apiClient.post<{
+            message: string;
+            participant: any;
+            session?: CombatSession;
+        }>(`/combat/sessions/${sessionId}/set_altitude/`, data),
 };

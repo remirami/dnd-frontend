@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
 import type { CombatParticipant } from "@/lib/types/combat";
+import { resolveSizeDisplay, getSizeFootprint } from "@/lib/utils";
 
 interface ParticipantInspectorDrawerProps {
     participant?: CombatParticipant | null;
@@ -40,6 +41,14 @@ export function ParticipantInspectorDrawer({
         { label: 'CHA', name: 'Charisma', score: stats.charisma, modifier: stats.charisma_modifier },
     ] : null;
 
+    const sizeName = resolveSizeDisplay(
+        participant.size || participant.enemy_stats?.size,
+        participant.size_display || participant.enemy_stats?.size_display || participant.size_dimensions?.name
+    );
+    const footprint = participant.size_dimensions?.feet
+        ? `${participant.size_dimensions.feet}×${participant.size_dimensions.feet} ft.`
+        : getSizeFootprint(sizeName);
+
     return (
         <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] bg-[#10121a]/98 border-l border-[#c5a059]/40 shadow-[0_0_40px_rgba(0,0,0,0.8)] backdrop-blur-xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-250 font-lora">
             {/* Header */}
@@ -50,8 +59,8 @@ export function ParticipantInspectorDrawer({
                     </h3>
                     <p className="text-xs text-[#d1cdb8]/60 mt-0.5 font-lora">
                         {isPlayer
-                            ? `${char?.character_class?.name || char?.class_name || 'Hero'} • Level ${char?.level || 1}`
-                            : 'Enemy Hostile'}
+                            ? `${char?.character_class?.name || char?.class_name || 'Hero'} • Level ${char?.level || 1} • ${sizeName}`
+                            : `${sizeName} ${participant.creature_type || 'Creature'}${participant.alignment ? `, ${participant.alignment}` : ''} • CR ${participant.challenge_rating ?? '—'}`}
                     </p>
                 </div>
                 <button
@@ -85,8 +94,27 @@ export function ParticipantInspectorDrawer({
                     <div className="grid grid-cols-3 gap-2 pt-2 text-center">
                         <div className="p-2 rounded bg-[#0c0d12]/60 border border-slate-800">
                             <span className="text-[10px] uppercase text-slate-400 block font-lora">Armor Class</span>
-                            <span className="font-fira-sans font-bold text-base text-[#e0bc75]">🛡 {participant.armor_class}</span>
+                            <div className="flex items-center justify-center gap-1">
+                                <span className={`font-fira-sans font-bold text-base ${
+                                    participant.effective_ac && participant.effective_ac > participant.armor_class
+                                        ? 'text-emerald-400'
+                                        : 'text-[#e0bc75]'
+                                }`}>
+                                    🛡 {participant.effective_ac ?? participant.armor_class}
+                                </span>
+                                {participant.effective_ac != null && participant.effective_ac > participant.armor_class && (
+                                    <span className="text-[10px] font-fira-sans font-extrabold text-emerald-400 bg-emerald-950/80 px-1 py-0.5 rounded border border-emerald-600/60 leading-none">
+                                        +{participant.effective_ac - participant.armor_class}
+                                    </span>
+                                )}
+                            </div>
+                            {participant.cover && (
+                                <span className="text-[9px] text-amber-300/90 block font-lora mt-0.5 font-medium truncate" title={`${participant.cover.source} (+${participant.cover.bonus} AC)`}>
+                                    {participant.cover.source}
+                                </span>
+                            )}
                         </div>
+
                         <div className="p-2 rounded bg-[#0c0d12]/60 border border-slate-800">
                             <span className="text-[10px] uppercase text-slate-400 block font-lora">Initiative</span>
                             <span className="font-fira-sans font-bold text-base text-[#e0bc75]">{participant.initiative}</span>
@@ -95,6 +123,23 @@ export function ParticipantInspectorDrawer({
                             <span className="text-[10px] uppercase text-slate-400 block font-lora">Attacks</span>
                             <span className="font-fira-sans font-bold text-base text-emerald-400">{participant.attacks_remaining}</span>
                         </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/80 text-slate-300">
+                        <div>
+                            <span className="text-slate-400 font-lora">Size:</span>{' '}
+                            <span className="font-semibold text-white font-fira-sans">{sizeName}</span>{' '}
+                            <span className="text-[11px] text-slate-400">({footprint})</span>
+                        </div>
+                        {participant.is_flying ? (
+                            <span className="text-sky-400 font-semibold font-fira-sans text-[11px]">
+                                🪽 Flying {participant.altitude ?? 0} ft
+                            </span>
+                        ) : (
+                            <span className="text-slate-400 font-fira-sans text-[11px]">
+                                Speed: {participant.speed || stats?.speed || 30} ft
+                            </span>
+                        )}
                     </div>
                 </div>
 

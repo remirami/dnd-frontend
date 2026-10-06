@@ -1031,6 +1031,28 @@ export default function CombatPage() {
         }
     };
 
+    const handleSetAltitude = async (altitude: number) => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.setAltitude(sessionId, {
+                participant_id: current.id,
+                altitude: altitude,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to adjust altitude:", err);
+            alert(err.response?.data?.error || "Flight adjustment failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
     // 5E Spatial AoE Spell Targeting Handlers
     const handleStartAoETargeting = (config: AoETargetingConfig) => {
         setSelectedSpellForCast(null);
@@ -1471,6 +1493,7 @@ export default function CombatPage() {
                 onDash={handleDash}
                 onDisengage={handleDisengage}
                 onDodge={handleDodge}
+                onSetAltitude={handleSetAltitude}
                 isMoving={isMoving}
                 isOperating={isMovementOperating}
                 aoeTargeting={aoeTargeting}
@@ -1515,6 +1538,7 @@ export default function CombatPage() {
                 onDash={handleDash}
                 onDisengage={handleDisengage}
                 onDodge={handleDodge}
+                onSetAltitude={handleSetAltitude}
             />
 
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}

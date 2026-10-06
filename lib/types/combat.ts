@@ -174,6 +174,8 @@ export interface EnemyStatBlock {
         truesight: string | null;
         passive_perception: number | null;
     };
+    size?: string;
+    size_display?: string;
 }
 
 export interface EnemyAttackInfo {
@@ -234,6 +236,10 @@ export interface CombatParticipant {
     is_rogue?: boolean;
     cunning_action_available?: boolean;
     size?: string;
+    size_display?: string;
+    creature_type?: string;
+    alignment?: string;
+    challenge_rating?: string | number;
     race_name?: string;
     has_lucky_trait?: boolean;
     has_halfling_nimbleness?: boolean;
@@ -257,6 +263,15 @@ export interface CombatParticipant {
         shield?: { name: string; ac_bonus: number } | null;
     };
     effective_ac?: number;
+    cover?: {
+        type: string;
+        bonus: number;
+        source: string;
+        col?: number;
+        row?: number;
+        description?: string;
+    } | null;
+
     // Enemy stat block (only present for enemy participants)
     enemy_stats?: EnemyStatBlock;
     enemy_attacks?: EnemyAttackInfo[];
@@ -283,6 +298,14 @@ export interface CombatParticipant {
     is_disengaged?: boolean;
     is_dodging?: boolean;
     dashed_this_turn?: boolean;
+    // Size & 3D Aerial mechanics
+    size_dimensions?: { tiles: number; feet: number; name: string };
+    occupied_cells?: Array<[number, number]>;
+    altitude?: number;
+    is_flying?: boolean;
+    fly_speed?: number;
+    has_hover?: boolean;
+    can_fly?: boolean;
 }
 
 export interface EnvironmentalEffect {

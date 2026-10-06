@@ -6,6 +6,7 @@ import { ConditionBadge } from "@/components/combat/ConditionBadge";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
 import type { CombatParticipant } from "@/lib/types/combat";
 import type { AttackFeedback } from "@/components/combat/BattlefieldArena";
+import { resolveSizeDisplay } from "@/lib/utils";
 
 interface RollPrediction {
     hitChance?: number;
@@ -235,7 +236,8 @@ export function ClashCard({
                                 {attacker?.name || "Active"}
                             </h4>
                             <span className="text-[9px] font-lora text-slate-400 truncate block">
-                                {attacker?.character?.character_class?.name || (attacker?.participant_type === "enemy" ? "Hostile" : "Hero")}
+                                {attacker?.character?.character_class?.name || (attacker?.participant_type === "enemy" ? `${resolveSizeDisplay(attacker.size, attacker.size_display || attacker.size_dimensions?.name)} ${attacker.creature_type || 'Hostile'}` : "Hero")}
+                                {attacker?.is_flying ? ` • 🪽 ${attacker.altitude ?? 0}ft` : ""}
                             </span>
                         </div>
                     </div>
@@ -304,7 +306,8 @@ export function ClashCard({
                                 {defender?.name || "No Target"}
                             </h4>
                             <span className="text-[9px] font-lora text-slate-400 truncate block">
-                                {defender?.participant_type === "enemy" ? "Opponent" : "Target"}
+                                {defender?.character?.character_class?.name || (defender?.participant_type === "enemy" ? `${resolveSizeDisplay(defender.size, defender.size_display || defender.size_dimensions?.name)} ${defender.creature_type || 'Opponent'}` : "Target")}
+                                {defender?.is_flying ? ` • 🪽 ${defender.altitude ?? 0}ft` : ""}
                             </span>
                         </div>
                     </div>

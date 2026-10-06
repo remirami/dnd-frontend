@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { User as UserIcon, LogOut, Sparkles, Plus, Home, Swords, Trophy, Users } from "lucide-react";
+import { User as UserIcon, LogOut, Sparkles, Plus, Home, Swords, Trophy, Users, BookOpen } from "lucide-react";
 
 interface NavbarProps {
   showActions?: boolean;
@@ -51,6 +51,7 @@ export default function Navbar({
   const isCharactersActive = pathname.startsWith("/characters");
   const isCombatActive = pathname.startsWith("/combat");
   const isGauntletActive = pathname.startsWith("/gauntlet");
+  const isBestiaryActive = pathname.startsWith("/bestiary");
 
   return (
     <header className="w-full bg-[#0c0d12] border-b border-[#181a21] py-3.5 px-4 sm:px-6 md:px-12 flex items-center justify-between relative z-40">
@@ -99,6 +100,18 @@ export default function Navbar({
           >
             <Trophy className="w-3.5 h-3.5" />
             <span>The Gauntlet</span>
+          </Link>
+
+          <Link
+            href="/bestiary"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition-all ${
+              isBestiaryActive
+                ? "bg-[#c5a059]/20 text-[#c5a059] border border-[#c5a059]/50 shadow-[0_0_10px_rgba(197,160,89,0.2)]"
+                : "text-[#d1cdb8]/70 hover:text-white hover:bg-[#181a24]/60 border border-transparent"
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Bestiary</span>
           </Link>
         </nav>
       </div>
@@ -201,6 +214,16 @@ export default function Navbar({
                       <Trophy className="w-3.5 h-3.5" />
                       <span>The Gauntlet</span>
                     </Link>
+                    <Link
+                      href="/bestiary"
+                      onClick={() => setDropdownOpen(false)}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded transition-colors ${
+                        isBestiaryActive ? "text-[#c5a059] bg-[#c5a059]/10" : "text-[#d1cdb8]/80 hover:text-white"
+                      }`}
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Bestiary</span>
+                    </Link>
                   </div>
 
                   <Link
@@ -254,6 +277,14 @@ export default function Navbar({
                     >
                       <Trophy className="w-3.5 h-3.5" />
                       <span>The Gauntlet</span>
+                    </Link>
+                    <Link
+                      href="/bestiary"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded text-[#d1cdb8]/80 hover:text-white"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Bestiary</span>
                     </Link>
                   </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
@@ -48,6 +48,7 @@ interface BattlefieldArenaProps {
     onDash?: () => Promise<void>;
     onDisengage?: () => Promise<void>;
     onDodge?: () => Promise<void>;
+    onSetAltitude?: (altitude: number) => Promise<void>;
     isMoving?: boolean;
     isOperating?: boolean;
     aoeTargeting?: AoETargetingConfig | null;
@@ -243,6 +244,7 @@ export function BattlefieldArena({
     onDash,
     onDisengage,
     onDodge,
+    onSetAltitude,
     isMoving,
     isOperating,
     aoeTargeting,
@@ -316,36 +318,53 @@ export function BattlefieldArena({
     const isMeleeReach = defenderDistance != null ? defenderDistance <= 5 : true;
 
     // Roll prediction calculations
-    const rollPred = computeRollPrediction(
+    const rollPred = useMemo(() => computeRollPrediction(
         currentParticipant,
         activeDefender,
         isMeleeReach,
         false,
         allParticipants
-    );
+    ), [currentParticipant, activeDefender, isMeleeReach, allParticipants]);
 
-    let hitChance = 65;
-    if (activeDefender && currentParticipant) {
-        const atkBonus = 5;
-        const targetAC = activeDefender.armor_class || 10;
-        const neededRoll = Math.max(1, Math.min(20, targetAC - atkBonus));
-        let baseChance = (21 - neededRoll) / 20;
-        if (rollPred.state === 'advantage') {
-            baseChance = 1 - Math.pow(1 - baseChance, 2);
-        } else if (rollPred.state === 'disadvantage') {
-            baseChance = Math.pow(baseChance, 2);
+    const prediction = useMemo(() => {
+        let hitChance = 65;
+        const disadvReasons = [...rollPred.disadvReasons];
+        if (activeDefender?.cover) {
+            disadvReasons.push(`Cover: +${activeDefender.cover.bonus} AC (${activeDefender.cover.source})`);
         }
-        hitChance = Math.round(Math.max(5, Math.min(95, baseChance * 100)));
-    }
 
-    const prediction = {
-        hitChance,
-        avgDamage: 8,
-        isAdvantage: rollPred.state === 'advantage',
-        isDisadvantage: rollPred.state === 'disadvantage',
-        advantageReasons: rollPred.advReasons,
-        disadvantageReasons: rollPred.disadvReasons,
-    };
+        if (activeDefender && currentParticipant) {
+            const atkBonus = 5;
+            const targetAC = activeDefender.effective_ac ?? activeDefender.armor_class ?? 10;
+            const neededRoll = Math.max(1, Math.min(20, targetAC - atkBonus));
+            let baseChance = (21 - neededRoll) / 20;
+            if (rollPred.state === 'advantage') {
+                baseChance = 1 - Math.pow(1 - baseChance, 2);
+            } else if (rollPred.state === 'disadvantage') {
+                baseChance = Math.pow(baseChance, 2);
+            }
+            hitChance = Math.round(Math.max(5, Math.min(95, baseChance * 100)));
+        }
+
+        return {
+            hitChance,
+            avgDamage: 8,
+            isAdvantage: rollPred.state === 'advantage',
+            isDisadvantage: rollPred.state === 'disadvantage',
+            advantageReasons: rollPred.advReasons,
+            disadvantageReasons: disadvReasons,
+        };
+    }, [activeDefender, currentParticipant, rollPred]);
+
+
+    const handleSelectTargetGrid = useCallback((id: string) => {
+        onSelectTarget(id);
+        setIsClashLocked(true);
+    }, [onSelectTarget]);
+
+    const handleSwitchToDuel = useCallback(() => {
+        if (targetParticipant) setIsClashLocked(true);
+    }, [targetParticipant]);
 
     const currentIsIncapacitated = currentParticipant?.conditions?.some((c: any) =>
         isIncapacitating(typeof c === "string" ? c : c.name)
@@ -416,24 +435,20 @@ export function BattlefieldArena({
                     targetParticipant={targetParticipant}
                     allParticipants={allParticipants}
                     targetId={targetId}
-                    onSelectTarget={(id) => {
-                        onSelectTarget(id);
-                        setIsClashLocked(true);
-                    }}
+                    onSelectTarget={handleSelectTargetGrid}
                     onInspectParticipant={onInspectParticipant}
                     onMove={onMove ?? (async () => {})}
                     onDash={onDash}
                     onDisengage={onDisengage}
                     onDodge={onDodge}
+                    onSetAltitude={onSetAltitude}
                     isMoving={isMoving}
                     isOperating={isOperating}
                     aoeTargeting={aoeTargeting}
                     onConfirmAoECast={onConfirmAoECast}
                     onCancelAoETargeting={onCancelAoETargeting}
                     environmentalEffects={environmentalEffects}
-                    onSwitchToDuel={() => {
-                        if (targetParticipant) setIsClashLocked(true);
-                    }}
+                    onSwitchToDuel={handleSwitchToDuel}
                     onHoverEnemy={setHoveredEnemy}
                 />
 

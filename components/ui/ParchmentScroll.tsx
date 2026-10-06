@@ -46,19 +46,19 @@ export default function ParchmentScroll({ className = "" }: ParchmentScrollProps
         </div>
 
         {/* Scroll Content */}
-        <div className="relative z-10 space-y-4">
+        <div className="relative z-10 space-y-3.5">
           {/* Header */}
           <div className="pr-10">
             <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-[#c5a059]/80">
               <Sparkles className="w-3 h-3 text-[#c5a059]" />
-              <span>Adventurer&apos;s Charter</span>
+              <span>Tome of Knowledge</span>
             </div>
             <h2 className="font-cinzel-decorative text-lg md:text-xl font-bold tracking-wider text-[#c5a059] mt-0.5">
-              THE REALM COMPANION
+              MONSTER ARCHIVES
             </h2>
 
             {/* Antique Filigree Divider */}
-            <div className="flex items-center gap-2 mt-2 opacity-70">
+            <div className="flex items-center gap-2 mt-1.5 opacity-70">
               <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#c5a059]" />
               <span className="text-[9px] text-[#c5a059]">✦</span>
               <div className="h-[1px] w-16 bg-gradient-to-r from-[#c5a059] to-transparent" />
@@ -68,48 +68,61 @@ export default function ParchmentScroll({ className = "" }: ParchmentScrollProps
           {/* Intro Narrative with Drop Cap */}
           <div className="text-xs text-[#d1cdb8] leading-relaxed">
             <span className="float-left font-cinzel-decorative text-3xl font-bold text-[#c5a059] mr-2 mt-0.5 leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-              W
+              T
             </span>
             <span>
-              elcome to your digital tabletop companion. Designed for fifth-edition adventurers,
-              this sanctuary empowers players and Dungeon Masters to forge heroes, simulate tactical
-              combat, and brave relentless monster trials.
+              he grand codex of beasts and adversaries. Research the anatomy, armor class, actions,
+              multiattacks, and legendary abilities of over 2,300 SRD creatures imported directly from Open5e.
             </span>
           </div>
 
-          {/* Quick Feature Pillars */}
-          <div className="grid grid-cols-1 gap-2 pt-1 border-t border-[#c5a059]/20 text-[11px] text-[#d1cdb8]/90">
-            <div className="flex items-start gap-2.5">
-              <CharactersPillarIcon className="w-4 h-4 text-[#c5a059] shrink-0 mt-0.5" />
+          {/* Quick Creature Category Chips */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {[
+              { label: "Dragons", icon: "🐉" },
+              { label: "Undead", icon: "💀" },
+              { label: "Fiends", icon: "🔥" },
+              { label: "Beasts", icon: "🐾" },
+              { label: "Aberrations", icon: "👁️" },
+              { label: "CR 0 → 30", icon: "⚔️" },
+            ].map((cat) => (
+              <span
+                key={cat.label}
+                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-[#2a2218] border border-[#c5a059]/30 text-[#e0bc75] font-lora"
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </span>
+            ))}
+          </div>
+
+          {/* Feature highlights */}
+          <div className="grid grid-cols-1 gap-1.5 pt-1 border-t border-[#c5a059]/20 text-[11px] text-[#d1cdb8]/90 font-lora">
+            <div className="flex items-start gap-2">
+              <span className="text-[#c5a059] font-bold">✦</span>
               <div>
-                <span className="font-bold text-[#c5a059]">Hero Management:</span> Create characters, roll stats, inspect hit points, armor class, and manage party rosters.
+                <span className="font-semibold text-white">Authentic Statblocks:</span> Full 5e layout with saving throws, damage immunities & traits.
               </div>
             </div>
-
-            <div className="flex items-start gap-2.5">
-              <CampaignPillarIcon className="w-4 h-4 text-[#c5a059] shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2">
+              <span className="text-[#c5a059] font-bold">✦</span>
               <div>
-                <span className="font-bold text-[#c5a059]">Tactical Combat Simulator:</span> Run turn-based encounters with initiative tracking, dice rolls, and monster statblocks.
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <GauntletPillarIcon className="w-4 h-4 text-[#c5a059] shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-[#c5a059]">The Gauntlet:</span> Pit your party against escalating waves of deadly beasts to test survival endurance.
+                <span className="font-semibold text-white">Combat Reference:</span> Inspect dice damage formulas, multiattacks, and tactical actions.
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer Note */}
-        <div className="relative z-10 pt-3 mt-3 border-t border-[#c5a059]/20 flex items-center justify-between text-[10px] text-[#d1cdb8]/60 italic">
-          <span>Official 5E SRD 5.1/5.2 Ruleset</span>
+        {/* Footer Link / CTA */}
+        <div className="relative z-10 pt-3 mt-2 border-t border-[#c5a059]/20 flex items-center justify-between text-[11px]">
+          <span className="text-[10px] text-[#d1cdb8]/60 font-fira-sans italic">
+            2,321 SRD Monsters
+          </span>
           <Link
-            href="/characters"
-            className="text-[#c5a059] not-italic font-semibold hover:text-[#e0bc75] hover:underline flex items-center gap-1"
+            href="/bestiary"
+            className="text-[#c5a059] font-cinzel font-bold text-xs hover:text-[#e0bc75] hover:shadow-[0_0_10px_rgba(197,160,89,0.3)] transition-all flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#c5a059]/10 border border-[#c5a059]/40"
           >
-            <span>Begin Journey</span>
+            <span>Open Codex</span>
             <span>→</span>
           </Link>
         </div>

@@ -52,6 +52,7 @@ interface ActionDockProps {
     onDash?: (bonusAction?: boolean) => Promise<void>;
     onDisengage?: (bonusAction?: boolean) => Promise<void>;
     onDodge?: (bonusAction?: boolean) => Promise<void>;
+    onSetAltitude?: (altitude: number) => Promise<void>;
 }
 
 function getConditionNames(p?: CombatParticipant | null): string[] {
@@ -217,6 +218,7 @@ export function ActionDock({
     onDash,
     onDisengage,
     onDodge,
+    onSetAltitude,
 }: ActionDockProps) {
     // Open drawer state: clicking a category button toggles open its drawer above the dock
     const [openDrawer, setOpenDrawer] = useState<'weapons' | 'spells' | 'features' | 'consumables' | 'maneuvers' | 'test' | null>(null);
@@ -1180,6 +1182,76 @@ export function ActionDock({
                                 </div>
                                 <span className="text-[10px] text-slate-400">Action • Dexterity (Stealth) check to become unseen</span>
                             </button>
+
+                            {/* Flight & Elevation Maneuver */}
+                            {(currentParticipant?.can_fly || (currentParticipant?.altitude ?? 0) > 0 || currentParticipant?.is_flying || (currentParticipant?.fly_speed ?? 0) > 0) && (
+                                <div className="sm:col-span-2 lg:col-span-4 p-3 rounded-lg bg-gradient-to-r from-cyan-950/80 via-[#141824] to-cyan-950/80 border border-cyan-500/50 flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl">🛫</span>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-cinzel font-bold text-xs text-cyan-200">Aerial Movement & Flight</span>
+                                                <span className="px-1.5 py-0.5 rounded bg-cyan-900/60 border border-cyan-700/60 text-[10px] font-fira-sans font-bold text-cyan-300">
+                                                    Altitude: {currentParticipant?.altitude ?? 0} ft {(currentParticipant?.altitude ?? 0) > 0 ? "Airborne" : "Grounded"}
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-300 font-lora mt-0.5">
+                                                Fly Speed: {currentParticipant?.fly_speed ?? currentParticipant?.speed ?? 30} ft • {currentParticipant?.has_hover ? "✨ Hover Trait (Safe)" : "⚠️ Falls if knocked Prone"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <button
+                                            type="button"
+                                            disabled={currentIsIncapacitated || isOperating || ((currentParticipant?.movement_remaining ?? 30) < 10)}
+                                            onClick={async () => {
+                                                if (!onSetAltitude) return;
+                                                setIsOperating(true);
+                                                try {
+                                                    await onSetAltitude((currentParticipant?.altitude ?? 0) + 10);
+                                                } finally {
+                                                    setIsOperating(false);
+                                                }
+                                            }}
+                                            className="px-2.5 py-1 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-200 text-xs font-cinzel font-bold cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            ⬆️ Ascend (+10ft)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={currentIsIncapacitated || isOperating || (currentParticipant?.altitude ?? 0) <= 0 || ((currentParticipant?.movement_remaining ?? 30) < 10)}
+                                            onClick={async () => {
+                                                if (!onSetAltitude) return;
+                                                setIsOperating(true);
+                                                try {
+                                                    await onSetAltitude(Math.max(0, (currentParticipant?.altitude ?? 0) - 10));
+                                                } finally {
+                                                    setIsOperating(false);
+                                                }
+                                            }}
+                                            className="px-2.5 py-1 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-200 text-xs font-cinzel font-bold cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            ⬇️ Descend (-10ft)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={currentIsIncapacitated || isOperating || (currentParticipant?.altitude ?? 0) <= 0}
+                                            onClick={async () => {
+                                                if (!onSetAltitude) return;
+                                                setIsOperating(true);
+                                                try {
+                                                    await onSetAltitude(0);
+                                                } finally {
+                                                    setIsOperating(false);
+                                                }
+                                            }}
+                                            className="px-2.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 border border-amber-600/60 text-amber-200 text-xs font-cinzel font-bold cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            🛬 Land
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

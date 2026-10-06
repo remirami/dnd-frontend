@@ -52,6 +52,13 @@ export interface EnemyTrait {
     trait_type?: string;
 }
 
+export interface EnemyAbility {
+    id?: number;
+    name: string;
+    description: string;
+    enemy?: number;
+}
+
 export interface Enemy {
     id: number;
     name: string;
@@ -67,6 +74,7 @@ export interface Enemy {
     ac?: number;
     attacks?: Attack[];
     actions?: EnemyAction[];
+    abilities?: EnemyAbility[];
     multiattack?: EnemyMultiattack | null;
     traits?: EnemyTrait[];
     stats?: {
@@ -91,22 +99,63 @@ export interface Enemy {
         int_save?: number | null;
         wis_save?: number | null;
         cha_save?: number | null;
-        perception?: number | null;
-        stealth?: number | null;
         athletics?: number | null;
+        acrobatics?: number | null;
+        sleight_of_hand?: number | null;
+        stealth?: number | null;
+        arcana?: number | null;
+        history?: number | null;
+        investigation?: number | null;
+        nature?: number | null;
+        religion?: number | null;
+        animal_handling?: number | null;
+        insight?: number | null;
+        medicine?: number | null;
+        perception?: number | null;
+        survival?: number | null;
+        deception?: number | null;
+        intimidation?: number | null;
+        performance?: number | null;
+        persuasion?: number | null;
         darkvision?: string | null;
         blindsight?: string | null;
+        tremorsense?: string | null;
+        truesight?: string | null;
         passive_perception?: number | null;
+        spell_save_dc?: number | null;
+        spell_attack_bonus?: number | null;
         hit_dice?: string | null;
+        proficiency_bonus?: number | null;
     };
     resistances?: Array<{
-        damage_type?: { name: string };
-        type?: string;
+        id?: number;
+        damage_type?: { id?: number; name: string };
+        resistance_type?: string;
+        notes?: string | null;
     }>;
     languages?: Array<{
-        language?: { name: string };
+        id?: number;
+        language?: { id?: number; name: string };
     }>;
     condition_immunities?: Array<{
-        condition?: { name: string };
+        id?: number;
+        condition?: { id?: number; name: string };
+    }>;
+    legendary_actions?: Array<{
+        id?: number;
+        name: string;
+        description: string;
+    }>;
+    environments?: Array<{
+        id?: number;
+        environment?: { id?: number; name: string };
     }>;
 }
+
+export interface EnemyListResponse {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: Enemy[];
+}
+
