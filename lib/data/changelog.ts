@@ -17,14 +17,57 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.13.1";
+export const CURRENT_VERSION = "v1.14.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.14.0",
+        date: "October 6, 2026",
+        title: "Dynamic Spell & Multiattack Rotation, Simulated Cooldowns & 360° Smooth Battle Camera",
+        tag: "Latest",
+        summary: "Broadened combat monster AI to intelligently cycle across distinct spells, special actions, and multiattack routines instead of spamming highest-damage actions. Added simulated cooldowns (2 rounds) for high-impact spells and non-recharge saving-throw abilities. Enhanced tactical battle grid with 360-degree middle-mouse camera dragging, eliminated component re-render loops, and resolved UI jitter during prop inspection.",
+        items: [
+            {
+                id: "1.14.0-1",
+                title: "🔮 Dynamic Spell & Special Action Rotation with Simulated Cooldowns",
+                description: "Re-engineered tactical AI attack selection so monster spellcasters and creatures with special abilities cycle dynamically through their repertoire rather than repeating their single highest-damaging ability every round.",
+                category: "combat",
+                details: [
+                    "Simulated Cooldowns: Heavy non-recharge saving throw abilities (e.g. Mind Blast, Petrifying Gaze) and leveled spells enter a 2-round simulated cooldown, preventing repetitive back-to-back spamming and forcing monsters to transition to cantrips or secondary attacks.",
+                    "Statblock Spell Recognition: Integrated canonical 5e offensive spells directly from monster Spellcasting descriptions and EnemySpell records (Fire Bolt, Ray of Frost, Shocking Grasp, Fireball, Cone of Cold, Magic Missile, etc.).",
+                    "Special Action Diversity: When monsters possess multiple available special actions, the AI rotates between them dynamically rather than deterministically selecting the first database entry.",
+                    "Turn-to-Turn Repertoire Cycling: Enemies track recent attacks and de-prioritize the previous round's attack when selecting from viable candidate actions."
+                ]
+            },
+            {
+                id: "1.14.0-2",
+                title: "⚔️ Accurate Monster Multiattack Routine Sequencing",
+                description: "Resolved multiattack execution bug where creatures with multiattack routines (e.g. Bears: Bite + Claws) previously performed double Bites.",
+                category: "combat",
+                details: [
+                    "Intelligent Stem & Plural Matching: Added fuzzy plural/singular normalization (Claw ↔ Claws), irregular stem handling (hoof/hooves, tooth/teeth), and form qualifiers.",
+                    "Dynamic Description Derivation: Empty or unparsed multiattack sequences dynamically parse routine descriptions against actual EnemyAction records on the fly.",
+                    "Distinct Multi-Strike Rotation: Strikes cycle across the creature's distinct attack pool (attack_idx % pool_length) rather than repeating the highest-bonus strike."
+                ]
+            },
+            {
+                id: "1.14.0-3",
+                title: "🎥 360° Smooth Camera Rotation & Battle Grid UI Stability",
+                description: "Upgraded battle grid viewport navigation with continuous 360-degree rotation and fixed layout jitter.",
+                category: "ui",
+                details: [
+                    "Smooth Middle-Mouse Camera Drag: Users can drag freely with the middle mouse button to rotate the 2D/2.5D battle grid smoothly across a full 360-degree arc.",
+                    "Fixed Re-render State Loops: Eliminated maximum update depth console warnings and null pointer errors during grid dragging and tile hover callbacks.",
+                    "Top Bar Layout Pinning: Stabilized top bar height to prevent jarring UI jitter when hovering over terrain props with multi-line descriptive text."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.13.1",
         date: "September 30, 2026",
         title: "Autonomous Enemy Turn Automation & Real-Time Position Cache Sync",
-        tag: "Latest",
+        tag: "Patch",
         summary: "Resolved first-round AI initiative control locks so enemies rolling higher initiative immediately take their turns autonomously across all combat modes. Fixed Django prefetch cache desynchronization where stale participant coordinates caused enemies to unexpectedly snap or glide across the grid during player turns.",
         items: [
             {

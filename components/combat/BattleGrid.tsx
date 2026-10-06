@@ -602,16 +602,24 @@ function BattleGridComponent({
         startX: 0,
         startRotation: 0,
     });
+    const rafIdRef = useRef<number | null>(null);
+    const pendingRotationRef = useRef<number | null>(null);
 
     const handleRotateLeft = useCallback(() => {
+        hoveredTileRef.current = null;
+        setHoveredTilePixelPos(null);
         setCameraRotation((prev) => (Math.round((prev - 45 + 360) / 45) * 45) % 360);
     }, []);
 
     const handleRotateRight = useCallback(() => {
+        hoveredTileRef.current = null;
+        setHoveredTilePixelPos(null);
         setCameraRotation((prev) => (Math.round((prev + 45) / 45) * 45) % 360);
     }, []);
 
     const handleResetRotation = useCallback(() => {
+        hoveredTileRef.current = null;
+        setHoveredTilePixelPos(null);
         setCameraRotation(0);
     }, []);
 
@@ -629,6 +637,8 @@ function BattleGridComponent({
                     startRotation: cameraRotationRef.current,
                 };
                 setIsDraggingCamera(true);
+                hoveredTileRef.current = null;
+                setHoveredTilePixelPos(null);
                 document.body.style.cursor = "grabbing";
                 document.body.style.userSelect = "none";
             }
@@ -642,13 +652,31 @@ function BattleGridComponent({
             const SENSITIVITY = 0.5;
             const newRotation = (dragRef.current.startRotation + deltaX * SENSITIVITY) % 360;
             const normalized = (newRotation + 360) % 360;
-            setCameraRotation(Math.round(normalized * 10) / 10);
+            const rounded = Math.round(normalized * 10) / 10;
+            pendingRotationRef.current = rounded;
+
+            if (rafIdRef.current == null) {
+                rafIdRef.current = requestAnimationFrame(() => {
+                    rafIdRef.current = null;
+                    if (pendingRotationRef.current != null) {
+                        setCameraRotation(pendingRotationRef.current);
+                    }
+                });
+            }
         };
 
         const handleMouseUp = (e: MouseEvent) => {
             if (dragRef.current.isDragging && (e.button === 1 || (e.buttons & 4) === 0)) {
                 dragRef.current.isDragging = false;
                 setIsDraggingCamera(false);
+                if (rafIdRef.current != null) {
+                    cancelAnimationFrame(rafIdRef.current);
+                    rafIdRef.current = null;
+                }
+                if (pendingRotationRef.current != null) {
+                    setCameraRotation(pendingRotationRef.current);
+                    pendingRotationRef.current = null;
+                }
                 document.body.style.cursor = "";
                 document.body.style.userSelect = "";
             }
@@ -670,6 +698,10 @@ function BattleGridComponent({
             window.removeEventListener("mousemove", handleMouseMove);
             window.removeEventListener("mouseup", handleMouseUp);
             el.removeEventListener("auxclick", handleAuxClick);
+            if (rafIdRef.current != null) {
+                cancelAnimationFrame(rafIdRef.current);
+                rafIdRef.current = null;
+            }
             document.body.style.cursor = "";
             document.body.style.userSelect = "";
         };
@@ -690,9 +722,12 @@ function BattleGridComponent({
             e.preventDefault();
             const delta = e.deltaY;
             const zoomDelta = delta < 0 ? 0.08 : -0.08;
+            hoveredTileRef.current = null;
+            setHoveredTilePixelPos(null);
             setZoomLevel((prev) => {
                 const next = Math.round((prev + zoomDelta) * 100) / 100;
-                return Math.max(0.6, Math.min(1.6, next));
+                const clamped = Math.max(0.6, Math.min(1.6, next));
+                return clamped === prev ? prev : clamped;
             });
         };
 
@@ -718,11 +753,11 @@ function BattleGridComponent({
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [handleRotateLeft, handleRotateRight, handleResetRotation]);
 
-    // Reset pixel hover anchor whenever camera perspective, rotation, or zoom level adjusts
+    // Reset pixel hover anchor whenever camera perspective or zoom level adjusts
     useEffect(() => {
         hoveredTileRef.current = null;
         setHoveredTilePixelPos(null);
-    }, [zoomLevel, cameraMode, cameraRotation]);
+    }, [zoomLevel, cameraMode]);
 
     // Clear optimistic position once server coordinates match
     useEffect(() => {
