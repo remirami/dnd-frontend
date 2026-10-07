@@ -24,6 +24,8 @@ import {
     ChevronUp
 } from "lucide-react";
 
+import { getAbilityModifier } from "@/lib/utils";
+
 interface SpellsTabProps {
     character: Character;
     onUpdate: () => void;
@@ -96,17 +98,17 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
     const { spellcastingAbilityName, spellcastingMod } = useMemo(() => {
         if (["cleric", "druid", "ranger"].includes(classNameLower)) {
             const score = stats?.wisdom ?? 10;
-            const mod = stats?.wisdom_modifier ?? Math.floor((score - 10) / 2);
+            const mod = stats?.wisdom_modifier ?? getAbilityModifier(score);
             return { spellcastingAbilityName: "WIS", spellcastingMod: mod };
         }
         if (["bard", "sorcerer", "warlock", "paladin"].includes(classNameLower)) {
             const score = stats?.charisma ?? 10;
-            const mod = stats?.charisma_modifier ?? Math.floor((score - 10) / 2);
+            const mod = stats?.charisma_modifier ?? getAbilityModifier(score);
             return { spellcastingAbilityName: "CHA", spellcastingMod: mod };
         }
         // Default: Wizard, Artificer, Arcane Trickster, Eldritch Knight
         const score = stats?.intelligence ?? 10;
-        const mod = stats?.intelligence_modifier ?? Math.floor((score - 10) / 2);
+        const mod = stats?.intelligence_modifier ?? getAbilityModifier(score);
         return { spellcastingAbilityName: "INT", spellcastingMod: mod };
     }, [classNameLower, stats]);
 

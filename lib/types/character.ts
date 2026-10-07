@@ -27,6 +27,15 @@ export interface CharacterStats {
     armor_class: number;
     speed: number;
     initiative: number;
+    // Ability Modifiers
+    strength_modifier?: number;
+    dexterity_modifier?: number;
+    constitution_modifier?: number;
+    intelligence_modifier?: number;
+    wisdom_modifier?: number;
+    charisma_modifier?: number;
+    spell_save_dc?: number;
+    spell_attack_bonus?: number;
     // Resource Management
     spell_slots?: Record<string, number>;
     expended_spell_slots?: Record<string, number>;
