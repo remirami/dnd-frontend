@@ -190,6 +190,7 @@ export interface CharacterSpell {
         duration: string;
         description: string;
         concentration?: boolean;
+        ritual?: boolean;
     };
     name: string; // Legacy/Fallback
     level: number;
