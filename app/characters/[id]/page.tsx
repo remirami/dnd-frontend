@@ -7,6 +7,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { charactersApi } from "@/lib/api/characters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
 import FantasyCard from "@/components/ui/FantasyCard";
@@ -363,15 +364,17 @@ export default function CharacterDetailsPage() {
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-xs text-[#d1cdb8] hover:text-[#c5a059] hover:bg-[#c5a059]/10 h-7 px-2.5 font-lora transition-colors"
+                                className="text-xs text-[#d1cdb8] hover:text-[#c5a059] hover:bg-[#c5a059]/10 h-7 px-2.5 font-lora transition-colors cursor-pointer"
                                 onClick={async () => {
-                                    if (confirm("Take a Long Rest? This will restore HP, Hit Dice, and Spell Slots.")) {
+                                    if (confirm("Take a Long Rest? This will restore HP, Hit Dice, and Spell Slots to maximum.")) {
                                         try {
-                                            await charactersApi.longRest(characterId);
-                                            loadCharacter(characterId);
-                                        } catch (e) {
+                                            const response = await charactersApi.longRest(characterId);
+                                            await loadCharacter(characterId);
+                                            toast.success(response.data?.message || "Long rest completed! HP, Hit Dice, and Spell Slots fully restored.");
+                                        } catch (e: any) {
                                             console.error("Long rest failed", e);
-                                            alert("Long rest failed");
+                                            const msg = e.response?.data?.error || e.message || "Long rest failed";
+                                            toast.error(msg);
                                         }
                                     }
                                 }}

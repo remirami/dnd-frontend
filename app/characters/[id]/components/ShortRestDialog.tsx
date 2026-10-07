@@ -14,18 +14,18 @@ interface ShortRestDialogProps {
 
 export function ShortRestDialog({ character, onUpdate, className, children }: ShortRestDialogProps) {
     const [open, setOpen] = useState(false);
-    const [hitDiceToSpend, setHitDiceToSpend] = useState(1);
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ hp_gained: number; message?: string } | null>(null);
-
     const stats = character.stats;
     const totalHitDice = character.level; // Assuming total HD = level
     // Logic: backend returns hit_dice_used
     const usedHitDice = stats?.hit_dice_used || 0;
     const availableHitDice = Math.max(0, totalHitDice - usedHitDice);
 
+    const [hitDiceToSpend, setHitDiceToSpend] = useState(() => Math.min(1, availableHitDice));
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<{ hp_gained: number; message?: string } | null>(null);
+
     const handleShortRest = async () => {
-        if (hitDiceToSpend > availableHitDice) {
+        if (availableHitDice > 0 && hitDiceToSpend > availableHitDice) {
             alert("Not enough Hit Dice!");
             return;
         }

@@ -7,26 +7,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { charactersApi } from "@/lib/api/characters";
 import { spellsApi } from "@/lib/api/spells";
 import type { Character, CharacterSpell } from "@/lib/types/character";
-import { ShortRestDialog } from "./ShortRestDialog";
 import { 
     Sparkles, 
     BookOpen, 
-    Moon, 
-    Coffee, 
     Search, 
     Plus, 
     Minus, 
     Shield, 
     Zap, 
     Check, 
-    Flame, 
-    Clock, 
-    Compass, 
-    Eye, 
     Trash2, 
-    Layers, 
-    Sparkle, 
     Filter,
+    Layers,
+    Info,
     ChevronDown,
     ChevronUp
 } from "lucide-react";
@@ -37,28 +30,64 @@ interface SpellsTabProps {
 }
 
 export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
-    // --- State Management ---
+    // --- Grimoire Workspace State ---
     const [searchTerm, setSearchTerm] = useState("");
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [addingSpellId, setAddingSpellId] = useState<number | null>(null);
-    const [selectedSpell, setSelectedSpell] = useState<CharacterSpell | null>(null);
-    const [prepStatus, setPrepStatus] = useState<{ limit: number; current: number; remaining: number } | null>(null);
-    const [isResting, setIsResting] = useState(false);
-    const [isSlotOperating, setIsSlotOperating] = useState(false);
-
-    // Filter Chips: 'all' | 'prepared' | 'rituals' | 'bonus' | 'reactions' | 'concentration'
     const [activeFilter, setActiveFilter] = useState<'all' | 'prepared' | 'rituals' | 'bonus' | 'reactions' | 'concentration'>('all');
     const [schoolFilter, setSchoolFilter] = useState<string>('all');
-
-    // Quick Cast Upcast dialog
+    const [selectedSpell, setSelectedSpell] = useState<CharacterSpell | null>(null);
+    const [prepStatus, setPrepStatus] = useState<{ limit: number; current: number; remaining: number } | null>(null);
+    const [isSlotOperating, setIsSlotOperating] = useState(false);
     const [castSpellPrompt, setCastSpellPrompt] = useState<CharacterSpell | null>(null);
+
+    // --- Compendium Spell Suggester / Browser Drawer State ---
+    const [isBrowserOpen, setIsBrowserOpen] = useState(false);
+    const [browseSearch, setBrowseSearch] = useState("");
+    const [browseLevel, setBrowseLevel] = useState<string>("all");
+    const [browseClass, setBrowseClass] = useState<string>("primary");
+    const [browseSchool, setBrowseSchool] = useState<string>("all");
+    const [browseResults, setBrowseResults] = useState<any[]>([]);
+    const [isBrowseLoading, setIsBrowseLoading] = useState(false);
+    const [addingSpellId, setAddingSpellId] = useState<number | null>(null);
+    const [previewBrowseSpell, setPreviewBrowseSpell] = useState<any | null>(null);
 
     // Class Identification
     const classNameLower = (character.character_class?.name || "").toLowerCase();
     const isWarlock = classNameLower === 'warlock' || character.class_levels?.some((cl: any) => cl.class_name?.toLowerCase() === 'warlock');
     const isPreparedCaster = ['cleric', 'druid', 'wizard', 'paladin'].includes(classNameLower);
+
+    // Multiclass detection
+    const spellcastingClasses = useMemo(() => {
+        const classes: string[] = [];
+        if (character.character_class?.name) {
+            classes.push(character.character_class.name);
+        }
+        if (character.class_levels && character.class_levels.length > 0) {
+            character.class_levels.forEach(cl => {
+                if (cl.class_name && !classes.some(c => c.toLowerCase() === cl.class_name.toLowerCase())) {
+                    classes.push(cl.class_name);
+                }
+            });
+        }
+        return classes;
+    }, [character.character_class, character.class_levels]);
+
+    // Maximum spell slot level accessible
+    const maxAccessibleSlotLevel = useMemo(() => {
+        const statsSlots = character.stats?.spell_slots || {};
+        const activeLevels = Object.keys(statsSlots)
+            .map(Number)
+            .filter(lvl => lvl > 0 && statsSlots[lvl.toString()] > 0);
+        return activeLevels.length > 0 ? Math.max(...activeLevels) : 1;
+    }, [character.stats?.spell_slots]);
+
+    // Already known spell names for comparison
+    const knownSpellNames = useMemo(() => {
+        const set = new Set<string>();
+        (character.spells || []).forEach(s => {
+            if (s.name) set.add(s.name.toLowerCase().trim());
+        });
+        return set;
+    }, [character.spells]);
 
     // --- Spellcasting Stats Computation (5E Canonical) ---
     const stats = character.stats;
@@ -101,31 +130,47 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
         }
     };
 
-    // Search query with debounce
+    // --- Compendium Spell Suggester Query ---
     useEffect(() => {
-        const searchSpells = async () => {
-            if (!searchTerm.trim()) {
-                setSearchResults([]);
-                return;
-            }
+        if (!isBrowserOpen) return;
 
-            setIsSearching(true);
+        const timer = setTimeout(async () => {
+            setIsBrowseLoading(true);
             try {
-                const className = character.character_class?.name || "";
-                const response = await spellsApi.search(searchTerm, { classes: className });
-                setSearchResults(response.data.results || response.data || []);
-            } catch (error) {
-                console.error("Failed to search spells:", error);
+                const params: Record<string, any> = {};
+
+                // Class filter
+                if (browseClass === "primary") {
+                    if (character.character_class?.name) {
+                        params.classes = character.character_class.name;
+                    }
+                } else if (browseClass !== "all") {
+                    params.classes = browseClass;
+                }
+
+                // Level filter
+                if (browseLevel !== "all") {
+                    params.level = Number(browseLevel);
+                }
+
+                // School filter
+                if (browseSchool !== "all") {
+                    params.school = browseSchool;
+                }
+
+                const response = await spellsApi.search(browseSearch.trim(), params);
+                setBrowseResults(response.data.results || response.data || []);
+            } catch (err) {
+                console.error("Failed to browse compendium spells:", err);
             } finally {
-                setIsSearching(false);
+                setIsBrowseLoading(false);
             }
-        };
+        }, 350);
 
-        const timeoutId = setTimeout(searchSpells, 450);
-        return () => clearTimeout(timeoutId);
-    }, [searchTerm]);
+        return () => clearTimeout(timer);
+    }, [isBrowserOpen, browseSearch, browseLevel, browseClass, browseSchool, character.character_class?.name]);
 
-    // Handle adding spell
+    // Handle adding / learning a spell
     const handleAddSpell = async (spell: any) => {
         setAddingSpellId(spell.id);
 
@@ -155,8 +200,6 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                 }
             }
 
-            setSearchTerm("");
-            setIsSearchOpen(false);
             onUpdate();
         } catch (error: any) {
             console.error("Failed to add spell:", error);
@@ -200,24 +243,6 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
         }
     };
 
-    // Handle Long Rest
-    const handleLongRest = async () => {
-        if (!confirm("Take a Long Rest? This will restore all HP, Hit Dice, and Spell Slots to maximum.")) {
-            return;
-        }
-        setIsResting(true);
-        try {
-            await charactersApi.longRest(character.id);
-            toast.success("Long rest completed! All spell slots replenished.");
-            onUpdate();
-        } catch (error) {
-            console.error("Long rest failed:", error);
-            toast.error("Failed to complete long rest");
-        } finally {
-            setIsResting(false);
-        }
-    };
-
     // Handle expending 1 spell slot
     const handleExpendSlot = async (level: number) => {
         if (isSlotOperating) return;
@@ -258,12 +283,10 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
             return;
         }
 
-        // Leveled spell: check if slot of base level is available
         const maxBaseSlots = stats?.spell_slots?.[spellLevel.toString()] || 0;
         const usedBaseSlots = stats?.expended_spell_slots?.[spellLevel.toString()] || 0;
         const baseRemaining = maxBaseSlots - usedBaseSlots;
 
-        // Check if higher slots are available for upcasting
         const availableSlotsHigher = Object.entries(stats?.spell_slots || {}).filter(([lvlStr, max]) => {
             const lvl = Number(lvlStr);
             if (lvl < spellLevel) return false;
@@ -272,10 +295,8 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
         });
 
         if (availableSlotsHigher.length > 1 || (baseRemaining <= 0 && availableSlotsHigher.length > 0)) {
-            // Multiple options or only higher slots available -> open upcast selector
             setCastSpellPrompt(spell);
         } else if (baseRemaining > 0) {
-            // Direct cast at base level
             handleExpendSlot(spellLevel);
             toast.success(`Cast ${spell.name} using Level ${spellLevel} spell slot.`);
         } else {
@@ -325,9 +346,8 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
         };
     }, [character.spells]);
 
-    // Filter spells
+    // Filter spells in current grimoire
     const filterSpell = (spell: CharacterSpell) => {
-        // Search filter
         if (searchTerm.trim()) {
             const term = searchTerm.toLowerCase();
             const nameMatch = spell.name.toLowerCase().includes(term);
@@ -336,13 +356,11 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
             if (!nameMatch && !schoolMatch && !descMatch) return false;
         }
 
-        // School filter
         if (schoolFilter !== 'all') {
             const sSchool = (spell.spell_details?.school || spell.school || "").toLowerCase();
             if (sSchool !== schoolFilter.toLowerCase()) return false;
         }
 
-        // Chip filter
         if (activeFilter === 'prepared' && !spell.is_prepared) return false;
         if (activeFilter === 'rituals' && !(spell.is_ritual || spell.spell_details?.ritual)) return false;
         if (activeFilter === 'bonus' && !(spell.spell_details?.casting_time || "").toLowerCase().includes("bonus")) return false;
@@ -355,10 +373,10 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
     return (
         <div className="space-y-6">
             {/* ========================================================================= */}
-            {/* TIER 1: CASTER CREST & REST DECK BANNER                                   */}
+            {/* TIER 1: CASTER CREST BANNER (Rest buttons removed as requested)           */}
             {/* ========================================================================= */}
             <div className="bg-[#12141a] border border-[#c5a059]/30 rounded-sm shadow-md overflow-hidden">
-                <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#c5a059]/15 bg-gradient-to-r from-[#181a21] via-[#12141a] to-[#181a21]">
+                <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#181a21] via-[#12141a] to-[#181a21]">
                     {/* Left: Title & Spellcasting Stats */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                         <div className="flex items-center gap-2.5">
@@ -371,6 +389,7 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                 </h2>
                                 <p className="font-lora text-xs text-[#d1cdb8]/60 italic">
                                     {character.character_class?.name || "Spellcaster"} • Level {character.level}
+                                    {spellcastingClasses.length > 1 && ` (Multiclass: ${spellcastingClasses.join(" / ")})`}
                                 </p>
                             </div>
                         </div>
@@ -415,28 +434,15 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                         </div>
                     </div>
 
-                    {/* Right: Quick Rest Shortcuts */}
+                    {/* Right: Quick Action to open Compendium Browser */}
                     <div className="flex items-center gap-2 self-start sm:self-auto">
-                        <ShortRestDialog character={character} onUpdate={onUpdate}>
-                            <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="bg-[#181a21] border-[#c5a059]/40 hover:bg-[#c5a059]/15 text-[#c5a059] font-cinzel text-xs h-8 px-3 rounded-sm shadow-sm cursor-pointer flex items-center gap-1.5"
-                            >
-                                <Coffee className="w-3.5 h-3.5 text-[#c5a059]" />
-                                <span>Short Rest</span>
-                            </Button>
-                        </ShortRestDialog>
-
-                        <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={handleLongRest}
-                            disabled={isResting}
-                            className="bg-[#181a21] border-[#c5a059]/40 hover:bg-[#c5a059]/15 text-[#c5a059] font-cinzel text-xs h-8 px-3 rounded-sm shadow-sm cursor-pointer flex items-center gap-1.5"
+                        <Button
+                            size="sm"
+                            onClick={() => setIsBrowserOpen(prev => !prev)}
+                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs h-8 px-3.5 rounded-sm shadow-sm cursor-pointer flex items-center gap-1.5"
                         >
-                            <Moon className="w-3.5 h-3.5 text-amber-300" />
-                            <span>Long Rest</span>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{isBrowserOpen ? "Close Spell Browser" : "Browse & Learn Spells"}</span>
                         </Button>
                     </div>
                 </div>
@@ -497,7 +503,7 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                         </span>
                                     </div>
 
-                                    {/* Slot Pips / Crystals Display */}
+                                    {/* Slot Pips Display */}
                                     <div className="py-2.5 flex items-center justify-center gap-2 flex-wrap min-h-[36px] bg-[#0c0d12]/60 rounded-sm border border-[#c5a059]/10 px-2 my-1">
                                         {Array.from({ length: maxSlots }).map((_, i) => {
                                             const isAvailable = i < remaining;
@@ -564,6 +570,277 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
             </div>
 
             {/* ========================================================================= */}
+            {/* COMPENDIUM SPELL BROWSER & SUGGESTER (Class Combination & Level Browsing)  */}
+            {/* ========================================================================= */}
+            {isBrowserOpen && (
+                <Card className="bg-[#12141a] border-2 border-[#c5a059]/60 rounded-sm shadow-2xl animate-in fade-in duration-200">
+                    <CardHeader className="pb-3 border-b border-[#c5a059]/20 bg-[#161822]">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <CardTitle className="font-cinzel-decorative text-base sm:text-lg font-bold text-[#c5a059] flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-[#e0bc75]" />
+                                    <span>Browse & Suggest Spells for {character.name}</span>
+                                </CardTitle>
+                                <CardDescription className="font-lora text-xs text-[#d1cdb8]/75">
+                                    Browse all available SRD spells tailored to your class combination and level without needing to guess spell names.
+                                </CardDescription>
+                            </div>
+
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setIsBrowserOpen(false)}
+                                className="text-slate-400 hover:text-white h-7 text-xs self-end sm:self-auto"
+                            >
+                                Close ✕
+                            </Button>
+                        </div>
+
+                        {/* Class Combination Selector Pills */}
+                        <div className="flex items-center gap-2 flex-wrap pt-3">
+                            <span className="font-cinzel text-[11px] uppercase tracking-wider text-[#c5a059]/80 font-bold mr-1">
+                                Class Source:
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setBrowseClass("primary")}
+                                className={`px-2.5 py-1 rounded-sm text-xs font-cinzel font-bold border transition-colors cursor-pointer ${
+                                    browseClass === "primary"
+                                        ? 'bg-[#c5a059] text-[#0c0d12] border-[#c5a059]'
+                                        : 'bg-[#181a21] border-[#c5a059]/30 text-[#d1cdb8]/80 hover:text-white'
+                                }`}
+                            >
+                                {character.character_class?.name || "My Class"} (Primary)
+                            </button>
+
+                            {spellcastingClasses.length > 1 && spellcastingClasses.map(cls => (
+                                <button
+                                    key={cls}
+                                    type="button"
+                                    onClick={() => setBrowseClass(cls)}
+                                    className={`px-2.5 py-1 rounded-sm text-xs font-cinzel font-bold border transition-colors cursor-pointer ${
+                                        browseClass === cls
+                                            ? 'bg-[#c5a059] text-[#0c0d12] border-[#c5a059]'
+                                            : 'bg-[#181a21] border-[#c5a059]/30 text-[#d1cdb8]/80 hover:text-white'
+                                    }`}
+                                >
+                                    {cls}
+                                </button>
+                            ))}
+
+                            <button
+                                type="button"
+                                onClick={() => setBrowseClass("all")}
+                                className={`px-2.5 py-1 rounded-sm text-xs font-cinzel font-bold border transition-colors cursor-pointer ${
+                                    browseClass === "all"
+                                        ? 'bg-[#c5a059] text-[#0c0d12] border-[#c5a059]'
+                                        : 'bg-[#181a21] border-[#c5a059]/30 text-[#d1cdb8]/80 hover:text-white'
+                                }`}
+                            >
+                                All 5e Spells
+                            </button>
+                        </div>
+
+                        {/* Level Filter Tabs */}
+                        <div className="flex items-center gap-1.5 flex-wrap pt-2 overflow-x-auto pb-1">
+                            <span className="font-cinzel text-[11px] uppercase tracking-wider text-[#c5a059]/80 font-bold mr-1">
+                                Level:
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setBrowseLevel("all")}
+                                className={`px-2.5 py-1 rounded-sm text-xs font-cinzel font-bold border transition-colors cursor-pointer ${
+                                    browseLevel === "all"
+                                        ? 'bg-amber-600 text-white border-amber-500'
+                                        : 'bg-[#181a21] border-[#c5a059]/30 text-[#d1cdb8]/80 hover:text-white'
+                                }`}
+                            >
+                                All Levels
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setBrowseLevel("0")}
+                                className={`px-2.5 py-1 rounded-sm text-xs font-cinzel font-bold border transition-colors cursor-pointer ${
+                                    browseLevel === "0"
+                                        ? 'bg-amber-600 text-white border-amber-500'
+                                        : 'bg-[#181a21] border-[#c5a059]/30 text-[#d1cdb8]/80 hover:text-white'
+                                }`}
+                            >
+                                Cantrips
+                            </button>
+
+                            {Array.from({ length: Math.max(5, maxAccessibleSlotLevel) }).map((_, i) => {
+                                const lvlNum = i + 1;
+                                const isCurrentTier = lvlNum <= maxAccessibleSlotLevel;
+                                return (
+                                    <button
+                                        key={lvlNum}
+                                        type="button"
+                                        onClick={() => setBrowseLevel(lvlNum.toString())}
+                                        className={`px-2.5 py-1 rounded-sm text-xs font-cinzel font-bold border transition-colors cursor-pointer ${
+                                            browseLevel === lvlNum.toString()
+                                                ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
+                                                : isCurrentTier
+                                                ? 'bg-[#181a21] border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15'
+                                                : 'bg-[#14151b] border-slate-800 text-slate-500 hover:text-slate-300'
+                                        }`}
+                                    >
+                                        Level {lvlNum} {isCurrentTier && "✦"}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-3 space-y-3">
+                        {/* Search & School filter within browser */}
+                        <div className="flex flex-col sm:flex-row items-center gap-2">
+                            <div className="relative flex-1 w-full">
+                                <Search className="w-3.5 h-3.5 text-[#c5a059]/60 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <Input
+                                    placeholder="Optional search query to filter by name or keyword..."
+                                    value={browseSearch}
+                                    onChange={(e) => setBrowseSearch(e.target.value)}
+                                    className="pl-8 bg-[#181a21] border-[#c5a059]/40 text-[#d1cdb8] placeholder:text-[#d1cdb8]/40 h-8 text-xs rounded-sm focus:border-[#c5a059]"
+                                />
+                            </div>
+
+                            <select
+                                value={browseSchool}
+                                onChange={(e) => setBrowseSchool(e.target.value)}
+                                className="bg-[#181a21] border border-[#c5a059]/40 text-xs text-[#c5a059] rounded-sm px-2.5 py-1 focus:border-[#c5a059] focus:outline-none cursor-pointer h-8 font-cinzel w-full sm:w-auto"
+                            >
+                                <option value="all">All Schools</option>
+                                <option value="Abjuration">Abjuration</option>
+                                <option value="Conjuration">Conjuration</option>
+                                <option value="Divination">Divination</option>
+                                <option value="Enchantment">Enchantment</option>
+                                <option value="Evocation">Evocation</option>
+                                <option value="Illusion">Illusion</option>
+                                <option value="Necromancy">Necromancy</option>
+                                <option value="Transmutation">Transmutation</option>
+                            </select>
+                        </div>
+
+                        {/* Results Count & Status */}
+                        <div className="flex items-center justify-between text-xs font-lora text-[#d1cdb8]/70 px-1">
+                            <span>
+                                {isBrowseLoading 
+                                    ? "Summoning spells from compendium..." 
+                                    : `Found ${browseResults.length} available spells`}
+                            </span>
+                            <span className="text-[11px] text-[#c5a059]/80 italic">
+                                ✦ = Accessible at current character level
+                            </span>
+                        </div>
+
+                        {/* Spells Grid in Browser */}
+                        <div className="max-h-96 overflow-y-auto divide-y divide-[#c5a059]/10 rounded-sm border border-[#c5a059]/20 bg-[#161822]">
+                            {isBrowseLoading ? (
+                                <div className="p-8 text-center space-y-2">
+                                    <div className="w-6 h-6 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin mx-auto" />
+                                    <p className="font-lora text-xs text-[#c5a059]/70 italic">Fetching class spells...</p>
+                                </div>
+                            ) : browseResults.length > 0 ? (
+                                browseResults.map((spell) => {
+                                    const isAlreadyKnown = knownSpellNames.has(spell.name.toLowerCase().trim());
+                                    const isAddingThis = addingSpellId === spell.id;
+
+                                    return (
+                                        <div
+                                            key={spell.id}
+                                            className={`p-3 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                                                isAlreadyKnown ? 'bg-[#13141c]/60 opacity-80' : 'hover:bg-[#1e2230]'
+                                            }`}
+                                        >
+                                            <div className="flex-1 min-w-0 pr-2">
+                                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                    <span 
+                                                        className="font-cinzel-decorative font-bold text-white text-sm hover:text-[#c5a059] cursor-pointer"
+                                                        onClick={() => setPreviewBrowseSpell(spell)}
+                                                    >
+                                                        {spell.name}
+                                                    </span>
+
+                                                    {isAlreadyKnown && (
+                                                        <span className="text-[10px] font-cinzel font-bold bg-[#181a21] border border-emerald-500/50 text-emerald-400 px-1.5 py-0.5 rounded-sm flex items-center gap-1">
+                                                            <Check className="w-2.5 h-2.5" />
+                                                            <span>In Grimoire</span>
+                                                        </span>
+                                                    )}
+
+                                                    {spell.ritual && (
+                                                        <span className="text-[10px] font-cinzel bg-[#0c0d12] border border-[#c5a059]/30 text-[#c5a059] px-1 py-0.2 rounded-sm">
+                                                            Ritual
+                                                        </span>
+                                                    )}
+
+                                                    {spell.concentration && (
+                                                        <span className="text-[10px] font-cinzel bg-amber-950/60 border border-amber-600/40 text-amber-300 px-1 py-0.2 rounded-sm">
+                                                            Conc
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="text-xs font-lora text-[#c5a059]/80 flex items-center gap-2 flex-wrap">
+                                                    <span>{spell.level === 0 ? "Cantrip" : `Level ${spell.level}`}</span>
+                                                    <span>•</span>
+                                                    <span>{spell.school}</span>
+                                                    <span>•</span>
+                                                    <span>{spell.casting_time || "1 Action"}</span>
+                                                    <span>•</span>
+                                                    <span>{spell.range || "Self"}</span>
+                                                </div>
+
+                                                <p className="text-xs font-lora text-[#d1cdb8]/70 mt-1 line-clamp-2">
+                                                    {spell.description || "No description provided."}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setPreviewBrowseSpell(spell)}
+                                                    className="h-7 text-xs text-[#c5a059] hover:bg-[#c5a059]/10 font-cinzel px-2.5"
+                                                >
+                                                    Details
+                                                </Button>
+
+                                                {isAlreadyKnown ? (
+                                                    <span className="text-xs font-cinzel text-emerald-400/90 italic px-2">
+                                                        Already Known
+                                                    </span>
+                                                ) : isAddingThis ? (
+                                                    <span className="text-xs font-fira-sans text-[#e0bc75] px-2">
+                                                        Adding...
+                                                    </span>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleAddSpell(spell)}
+                                                        className="h-7 text-xs bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold px-3 rounded-sm shadow-sm cursor-pointer"
+                                                    >
+                                                        {isPreparedCaster ? "+ Prepare" : classNameLower === 'wizard' ? "+ Spellbook" : "+ Learn"}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="p-8 text-center space-y-1">
+                                    <p className="font-cinzel text-xs text-[#c5a059]/80">No spells found for this level and class selection.</p>
+                                    <p className="font-lora text-xs text-[#d1cdb8]/50 italic">Try selecting &quot;All Levels&quot; or clearing the search box.</p>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ========================================================================= */}
             {/* TIER 3: GRIMOIRE SEARCH, FILTERS & WORKSPACE                               */}
             {/* ========================================================================= */}
             <div className="space-y-4">
@@ -606,11 +883,11 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
 
                         <Button
                             size="sm"
-                            onClick={() => setIsSearchOpen(prev => !prev)}
+                            onClick={() => setIsBrowserOpen(prev => !prev)}
                             className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs h-9 px-3.5 rounded-sm shadow-sm cursor-pointer flex items-center gap-1.5"
                         >
                             <Plus className="w-4 h-4" />
-                            <span>{isSearchOpen ? "Close Add Drawer" : "Learn / Add Spell"}</span>
+                            <span>{isBrowserOpen ? "Close Spell Browser" : "Learn / Add Spell"}</span>
                         </Button>
                     </div>
                 </div>
@@ -695,66 +972,6 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                         <span className="text-[10px] opacity-75 font-fira-sans">({filterCounts.concentration})</span>
                     </button>
                 </div>
-
-                {/* Collapsible Add Spell Drawer */}
-                {isSearchOpen && (
-                    <Card className="bg-[#12141a] border border-[#c5a059]/40 rounded-sm shadow-md animate-in fade-in duration-200">
-                        <CardHeader className="pb-2 border-b border-[#c5a059]/15">
-                            <CardTitle className="font-cinzel-decorative text-base font-bold text-[#c5a059] flex items-center gap-2">
-                                <BookOpen className="w-4 h-4 text-[#c5a059]" />
-                                <span>Learn / Add Spell from SRD Compendium</span>
-                            </CardTitle>
-                            <CardDescription className="font-lora text-xs text-[#d1cdb8]/70">
-                                Type a spell name to search the compendium for {character.character_class?.name || "your class"}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="pt-3">
-                            <div className="relative">
-                                <Input
-                                    placeholder="Type spell name to search compendium..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="bg-[#181a21] border-[#c5a059]/40 text-[#d1cdb8] placeholder:text-[#d1cdb8]/40 focus:border-[#c5a059] rounded-sm"
-                                />
-                                {searchResults.length > 0 && (
-                                    <div className="mt-2 bg-[#181a21] border border-[#c5a059]/50 rounded-sm shadow-2xl max-h-64 overflow-y-auto divide-y divide-[#c5a059]/10">
-                                        {searchResults.map((spell) => (
-                                            <div
-                                                key={spell.id}
-                                                className="p-2.5 hover:bg-[#202430] cursor-pointer flex justify-between items-center transition-colors"
-                                                onClick={() => handleAddSpell(spell)}
-                                            >
-                                                <div>
-                                                    <div className="font-cinzel-decorative font-semibold text-white text-sm">
-                                                        {spell.name}
-                                                    </div>
-                                                    <div className="text-xs font-lora text-[#c5a059]/80">
-                                                        {spell.level === 0 ? "Cantrip" : `Level ${spell.level}`} • {spell.school}
-                                                    </div>
-                                                </div>
-                                                {addingSpellId === spell.id ? (
-                                                    <span className="text-xs font-fira-sans text-[#e0bc75]">Adding...</span>
-                                                ) : (
-                                                    <Button
-                                                        size="sm"
-                                                        className="h-7 text-xs bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold px-3 rounded-sm"
-                                                    >
-                                                        + Add
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchTerm && searchResults.length === 0 && !isSearching && (
-                                    <div className="mt-2 bg-[#181a21] border border-[#c5a059]/30 rounded-sm p-3 text-[#d1cdb8]/70 text-xs font-lora italic text-center">
-                                        No matching compendium spells found for &quot;{searchTerm}&quot;.
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
 
                 {/* ========================================================================= */}
                 {/* SPELLS LIST GROUPED BY LEVEL                                              */}
@@ -916,7 +1133,7 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                                             <span>Cast</span>
                                                         </Button>
 
-                                                        {/* Prepare Toggle (for prepared casters on leveled spells) */}
+                                                        {/* Prepare Toggle */}
                                                         {level > 0 && isPreparedCaster && (
                                                             <Button
                                                                 size="sm"
@@ -963,10 +1180,11 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                             <p>No spells known or prepared in your grimoire.</p>
                             <Button
                                 size="sm"
-                                onClick={() => setIsSearchOpen(true)}
+                                onClick={() => setIsBrowserOpen(true)}
                                 className="mt-3 bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs rounded-sm"
                             >
-                                + Learn First Spell
+                                <Sparkles className="w-3.5 h-3.5 mr-1" />
+                                <span>Browse & Suggest Spells for {character.name}</span>
                             </Button>
                         </div>
                     )}
@@ -1000,7 +1218,6 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                             </DialogHeader>
 
                             <div className="space-y-4 mt-3">
-                                {/* Description */}
                                 <div>
                                     <h4 className="font-cinzel text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Description</h4>
                                     <p className="font-lora text-sm text-[#d1cdb8] leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto pr-1">
@@ -1008,7 +1225,6 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                     </p>
                                 </div>
 
-                                {/* Spell Details Grid */}
                                 <div className="grid grid-cols-2 gap-4 border-t border-[#c5a059]/20 pt-3">
                                     <div>
                                         <h4 className="font-cinzel text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Casting</h4>
@@ -1059,7 +1275,6 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                     </div>
                                 </div>
 
-                                {/* Modal Actions */}
                                 <div className="border-t border-[#c5a059]/20 pt-3 flex justify-end gap-2">
                                     <Button
                                         size="sm"
@@ -1072,6 +1287,63 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                         <Zap className="w-3.5 h-3.5 mr-1" />
                                         <span>Cast Spell</span>
                                     </Button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ========================================================================= */}
+            {/* COMPENDIUM SPELL PREVIEW MODAL                                            */}
+            {/* ========================================================================= */}
+            <Dialog open={!!previewBrowseSpell} onOpenChange={(open) => !open && setPreviewBrowseSpell(null)}>
+                <DialogContent className="bg-[#12141a] border border-[#c5a059] max-w-xl rounded-sm shadow-2xl text-[#d1cdb8]">
+                    {previewBrowseSpell && (
+                        <>
+                            <DialogHeader className="border-b border-[#c5a059]/20 pb-2">
+                                <DialogTitle className="font-cinzel-decorative text-xl font-bold text-[#c5a059]">
+                                    {previewBrowseSpell.name}
+                                </DialogTitle>
+                                <DialogDescription className="font-cinzel text-xs text-[#c5a059]/80 uppercase">
+                                    {previewBrowseSpell.level === 0 ? "Cantrip" : `Level ${previewBrowseSpell.level}`} {previewBrowseSpell.school}
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-3 py-2 text-sm font-lora">
+                                <div className="grid grid-cols-2 gap-2 text-xs bg-[#181a21] p-2.5 rounded-sm border border-[#c5a059]/20">
+                                    <div><span className="text-[#c5a059]">Casting Time:</span> {previewBrowseSpell.casting_time || "1 Action"}</div>
+                                    <div><span className="text-[#c5a059]">Range:</span> {previewBrowseSpell.range || "Self"}</div>
+                                    <div><span className="text-[#c5a059]">Duration:</span> {previewBrowseSpell.duration || "Instantaneous"}</div>
+                                    <div><span className="text-[#c5a059]">Components:</span> {previewBrowseSpell.components || "V, S"}</div>
+                                </div>
+
+                                <p className="text-xs text-[#d1cdb8]/80 leading-relaxed whitespace-pre-wrap max-h-56 overflow-y-auto">
+                                    {previewBrowseSpell.description || "No description available."}
+                                </p>
+
+                                <div className="border-t border-[#c5a059]/20 pt-2 flex justify-end gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setPreviewBrowseSpell(null)}
+                                        className="h-8 text-xs text-[#d1cdb8]/70"
+                                    >
+                                        Close
+                                    </Button>
+
+                                    {!knownSpellNames.has(previewBrowseSpell.name.toLowerCase().trim()) && (
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                handleAddSpell(previewBrowseSpell);
+                                                setPreviewBrowseSpell(null);
+                                            }}
+                                            className="h-8 text-xs bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold rounded-sm"
+                                        >
+                                            {isPreparedCaster ? "+ Prepare" : classNameLower === 'wizard' ? "+ Spellbook" : "+ Learn"}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </>
