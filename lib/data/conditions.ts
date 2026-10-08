@@ -386,18 +386,6 @@ export const CONDITIONS_REGISTRY: Record<string, ConditionData> = {
         ],
         severity: 'buff',
     },
-    'protection from evil and good': {
-        name: 'Protection from Evil and Good',
-        icon: '🛡️',
-        header: '✦ PROTECTION FROM EVIL AND GOOD ✦',
-        description: 'Until the spell ends, one willing creature you touch is protected against aberrations, celestials, elementals, fey, fiends, and undead.',
-        rules: [
-            "Attacks by these creature types have Disadvantage against the target",
-            "Target cannot be charmed, frightened, or possessed by them",
-            "Requires caster concentration (up to 10 minutes)",
-        ],
-        severity: 'buff',
-    },
     shield: {
         name: 'Shield',
         icon: '🛡️',
