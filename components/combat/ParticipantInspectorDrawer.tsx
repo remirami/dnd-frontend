@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
+import { isBuffCondition } from "@/lib/data/conditions";
 import type { CombatParticipant } from "@/lib/types/combat";
 import { resolveSizeDisplay, getSizeFootprint } from "@/lib/utils";
 
@@ -48,6 +49,21 @@ export function ParticipantInspectorDrawer({
     const footprint = participant.size_dimensions?.feet
         ? `${participant.size_dimensions.feet}×${participant.size_dimensions.feet} ft.`
         : getSizeFootprint(sizeName);
+
+    const activeBuffs = (participant as any).active_buffs || [];
+    const conditionsList = participant.conditions || [];
+
+    // Distinct positive buffs (e.g. Guidance, Bless, Shield, Mage Armor, Haste)
+    const buffs = [
+        ...activeBuffs,
+        ...conditionsList.filter((c: any) => isBuffCondition(c))
+    ].filter((b, idx, arr) => {
+        const name = typeof b === 'string' ? b : (b.name || '');
+        return arr.findIndex(x => (typeof x === 'string' ? x : (x.name || '')).toLowerCase() === name.toLowerCase()) === idx;
+    });
+
+    // Debuffs and standard conditions
+    const afflictions = conditionsList.filter((c: any) => !isBuffCondition(c));
 
     return (
         <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] bg-[#10121a]/98 border-l border-[#c5a059]/40 shadow-[0_0_40px_rgba(0,0,0,0.8)] backdrop-blur-xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-250 font-lora">
@@ -287,14 +303,38 @@ export function ParticipantInspectorDrawer({
                     </div>
                 )}
 
-                {/* Active Conditions */}
-                {participant.conditions && participant.conditions.length > 0 && (
-                    <div className="space-y-2">
-                        <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-[#c5a059]">
-                            Active Conditions
-                        </h4>
+                {/* Active Buffs & Magical Wards */}
+                {buffs.length > 0 && (
+                    <div className="space-y-2 p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30">
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                <span>✨</span> Active Buffs &amp; Wards
+                            </h4>
+                            <span className="text-[10px] text-emerald-300/70 font-mono font-bold">
+                                {buffs.length} {buffs.length === 1 ? 'buff' : 'buffs'}
+                            </span>
+                        </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            {participant.conditions.map((c: any, i: number) => (
+                            {buffs.map((b: any, i: number) => (
+                                <ConditionBadge key={i} condition={b} size="md" />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Active Conditions & Afflictions */}
+                {afflictions.length > 0 && (
+                    <div className="space-y-2 p-3 rounded-lg bg-rose-950/20 border border-rose-500/30">
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                                <span>⚠️</span> Conditions &amp; Afflictions
+                            </h4>
+                            <span className="text-[10px] text-rose-300/70 font-mono font-bold">
+                                {afflictions.length}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            {afflictions.map((c: any, i: number) => (
                                 <ConditionBadge key={i} condition={c} size="md" />
                             ))}
                         </div>

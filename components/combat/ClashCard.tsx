@@ -38,6 +38,17 @@ const hpBarGradient = (cur: number, max: number) => {
     return "from-rose-600 via-rose-500 to-red-400";
 };
 
+const getParticipantEffects = (p?: CombatParticipant | null) => {
+    if (!p) return [];
+    const buffs = (p as any).active_buffs || [];
+    const conditions = p.conditions || [];
+    const all = [...buffs, ...conditions];
+    return all.filter((item, idx, arr) => {
+        const name = typeof item === 'string' ? item : (item.name || '');
+        return arr.findIndex(x => (typeof x === 'string' ? x : (x.name || '')).toLowerCase() === name.toLowerCase()) === idx;
+    });
+};
+
 // Reusable corner filigree accents for fantasy cards
 function CornerFiligree({
     position,
@@ -262,10 +273,10 @@ export function ClashCard({
                         </div>
                     )}
 
-                    {/* Conditions */}
-                    {attacker?.conditions && attacker.conditions.length > 0 && (
+                    {/* Buffs & Conditions */}
+                    {getParticipantEffects(attacker).length > 0 && (
                         <div className="flex items-center gap-1 flex-wrap pt-0.5">
-                            {attacker.conditions.slice(0, 3).map((c: any, i: number) => (
+                            {getParticipantEffects(attacker).slice(0, 4).map((c: any, i: number) => (
                                 <ConditionBadge key={i} condition={c} size="sm" />
                             ))}
                         </div>
@@ -336,10 +347,10 @@ export function ClashCard({
                         </div>
                     )}
 
-                    {/* Conditions */}
-                    {defender?.conditions && defender.conditions.length > 0 && (
+                    {/* Buffs & Conditions */}
+                    {getParticipantEffects(defender).length > 0 && (
                         <div className="flex items-center gap-1 flex-wrap pt-0.5">
-                            {defender.conditions.slice(0, 3).map((c: any, i: number) => (
+                            {getParticipantEffects(defender).slice(0, 4).map((c: any, i: number) => (
                                 <ConditionBadge key={i} condition={c} size="sm" />
                             ))}
                         </div>

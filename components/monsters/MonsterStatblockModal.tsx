@@ -3,6 +3,7 @@
 import React from 'react';
 import { CombatParticipant } from '@/lib/types/combat';
 import { ConditionBadge } from '@/components/combat/ConditionBadge';
+import { isBuffCondition } from '@/lib/data/conditions';
 import { resolveSizeDisplay, getSizeFootprint } from '@/lib/utils';
 
 interface MonsterStatblockModalProps {
@@ -19,6 +20,21 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
     const multiattack = participant.multiattack;
     const rechargeState = participant.recharge_state || {};
     const resistances = participant.enemy_resistances || [];
+
+    const activeBuffs = (participant as any).active_buffs || [];
+    const conditionsList = participant.conditions || [];
+
+    // Distinct positive buffs (e.g. Guidance, Bless, Shield, Mage Armor, Haste)
+    const buffs = [
+        ...activeBuffs,
+        ...conditionsList.filter((c: any) => isBuffCondition(c))
+    ].filter((b, idx, arr) => {
+        const name = typeof b === 'string' ? b : (b.name || '');
+        return arr.findIndex(x => (typeof x === 'string' ? x : (x.name || '')).toLowerCase() === name.toLowerCase()) === idx;
+    });
+
+    // Debuffs and standard conditions
+    const afflictions = conditionsList.filter((c: any) => !isBuffCondition(c));
 
     const sizeName = resolveSizeDisplay(
         participant.size || stats?.size,
@@ -98,11 +114,26 @@ export function MonsterStatblockModal({ participant, onClose }: MonsterStatblock
                             ) : null}
                         </div>
                     )}
-                    {participant.conditions && participant.conditions.length > 0 && (
-                        <div className="pt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-800">
-                            <span className="text-xs text-red-400 font-cinzel uppercase font-semibold">Active Conditions:</span>
-                            {participant.conditions.map((c, idx) => (
-                                <ConditionBadge key={idx} condition={c} size="sm" />
+                    {/* Active Buffs Section */}
+                    {buffs.length > 0 && (
+                        <div className="pt-2 flex flex-wrap items-center gap-1.5 border-t border-emerald-800/40">
+                            <span className="text-xs text-emerald-400 font-cinzel uppercase font-bold flex items-center gap-1">
+                                <span>✨</span> Active Buffs:
+                            </span>
+                            {buffs.map((b, idx) => (
+                                <ConditionBadge key={`buff-${idx}`} condition={b} size="sm" />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Active Conditions Section */}
+                    {afflictions.length > 0 && (
+                        <div className="pt-2 flex flex-wrap items-center gap-1.5 border-t border-red-900/40">
+                            <span className="text-xs text-red-400 font-cinzel uppercase font-semibold flex items-center gap-1">
+                                <span>⚠️</span> Active Conditions:
+                            </span>
+                            {afflictions.map((c, idx) => (
+                                <ConditionBadge key={`cond-${idx}`} condition={c} size="sm" />
                             ))}
                         </div>
                     )}

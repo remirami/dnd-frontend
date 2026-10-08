@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
 import type { CombatParticipant, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
 import { isAoESpell, getAoESpellConfig } from "@/lib/data/spellAoE";
+import { get3DBoundingBoxDist } from "@/components/combat/BattleGrid";
 
 interface SpellMechanic {
     saveType?: "DEX" | "CON" | "WIS" | "STR" | "INT" | "CHA";
@@ -36,6 +37,8 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "vicious mockery": { saveType: "WIS", damageDice: "1d4", damageType: "psychic", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
     "acid splash": { saveType: "DEX", damageDice: "1d6", damageType: "acid", halfOnSave: false, range: "60 ft", castingTime: "1 action", isAoE: true },
     "poison spray": { saveType: "CON", damageDice: "1d12", damageType: "poison", condition: "poisoned", halfOnSave: false, range: "10 ft", castingTime: "1 action" },
+    "guidance": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "resistance": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
 
     // Level 1
     "cure wounds": { isHealing: true, healingBaseDice: "1d8", upcastDiceCount: 1, range: "Touch", castingTime: "1 action" },
@@ -104,6 +107,8 @@ const BUFF_TACTICAL_EFFECTS: Record<string, string> = {
     "expeditious retreat": "🏃 Swift: Take the Dash action as a bonus action on each of your turns.",
     "heroism": "🦁 Valorous: Immune to frightened, and gains temporary HP at the start of each turn.",
     "barkskin": "🪵 Resilient: Target's AC cannot be less than 16, regardless of armor.",
+    "guidance": "🌟 Divine Guidance: Touch a willing creature and choose a skill. Until the spell ends, the creature adds 1d4 to any ability check using the chosen skill (Touch: 5 ft, 1 min conc).",
+    "resistance": "🛡️ Divine Resistance: Touch a willing creature. Target adds 1d4 to one saving throw of its choice (Touch: 5 ft, 1 min conc).",
 };
 
 export interface SpellCastModalProps {
@@ -220,6 +225,47 @@ function SpellCastModalContent({
         return selfList.includes(clean) || (mechanics.range?.toLowerCase().startsWith("self") && !mechanics.range?.toLowerCase().includes("("));
     }, [spellNameLower, mechanics.range]);
 
+    // Authoritative range calculation & distance checking
+    const effectiveSpellRange = spell.spell_details?.range || mechanics.range || "60 ft";
+    const isTouchSpell = useMemo(() => effectiveSpellRange.toLowerCase().includes("touch"), [effectiveSpellRange]);
+    const maxRangeFeet = useMemo(() => {
+        if (isTouchSpell) return 5;
+        if (isSelfSpell) return 0;
+        const match = effectiveSpellRange.match(/(\d+)/);
+        return match ? parseInt(match[1]) : 60;
+    }, [isTouchSpell, isSelfSpell, effectiveSpellRange]);
+
+    const getTargetDistance = (target: CombatParticipant): number => {
+        if (target.id === caster.id) return 0;
+        const x1 = caster.position_x ?? 0;
+        const y1 = caster.position_y ?? 0;
+        const z1 = caster.altitude ?? 0;
+        const w1 = caster.size_dimensions?.feet ?? 5;
+
+        const x2 = target.position_x ?? 0;
+        const y2 = target.position_y ?? 0;
+        const z2 = target.altitude ?? 0;
+        const w2 = target.size_dimensions?.feet ?? 5;
+
+        const hasCoords = (x1 !== 0 || y1 !== 0 || x2 !== 0 || y2 !== 0);
+        if (!hasCoords) return 0;
+
+        return get3DBoundingBoxDist(x1, y1, z1, w1, x2, y2, z2, w2);
+    };
+
+    const isTargetOutOfRange = (target: CombatParticipant): boolean => {
+        if (target.id === caster.id) return false;
+        const hasCoords = (
+            (caster.position_x ?? 0) !== 0 ||
+            (caster.position_y ?? 0) !== 0 ||
+            (target.position_x ?? 0) !== 0 ||
+            (target.position_y ?? 0) !== 0
+        );
+        if (!hasCoords) return false;
+        const dist = getTargetDistance(target);
+        return dist > maxRangeFeet;
+    };
+
     const [targetType, setTargetType] = useState<"enemies" | "allies">(
         (isHealingSpell || isBuffSpell || isSelfSpell) ? "allies" : "enemies"
     );
@@ -234,11 +280,23 @@ function SpellCastModalContent({
             return caster.id; // healing / self / buff defaults to caster self
         }
         if (initialTargetId) {
-            return parseInt(initialTargetId);
+            const initId = parseInt(initialTargetId);
+            const initP = allParticipants.find((p) => p.id === initId);
+            if (initP && isTouchSpell && isTargetOutOfRange(initP)) {
+                return caster.id; // Touch spell target out of range, fall back to self
+            }
+            return initId;
         }
         const enemy = allParticipants.find((p) => p.participant_type === "enemy" && p.is_active);
         return enemy ? enemy.id : null;
     });
+
+    const selectedTarget = useMemo(
+        () => allParticipants.find((p) => p.id === selectedTargetId) || null,
+        [allParticipants, selectedTargetId]
+    );
+    const selectedTargetDist = selectedTarget ? getTargetDistance(selectedTarget) : 0;
+    const isCurrentTargetOutOfRange = selectedTarget ? isTargetOutOfRange(selectedTarget) : false;
 
     const [selectedTargetIds, setSelectedTargetIds] = useState<number[]>(() => {
         if (!isAoE) return [];
@@ -380,7 +438,6 @@ function SpellCastModalContent({
     const currentSlotInfo = selectedLevel > 0 ? getSpellSlots(selectedLevel) : null;
     const hasSlotsRemaining = baseLevel === 0 || isRitual || (currentSlotInfo ? currentSlotInfo.remaining > 0 : true);
 
-    const selectedTarget = allParticipants.find((p) => p.id === selectedTargetId) || null;
     const requiresConcentration = spell.spell_details?.concentration ?? (mechanics.requiresConcentration || false);
 
     const handleExecuteCast = async () => {
@@ -408,6 +465,22 @@ function SpellCastModalContent({
         }
 
         if (!hasSlotsRemaining || isCasting || targetsToCast.length === 0) return;
+
+        // Range & Touch validation
+        for (const tid of targetsToCast) {
+            if (tid !== caster.id) {
+                const targetP = allParticipants.find((p) => p.id === tid);
+                if (targetP && isTargetOutOfRange(targetP)) {
+                    const dist = getTargetDistance(targetP);
+                    alert(
+                        `${spell.name} is a ${
+                            isTouchSpell ? "Touch spell (5 ft maximum reach)" : `ranged spell (max ${maxRangeFeet} ft)`
+                        }! ${targetP.name} is ${dist} ft away. Move closer first!`
+                    );
+                    return;
+                }
+            }
+        }
 
         await onCast({
             casterId: caster.id,
@@ -452,7 +525,12 @@ function SpellCastModalContent({
                             <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5 font-fira-sans">
                                 <span>Casting: {spell.spell_details?.casting_time || mechanics.castingTime || "1 action"}</span>
                                 <span>•</span>
-                                <span>Range: {spell.spell_details?.range || mechanics.range || "60 ft"}</span>
+                                <span>
+                                    Range:{" "}
+                                    <strong className={isTouchSpell ? "text-amber-300 font-bold" : "text-slate-200"}>
+                                        {isTouchSpell ? "Touch (5 ft)" : effectiveSpellRange}
+                                    </strong>
+                                </span>
                                 {requiresConcentration && (
                                     <>
                                         <span>•</span>
@@ -621,13 +699,22 @@ function SpellCastModalContent({
                                     ? selectedTargetIds.includes(p.id)
                                     : selectedTargetId === p.id;
                                 const isSelf = p.id === caster.id;
+                                const isOutOfRange = isTargetOutOfRange(p);
+                                const dist = getTargetDistance(p);
+                                const hasCoords = (
+                                    (caster.position_x ?? 0) !== 0 ||
+                                    (caster.position_y ?? 0) !== 0 ||
+                                    (p.position_x ?? 0) !== 0 ||
+                                    (p.position_y ?? 0) !== 0
+                                );
                                 const hpPct = Math.max(0, Math.min(100, (p.current_hp / p.max_hp) * 100));
                                 return (
                                     <div
                                         key={p.id}
                                         role="button"
-                                        tabIndex={0}
+                                        tabIndex={isOutOfRange ? -1 : 0}
                                         onClick={() => {
+                                            if (isOutOfRange) return;
                                             if (isMultiMissile) {
                                                 if (unassignedDarts > 0) {
                                                     handleAddDart(p.id);
@@ -644,6 +731,7 @@ function SpellCastModalContent({
                                             }
                                         }}
                                         onKeyDown={(e) => {
+                                            if (isOutOfRange) return;
                                             if (e.key === "Enter" || e.key === " ") {
                                                 e.preventDefault();
                                                 if (isMultiMissile) {
@@ -660,14 +748,16 @@ function SpellCastModalContent({
                                                 }
                                             }
                                         }}
-                                        className={`p-2 rounded border text-left flex items-center gap-2 transition-all cursor-pointer ${
-                                            isSelected
+                                        className={`p-2 rounded border text-left flex items-center gap-2 transition-all ${
+                                            isOutOfRange
+                                                ? "bg-[#161218] border-rose-950/60 opacity-50 cursor-not-allowed"
+                                                : isSelected
                                                 ? isMultiMissile
-                                                    ? "bg-[#251b2e] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                                                    ? "bg-[#251b2e] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)] cursor-pointer"
                                                     : isAoE
-                                                    ? "bg-[#241a29] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
-                                                    : "bg-[#25201b] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
-                                                : "bg-[#181a24] border-slate-800 hover:border-slate-600"
+                                                    ? "bg-[#241a29] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)] cursor-pointer"
+                                                    : "bg-[#25201b] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.25)] cursor-pointer"
+                                                : "bg-[#181a24] border-slate-800 hover:border-slate-600 cursor-pointer"
                                         }`}
                                     >
                                         {isAoE && !isMultiMissile && (
@@ -695,9 +785,27 @@ function SpellCastModalContent({
                                                     style={{ width: `${hpPct}%` }}
                                                 />
                                             </div>
-                                            <span className="text-[9px] text-slate-400 font-fira-sans block mt-0.5">
-                                                {p.current_hp}/{p.max_hp} HP
-                                            </span>
+                                            <div className="flex items-center justify-between text-[9px] font-fira-sans mt-0.5">
+                                                <span className="text-slate-400">
+                                                    {p.current_hp}/{p.max_hp} HP
+                                                </span>
+                                                {isSelf ? (
+                                                    <span className="text-emerald-400 font-bold px-1 py-0.2 rounded bg-emerald-950/60 border border-emerald-700/60">
+                                                        Touch / Self
+                                                    </span>
+                                                ) : isOutOfRange ? (
+                                                    <span
+                                                        className="text-rose-400 font-bold px-1 py-0.2 rounded bg-rose-950/80 border border-rose-800/80"
+                                                        title={`Distance: ${dist} ft. Maximum range is ${maxRangeFeet} ft.`}
+                                                    >
+                                                        ❌ {dist} ft (Out of Range)
+                                                    </span>
+                                                ) : hasCoords ? (
+                                                    <span className="text-emerald-400 font-medium px-1 py-0.2 rounded bg-emerald-950/60 border border-emerald-700/60">
+                                                        {isTouchSpell ? `✅ Reach (${dist} ft)` : `✅ ${dist} ft`}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
 
                                         {isMultiMissile && (
@@ -896,9 +1004,21 @@ function SpellCastModalContent({
                         <Button
                             type="button"
                             onClick={handleExecuteCast}
-                            disabled={!hasSlotsRemaining || isCasting || (isMultiMissile ? assignedDartsCount === 0 : (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId))}
+                            disabled={
+                                !hasSlotsRemaining ||
+                                isCasting ||
+                                (isMultiMissile
+                                    ? assignedDartsCount === 0
+                                    : isAoE
+                                    ? selectedTargetIds.length === 0
+                                    : !selectedTargetId) ||
+                                isCurrentTargetOutOfRange
+                            }
                             className={`h-9 px-5 font-cinzel font-bold text-xs uppercase tracking-wider rounded transition-all shadow-md cursor-pointer flex items-center gap-1.5 ${
-                                !hasSlotsRemaining || isCasting || (isMultiMissile ? assignedDartsCount === 0 : (isAoE ? selectedTargetIds.length === 0 : !selectedTargetId))
+                                !hasSlotsRemaining ||
+                                isCasting ||
+                                (isMultiMissile ? assignedDartsCount === 0 : isAoE ? selectedTargetIds.length === 0 : !selectedTargetId) ||
+                                isCurrentTargetOutOfRange
                                     ? "bg-slate-800 text-slate-500 opacity-60 cursor-not-allowed"
                                     : "bg-gradient-to-r from-[#c5a059] to-[#d6b16a] hover:from-[#d6b16a] hover:to-[#e5c27d] text-[#0c0d12] shadow-[0_0_15px_rgba(197,160,89,0.35)]"
                             }`}
@@ -907,6 +1027,11 @@ function SpellCastModalContent({
                                 <>
                                     <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                                     <span>Invoking...</span>
+                                </>
+                            ) : isCurrentTargetOutOfRange ? (
+                                <>
+                                    <span>⚠️</span>
+                                    <span>Target Out of Reach ({selectedTargetDist} ft &gt; {maxRangeFeet} ft)</span>
                                 </>
                             ) : (
                                 <>
