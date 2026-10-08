@@ -41,10 +41,11 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
             },
             {
                 id: "1.15.0-2",
-                title: "✨ 5e Tactical Buff Mechanics Verification (Shield, Bless, Mage Armor)",
-                description: "Verified and expanded automated test coverage for combat buff spells in the Django combat engine.",
+                title: "✨ 5e Tactical Buff & Haste Extra Action Engine (Shield, Bless, Mage Armor, Haste)",
+                description: "Verified and expanded automated test coverage for combat buff spells and integrated 5e Rules-as-Written extra action economy for Haste.",
                 category: "combat",
                 details: [
+                    "Haste Extra Action (5e RAW): Hasted combatants gain +1 additional action/attack each turn (allowing an extra weapon strike, Dash, Disengage, or Hide) with dynamic amber '⚡ Haste Action' pill in ActionDock.",
                     "Shield Reaction: Verified +5 AC bonus immediately applies to participant effective AC and protects against incoming attacks.",
                     "Bless Bonus: Verified +1d4 bonus dynamically adds to attack rolls (recorded in advantage reasons) and saving throw rolls.",
                     "Mage Armor: Verified base AC recalculates to 13 + Dexterity modifier for unarmored spellcasters upon casting.",

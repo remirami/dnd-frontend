@@ -96,7 +96,7 @@ const BUFF_TACTICAL_EFFECTS: Record<string, string> = {
     "bless": "✨ Divine Favor: +1d4 bonus added to all attack rolls and saving throws.",
     "shield of faith": "🛡️ Divine Aegis: +2 bonus to Armor Class while concentrated.",
     "protection from evil and good": "⚔️ Warded: Aberrations, celestials, elementals, fey, fiends, and undead have Disadvantage on attacks against target; immune to charmed and frightened.",
-    "haste": "⚡ Accelerated: +2 AC, double walking speed, advantage on Dex saves, and an extra action.",
+    "haste": "⚡ Accelerated: +2 AC, double walking speed, advantage on Dex saves, and an extra Hasted Action each turn (weapon attack, Dash, Disengage, Hide).",
     "blur": "👁️ Shifting Form: Attack rolls against target have Disadvantage.",
     "mirror image": "👥 Illusions: Three illusory duplicates absorb and redirect incoming strikes.",
     "false life": "❤️ Bolstered: Grants temporary hit points to absorb incoming damage.",

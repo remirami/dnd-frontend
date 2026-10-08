@@ -281,7 +281,8 @@ export function ActionDock({
         );
     }
 
-    const hasAttacksLeft = currentParticipant ? (currentParticipant.attacks_remaining > 0 && !currentParticipant.action_used) : false;
+    const isHasted = Boolean((currentParticipant as any)?.active_buffs?.some((b: any) => b.name?.toLowerCase() === 'haste'));
+    const hasAttacksLeft = currentParticipant ? (currentParticipant.attacks_remaining > 0 && (!currentParticipant.action_used || isHasted)) : false;
     const isActionDisabled = !targetId || isAttacking || !hasAttacksLeft || currentIsIncapacitated;
 
     const charFeatures = charData?.features || [];
@@ -1413,6 +1414,21 @@ export function ActionDock({
                         <span className={`w-2 h-2 rounded-full ${hasAttacksLeft ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : 'bg-slate-700'}`} />
                         <span>⚔️ Action ({currentParticipant?.attacks_remaining ?? 0})</span>
                     </div>
+
+                    {/* Haste Extra Action Pill */}
+                    {isHasted && (
+                        <div
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition-all ${
+                                hasAttacksLeft
+                                    ? 'bg-amber-950/60 border-amber-500/60 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
+                                    : 'bg-[#12141c] border-slate-800 text-slate-500 line-through'
+                            }`}
+                            title={hasAttacksLeft ? "Haste: +1 Action ready (weapon attack, Dash, Disengage, Hide)" : "Haste Action expended"}
+                        >
+                            <span className={`w-2 h-2 rounded-full ${hasAttacksLeft ? 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(245,158,11,0.8)]' : 'bg-slate-700'}`} />
+                            <span>⚡ Haste Action</span>
+                        </div>
+                    )}
 
                     {/* Bonus Action Pill */}
                     <div
