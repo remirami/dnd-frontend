@@ -67,6 +67,43 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "lightning bolt": { saveType: "DEX", damageDice: "8d6", damageType: "lightning", upcastDiceCount: 1, halfOnSave: true, range: "Self (100-ft line)", castingTime: "1 action", isAoE: true },
     "mass healing word": { isHealing: true, healingBaseDice: "1d4", upcastDiceCount: 1, range: "60 ft", castingTime: "1 bonus action", isBonusAction: true, isAoE: true },
     "hold monster": { saveType: "WIS", condition: "paralyzed", requiresConcentration: true, range: "90 ft", castingTime: "1 action" },
+
+    // Combat Buffs, Defenses & Reactions
+    "shield": { range: "Self", castingTime: "1 reaction", requiresConcentration: false },
+    "absorb elements": { range: "Self", castingTime: "1 reaction", requiresConcentration: false },
+    "mage armor": { range: "Touch", castingTime: "1 action", requiresConcentration: false },
+    "bless": { range: "30 ft", castingTime: "1 action", requiresConcentration: true },
+    "shield of faith": { range: "60 ft", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: true },
+    "protection from evil and good": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "haste": { range: "30 ft", castingTime: "1 action", requiresConcentration: true },
+    "blur": { range: "Self", castingTime: "1 action", requiresConcentration: true },
+    "mirror image": { range: "Self", castingTime: "1 action", requiresConcentration: false },
+    "false life": { range: "Self", castingTime: "1 action", requiresConcentration: false },
+    "armor of agathys": { range: "Self", castingTime: "1 action", requiresConcentration: false },
+    "expeditious retreat": { range: "Self", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: true },
+    "fire shield": { range: "Self", castingTime: "1 action", requiresConcentration: false },
+    "heroism": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "barkskin": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "invisibility": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "counterspell": { range: "60 ft", castingTime: "1 reaction", requiresConcentration: false },
+    "hellish rebuke": { saveType: "DEX", damageDice: "2d10", damageType: "fire", upcastDiceCount: 1, halfOnSave: true, range: "60 ft", castingTime: "1 reaction" },
+    "misty step": { range: "Self", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: false },
+};
+
+const BUFF_TACTICAL_EFFECTS: Record<string, string> = {
+    "shield": "⚡ Reaction: +5 bonus to AC and complete immunity to Magic Missile until next turn.",
+    "mage armor": "🛡️ Warding: Base unarmored AC becomes 13 + Dexterity modifier.",
+    "bless": "✨ Divine Favor: +1d4 bonus added to all attack rolls and saving throws.",
+    "shield of faith": "🛡️ Divine Aegis: +2 bonus to Armor Class while concentrated.",
+    "protection from evil and good": "⚔️ Warded: Aberrations, celestials, elementals, fey, fiends, and undead have Disadvantage on attacks against target; immune to charmed and frightened.",
+    "haste": "⚡ Accelerated: +2 AC, double walking speed, advantage on Dex saves, and an extra action.",
+    "blur": "👁️ Shifting Form: Attack rolls against target have Disadvantage.",
+    "mirror image": "👥 Illusions: Three illusory duplicates absorb and redirect incoming strikes.",
+    "false life": "❤️ Bolstered: Grants temporary hit points to absorb incoming damage.",
+    "armor of agathys": "❄️ Rime Warded: Spectral frost grants temp HP; melee attackers take retaliatory cold damage.",
+    "expeditious retreat": "🏃 Swift: Take the Dash action as a bonus action on each of your turns.",
+    "heroism": "🦁 Valorous: Immune to frightened, and gains temporary HP at the start of each turn.",
+    "barkskin": "🪵 Resilient: Target's AC cannot be less than 16, regardless of armor.",
 };
 
 export interface SpellCastModalProps {
@@ -745,27 +782,41 @@ function SpellCastModalContent({
                                 </div>
                             )}
 
-                            {/* Damage or Healing Formula Badge */}
-                            <div className="p-2.5 rounded bg-[#181924] border border-purple-900/40">
-                                <span className="text-[10px] uppercase font-cinzel font-bold text-purple-300 block">
-                                    {isHealingSpell ? "💚 Restorative Healing" : "💥 Damage Output"}
-                                </span>
-                                <div className="text-sm font-bold font-fira-sans text-slate-100 mt-0.5 flex items-center gap-1.5">
-                                    <span>{computedFormula || "No Direct Damage"}</span>
-                                    {mechanics.damageType && (
-                                        <Badge className="bg-purple-950 text-purple-300 border-purple-800 text-[9px] uppercase font-mono">
-                                            {mechanics.damageType}
-                                        </Badge>
-                                    )}
+                            {/* Damage, Healing, or Tactical Buff Badge */}
+                            {isBuffSpell ? (
+                                <div className="p-2.5 rounded bg-emerald-950/50 border border-emerald-600/60 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                                    <span className="text-[10px] uppercase font-cinzel font-bold text-emerald-300 block">
+                                        ✨ Positive Tactical Buff
+                                    </span>
+                                    <div className="text-xs font-bold font-fira-sans text-emerald-200 mt-1 flex items-center gap-1.5">
+                                        <span>{BUFF_TACTICAL_EFFECTS[spellNameLower] || "Combat Enhancement (Target radiates emerald aura)"}</span>
+                                    </div>
+                                    <p className="text-[10px] text-emerald-400/80 mt-1 font-lora">
+                                        Applies tactical buffs, AC modifications, or protective wards directly to the target combatant.
+                                    </p>
                                 </div>
-                                <p className="text-[10px] text-slate-400 mt-0.5 font-lora">
-                                    {isHealingSpell
-                                        ? "Restores hit points up to target's maximum health."
-                                        : selectedLevel > baseLevel
-                                        ? `Upcast from base Level ${baseLevel} for extra damage.`
-                                        : "Standard spell potency."}
-                                </p>
-                            </div>
+                            ) : (
+                                <div className="p-2.5 rounded bg-[#181924] border border-purple-900/40">
+                                    <span className="text-[10px] uppercase font-cinzel font-bold text-purple-300 block">
+                                        {isHealingSpell ? "💚 Restorative Healing" : "💥 Damage Output"}
+                                    </span>
+                                    <div className="text-sm font-bold font-fira-sans text-slate-100 mt-0.5 flex items-center gap-1.5">
+                                        <span>{computedFormula || "No Direct Damage"}</span>
+                                        {mechanics.damageType && (
+                                            <Badge className="bg-purple-950 text-purple-300 border-purple-800 text-[9px] uppercase font-mono">
+                                                {mechanics.damageType}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 font-lora">
+                                        {isHealingSpell
+                                            ? "Restores hit points up to target's maximum health."
+                                            : selectedLevel > baseLevel
+                                            ? `Upcast from base Level ${baseLevel} for extra damage.`
+                                            : "Standard spell potency."}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Status Condition Trigger */}

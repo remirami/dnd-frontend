@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CombatParticipant, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
 import { isAoESpell, getAoESpellConfig } from "@/lib/data/spellAoE";
+import { classifySpell, isCombatSpell } from "@/lib/data/spellClassification";
 
 interface ActionDockProps {
     currentParticipant?: CombatParticipant | null;
@@ -230,6 +231,7 @@ export function ActionDock({
     const [isOperating, setIsOperating] = useState(false);
     const [useInspiration, setUseInspiration] = useState<boolean>(false);
     const [dmOverrideMode, setDmOverrideMode] = useState<'auto' | 'advantage' | 'normal' | 'disadvantage'>('auto');
+    const [spellFilterMode, setSpellFilterMode] = useState<'combat' | 'all'>('combat');
 
     // Automatically close drawer when active participant / turn changes
     useEffect(() => {
@@ -347,7 +349,12 @@ export function ActionDock({
     // Monster attacks for enemy turn in practice mode
     const firstEnemyAttack = currentParticipant?.enemy_actions?.[0] || enemyAttacks?.[0];
 
-    const totalSpellCount = Array.from(characterSpells.values()).reduce((sum, list) => sum + list.length, 0);
+    const allSpellsList = Array.from(characterSpells.values()).flat();
+    const combatSpellCount = allSpellsList.filter((s) => isCombatSpell(s)).length;
+    const totalSpellCount = allSpellsList.length;
+    const isGauntlet = !!gauntletRunId;
+    const activeSpellFilter = isGauntlet ? 'combat' : spellFilterMode;
+
     const totalFeatureCount = (isBarbarian ? (canReckless ? 2 : 1) : 0) + (isFighter ? (hasActionSurge ? 2 : 1) : 0) + (isPaladin ? 1 : 0) + (canCunningAction ? 1 : 0) + characterFeats.length + (charFeatures.length || 0);
 
     const getAttackOptions = (isMelee: boolean = true) => {
@@ -412,14 +419,50 @@ export function ActionDock({
                                 </span>
                             )}
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setOpenDrawer(null)}
-                            className="text-slate-400 hover:text-white px-2 py-1 text-sm font-bold cursor-pointer rounded hover:bg-slate-800/60 transition-colors"
-                            title="Close Drawer"
-                        >
-                            ✕
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {openDrawer === 'spells' && (
+                                isGauntlet ? (
+                                    <span className="text-[10px] font-fira-sans font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-600/60 shadow-sm">
+                                        🛡️ Gauntlet: Combat Spells ({combatSpellCount})
+                                    </span>
+                                ) : (
+                                    <div className="flex items-center gap-1 bg-[#0c0d12] p-0.5 rounded border border-[#c5a059]/30">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSpellFilterMode('combat')}
+                                            className={`px-2 py-0.5 rounded text-[10px] font-cinzel font-bold transition-all cursor-pointer ${
+                                                spellFilterMode === 'combat'
+                                                    ? 'bg-purple-950 text-purple-200 border border-purple-600/70 shadow-sm'
+                                                    : 'text-slate-400 hover:text-white'
+                                            }`}
+                                            title="Filter to combat-ready spells (Attacks, AoEs, Heals, Buffs & Defenses)"
+                                        >
+                                            ⚔️ Combat ({combatSpellCount})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSpellFilterMode('all')}
+                                            className={`px-2 py-0.5 rounded text-[10px] font-cinzel font-bold transition-all cursor-pointer ${
+                                                spellFilterMode === 'all'
+                                                    ? 'bg-purple-950 text-purple-200 border border-purple-600/70 shadow-sm'
+                                                    : 'text-slate-400 hover:text-white'
+                                            }`}
+                                            title="View all prepared spells including out-of-combat utility and rituals"
+                                        >
+                                            📜 All ({totalSpellCount})
+                                        </button>
+                                    </div>
+                                )
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setOpenDrawer(null)}
+                                className="text-slate-400 hover:text-white px-2 py-1 text-sm font-bold cursor-pointer rounded hover:bg-slate-800/60 transition-colors"
+                                title="Close Drawer"
+                            >
+                                ✕
+                            </button>
+                        </div>
                     </div>
 
                     {/* 1. WEAPONS ARSENAL DRAWER */}
@@ -566,6 +609,15 @@ export function ActionDock({
                                     .sort(([a], [b]) => a - b)
                                     .map(([level, spells]) => {
                                         const slots = level > 0 ? getSpellSlots(level) : null;
+                                        const displayedSpells = activeSpellFilter === 'combat'
+                                            ? spells.filter(s => isCombatSpell(s))
+                                            : spells;
+
+                                        // Skip empty levels in combat filter if there are no spells at all
+                                        if (displayedSpells.length === 0 && activeSpellFilter === 'combat' && spells.length === 0) {
+                                            return null;
+                                        }
+
                                         return (
                                             <div key={level} className="border-b border-[#c5a059]/15 pb-3 last:border-b-0">
                                                 {/* Spell Level Header */}
@@ -583,98 +635,143 @@ export function ActionDock({
                                                 </div>
 
                                                 {/* Spell Cards Grid */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                                    {spells.map((spell) => {
-                                                        const noSlots = slots !== null && slots.remaining <= 0;
-                                                        const disabled = !hasAttacksLeft || currentIsIncapacitated || isAttacking || (noSlots && !spell.is_ritual);
-                                                        const spellRange = spell.range || spell.spell_details?.range;
-                                                        const spellDesc = spell.description || spell.spell_details?.description;
-                                                        const isAoE = isAoESpell(spell.name, spellDesc, spellRange);
-                                                        const aoeConfig = getAoESpellConfig(spell.name, spellDesc, spellRange);
+                                                {displayedSpells.length === 0 ? (
+                                                    <p className="text-[11px] text-[#d1cdb8]/40 italic py-1 font-lora">
+                                                        No combat spells prepared at Level {level} ({spells.length} out-of-combat utility {spells.length === 1 ? 'spell' : 'spells'}).
+                                                    </p>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                        {displayedSpells.map((spell) => {
+                                                            const classification = classifySpell(spell);
+                                                            const isBuff = classification.isCombat && classification.category === 'buff';
+                                                            const isUtility = !classification.isCombat;
+                                                            const isLongCast = classification.isLongCast;
 
-                                                        const handleAoECastDefault = () => {
-                                                            if (isAoE && onStartAoETargeting && aoeConfig) {
-                                                                onStartAoETargeting({
-                                                                    spell,
-                                                                    spellLevel: spell.level ?? (level || 1),
-                                                                    shape: aoeConfig.shape,
-                                                                    size: aoeConfig.size,
-                                                                    saveType: aoeConfig.saveType,
-                                                                    saveDc: charData?.stats?.spell_save_dc || 13,
-                                                                    damageFormula: aoeConfig.damageFormula || "",
-                                                                    damageType: aoeConfig.damageType,
-                                                                    halfOnSave: aoeConfig.halfOnSave ?? true,
-                                                                    isHealing: aoeConfig.isHealing,
-                                                                    requiresConcentration: aoeConfig.requiresConcentration,
-                                                                    isBonusAction: aoeConfig.isBonusAction,
-                                                                    castingTime: aoeConfig.castingTime || "1 action",
-                                                                });
-                                                                setOpenDrawer(null);
-                                                            } else if (onSelectSpell) {
-                                                                onSelectSpell(spell);
-                                                                setOpenDrawer(null);
-                                                            } else {
-                                                                onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0, getAttackOptions(false));
-                                                                setOpenDrawer(null);
-                                                            }
-                                                        };
+                                                            const noSlots = slots !== null && slots.remaining <= 0;
+                                                            const disabled = !hasAttacksLeft || currentIsIncapacitated || isAttacking || (noSlots && !spell.is_ritual);
+                                                            const spellRange = spell.range || spell.spell_details?.range;
+                                                            const spellDesc = spell.description || spell.spell_details?.description;
+                                                            const isAoE = isAoESpell(spell.name, spellDesc, spellRange);
+                                                            const aoeConfig = getAoESpellConfig(spell.name, spellDesc, spellRange);
 
-                                                        return (
-                                                            <div
-                                                                key={spell.id}
-                                                                className={`flex items-center justify-between rounded-lg border p-2 transition-all ${
-                                                                    disabled
-                                                                        ? 'bg-[#141622]/40 border-slate-800 opacity-40 cursor-not-allowed'
-                                                                        : 'bg-[#181a28] border-purple-800/60 hover:border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.15)]'
-                                                                }`}
-                                                            >
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={handleAoECastDefault}
-                                                                    disabled={disabled}
-                                                                    title={isAoE ? `Aim ${aoeConfig?.shape.toUpperCase() || 'AoE'} (${aoeConfig?.size || 20} ft) on Grid` : "Cast Spell"}
-                                                                    className={`flex-1 text-left flex items-center gap-2 min-w-0 ${
-                                                                        disabled ? 'cursor-not-allowed' : 'cursor-pointer'
-                                                                    }`}
+                                                            const handleAoECastDefault = () => {
+                                                                if (isAoE && onStartAoETargeting && aoeConfig) {
+                                                                    onStartAoETargeting({
+                                                                        spell,
+                                                                        spellLevel: spell.level ?? (level || 1),
+                                                                        shape: aoeConfig.shape,
+                                                                        size: aoeConfig.size,
+                                                                        saveType: aoeConfig.saveType,
+                                                                        saveDc: charData?.stats?.spell_save_dc || 13,
+                                                                        damageFormula: aoeConfig.damageFormula || "",
+                                                                        damageType: aoeConfig.damageType,
+                                                                        halfOnSave: aoeConfig.halfOnSave ?? true,
+                                                                        isHealing: aoeConfig.isHealing,
+                                                                        requiresConcentration: aoeConfig.requiresConcentration,
+                                                                        isBonusAction: aoeConfig.isBonusAction,
+                                                                        castingTime: aoeConfig.castingTime || "1 action",
+                                                                    });
+                                                                    setOpenDrawer(null);
+                                                                } else if (onSelectSpell) {
+                                                                    onSelectSpell(spell);
+                                                                    setOpenDrawer(null);
+                                                                } else {
+                                                                    onAttack(spell.name, charData?.stats?.spell_attack_bonus || 0, getAttackOptions(false));
+                                                                    setOpenDrawer(null);
+                                                                }
+                                                            };
+
+                                                            const cardBorderClass = disabled
+                                                                ? 'bg-[#141622]/40 border-slate-800 opacity-40 cursor-not-allowed'
+                                                                : isUtility
+                                                                ? 'bg-[#12141c]/70 border-slate-700/60 opacity-70 hover:opacity-100 hover:border-slate-500 shadow-sm'
+                                                                : isBuff
+                                                                ? 'bg-[#121c18] border-emerald-800/70 hover:border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                                                                : 'bg-[#181a28] border-purple-800/60 hover:border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.15)]';
+
+                                                            return (
+                                                                <div
+                                                                    key={spell.id}
+                                                                    className={`flex items-center justify-between rounded-lg border p-2 transition-all ${cardBorderClass}`}
                                                                 >
-                                                                    <span className="text-base flex-shrink-0">{isAoE ? '🎯' : '✨'}</span>
-                                                                    <div className="flex flex-col min-w-0">
-                                                                        <span className="font-lora font-semibold text-xs text-purple-200 truncate">
-                                                                            {spell.name}
-                                                                        </span>
-                                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                                            {isAoE && (
-                                                                                <span className="text-[9px] px-1 rounded bg-cyan-950/90 border border-cyan-500/70 text-cyan-300 font-cinzel font-bold">
-                                                                                    {aoeConfig ? `${aoeConfig.shape.toUpperCase()} ${aoeConfig.size}FT` : "Aim on Grid"}
-                                                                                </span>
-                                                                            )}
-                                                                            {spell.is_ritual && (
-                                                                                <span className="text-[9px] px-1 rounded bg-blue-950 text-blue-300 font-mono">
-                                                                                    Ritual
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </button>
-
-                                                                {isAoE && onSelectSpell && !disabled && (
                                                                     <button
                                                                         type="button"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            onSelectSpell(spell);
-                                                                            setOpenDrawer(null);
-                                                                        }}
-                                                                        title="Configure / Upcast Spell"
-                                                                        className="px-2 py-1 text-xs text-purple-400 hover:text-purple-100 hover:bg-purple-900/60 rounded border border-purple-800/60 cursor-pointer transition-colors ml-2 flex-shrink-0"
+                                                                        onClick={handleAoECastDefault}
+                                                                        disabled={disabled}
+                                                                        title={
+                                                                            isLongCast
+                                                                                ? `⏳ ${classification.castingTime} - Out-of-combat cast time`
+                                                                                : isAoE
+                                                                                ? `Aim ${aoeConfig?.shape.toUpperCase() || 'AoE'} (${aoeConfig?.size || 20} ft) on Grid`
+                                                                                : isBuff
+                                                                                ? `Cast ${spell.name} (Positive Buff)`
+                                                                                : isUtility
+                                                                                ? `${spell.name} (Utility / Non-Combat)`
+                                                                                : "Cast Spell"
+                                                                        }
+                                                                        className={`flex-1 text-left flex items-center gap-2 min-w-0 ${
+                                                                            disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+                                                                        }`}
                                                                     >
-                                                                        ⚙️
+                                                                        <span className="text-base flex-shrink-0">
+                                                                            {isAoE ? '🎯' : isBuff ? '✨' : isUtility ? '🕯️' : '✨'}
+                                                                        </span>
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <span className={`font-lora font-semibold text-xs truncate ${
+                                                                                isBuff ? 'text-emerald-200' : isUtility ? 'text-slate-300' : 'text-purple-200'
+                                                                            }`}>
+                                                                                {spell.name}
+                                                                            </span>
+                                                                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                                                {isAoE && (
+                                                                                    <span className="text-[9px] px-1 rounded bg-cyan-950/90 border border-cyan-500/70 text-cyan-300 font-cinzel font-bold">
+                                                                                        {aoeConfig ? `${aoeConfig.shape.toUpperCase()} ${aoeConfig.size}FT` : "Aim on Grid"}
+                                                                                    </span>
+                                                                                )}
+                                                                                {isBuff && classification.badgeLabel && (
+                                                                                    <span className="text-[9px] px-1 rounded bg-emerald-950/90 border border-emerald-500/60 text-emerald-300 font-cinzel font-bold">
+                                                                                        {classification.badgeLabel}
+                                                                                    </span>
+                                                                                )}
+                                                                                {isUtility && classification.badgeLabel && (
+                                                                                    <span className="text-[9px] px-1 rounded bg-slate-900 border border-slate-700 text-slate-400 font-mono">
+                                                                                        {classification.badgeLabel}
+                                                                                    </span>
+                                                                                )}
+                                                                                {spell.is_ritual && (
+                                                                                    <span className="text-[9px] px-1 rounded bg-blue-950 text-blue-300 font-mono">
+                                                                                        Ritual
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
                                                                     </button>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
+
+                                                                    {onSelectSpell && !disabled && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                onSelectSpell(spell);
+                                                                                setOpenDrawer(null);
+                                                                            }}
+                                                                            title="Configure / Upcast Spell"
+                                                                            className={`px-2 py-1 text-xs rounded border cursor-pointer transition-colors ml-2 flex-shrink-0 ${
+                                                                                isBuff
+                                                                                    ? 'text-emerald-400 hover:text-emerald-100 hover:bg-emerald-900/60 border-emerald-800/60'
+                                                                                    : isUtility
+                                                                                    ? 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 border-slate-700/60'
+                                                                                    : 'text-purple-400 hover:text-purple-100 hover:bg-purple-900/60 border-purple-800/60'
+                                                                            }`}
+                                                                        >
+                                                                            ⚙️
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })
@@ -1475,7 +1572,7 @@ export function ActionDock({
                         >
                             <span>📖</span>
                             <span>Spellbook</span>
-                            <span className="text-[10px] opacity-75">({totalSpellCount}) ▾</span>
+                            <span className="text-[10px] opacity-75">({isGauntlet ? combatSpellCount : `${combatSpellCount}/${totalSpellCount}`}) ▾</span>
                         </button>
                     )}
 

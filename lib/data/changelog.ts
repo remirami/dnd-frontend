@@ -17,14 +17,57 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.14.0";
+export const CURRENT_VERSION = "v1.15.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.15.0",
+        date: "October 8, 2026",
+        title: "Tactical Combat Spell Filter, Gauntlet Utility Pruning & 5e Combat Buff Verification",
+        tag: "Latest",
+        summary: "Introduced an intelligent 5e spell classification engine to filter out out-of-combat exploration and downtime spells from the combat ActionDock Grimoire, with strict automated pruning in Gauntlet Mode. Fully verified and expanded backend test coverage for core utility/buff spells including Shield (+5 AC reaction), Bless (+1d4 attacks and saving throws), and Mage Armor (13 + Dex AC).",
+        items: [
+            {
+                id: "1.15.0-1",
+                title: "🛡️ Combat Grimoire & Gauntlet Utility Spell Filtering",
+                description: "Cleaned up the combat spell interface by filtering out non-combat utility spells (e.g., Identify, Comprehend Languages, Alarm, Purify Food and Drink) and focusing on combat-ready offensive, defensive, and tactical spells.",
+                category: "combat",
+                details: [
+                    "Intelligent Spell Classification: Distinguishes instant combat actions, reactions, bonus actions, and tactical buffs from downtime or exploration spells requiring 1+ minutes/hours casting times.",
+                    "ActionDock Filter Pill: Toggle seamlessly between '⚔️ Combat Spells' and '📜 All Spells' with real-time spell count indicators.",
+                    "Gauntlet Mode Strict Pruning: In Gauntlet runs, non-combat spells are automatically locked to combat-only mode with a dedicated gold badge to maximize tactical speed.",
+                    "Tactical Dimming & Badging: Out-of-combat spells when viewed are clearly badged with casting times (⏳ 1 min, ⏳ 10 min) and dimmed."
+                ]
+            },
+            {
+                id: "1.15.0-2",
+                title: "✨ 5e Tactical Buff Mechanics Verification (Shield, Bless, Mage Armor)",
+                description: "Verified and expanded automated test coverage for combat buff spells in the Django combat engine.",
+                category: "combat",
+                details: [
+                    "Shield Reaction: Verified +5 AC bonus immediately applies to participant effective AC and protects against incoming attacks.",
+                    "Bless Bonus: Verified +1d4 bonus dynamically adds to attack rolls (recorded in advantage reasons) and saving throw rolls.",
+                    "Mage Armor: Verified base AC recalculates to 13 + Dexterity modifier for unarmored spellcasters upon casting.",
+                    "Tactical Preview Banners: Enhanced SpellCastModal with tactical green buff badges and detailed mechanical rules preview for all major 5e combat buffs."
+                ]
+            },
+            {
+                id: "1.15.0-3",
+                title: "📜 Character Sheet Spell Slot Dashboard & Rest Recovery",
+                description: "Refined character sheet spells tab with slot dials, level-by-level tracking, and fixed Short/Long Rest slot recovery mechanics.",
+                category: "spell",
+                details: [
+                    "Fixed Rest Recovery: Ensured Long Rest and Short Rest handlers correctly restore spell slots and pact magic slots.",
+                    "TypeScript Type Safety: Fixed build errors around stats modifiers and ritual spell properties, guaranteeing clean production builds."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.14.0",
         date: "October 6, 2026",
         title: "Dynamic Spell & Multiattack Rotation, Simulated Cooldowns & 360° Smooth Battle Camera",
-        tag: "Latest",
+        tag: "Major",
         summary: "Broadened combat monster AI to intelligently cycle across distinct spells, special actions, and multiattack routines instead of spamming highest-damage actions. Added simulated cooldowns (2 rounds) for high-impact spells and non-recharge saving-throw abilities. Enhanced tactical battle grid with 360-degree middle-mouse camera dragging, eliminated component re-render loops, and resolved UI jitter during prop inspection.",
         items: [
             {
