@@ -323,10 +323,20 @@ export default function CombatPage() {
         }
     }, [combatOutcome]);
 
-    const handleViewParticipant = (participantId: number) => {
-        setViewingParticipantId(participantId);
-        const participant = session?.participants.find(p => p.id === participantId);
-        if (participant) loadEnemyData(participant);
+    const handleInspectParticipant = (participant: CombatParticipant) => {
+        setViewingParticipantId(participant.id);
+        loadEnemyData(participant);
+        if (statblockParticipant) {
+            setStatblockParticipant(participant);
+        }
+    };
+
+    const handleSelectTarget = (id: string) => {
+        setTargetId(id);
+        const participant = session?.participants.find(p => p.id.toString() === id);
+        if (participant) {
+            loadEnemyData(participant);
+        }
     };
 
     /**
@@ -1460,8 +1470,8 @@ export default function CombatPage() {
                 currentParticipant={currentParticipant}
                 viewingParticipantId={viewingParticipantId}
                 targetId={targetId}
-                onSelectTarget={(id) => setTargetId(id)}
-                onInspectParticipant={(p) => setViewingParticipantId(p.id)}
+                onSelectTarget={handleSelectTarget}
+                onInspectParticipant={handleInspectParticipant}
                 damagedParticipantIds={damagedParticipantIds}
                 isEnemyTurn={isEnemyTurn}
                 gauntletRunId={gauntletRunId}
@@ -1479,8 +1489,8 @@ export default function CombatPage() {
                 targetParticipant={targetParticipant}
                 allParticipants={participants}
                 targetId={targetId}
-                onSelectTarget={(id) => setTargetId(id)}
-                onInspectParticipant={(p) => setViewingParticipantId(p.id)}
+                onSelectTarget={handleSelectTarget}
+                onInspectParticipant={handleInspectParticipant}
                 damagedParticipantIds={damagedParticipantIds}
                 aiActionBanner={aiActionBanner}
                 onDismissAiBanner={() => setAiActionBanner(null)}

@@ -1184,9 +1184,8 @@ function BattleGridComponent({
                 if (enemyDist <= 5 && onSwitchToDuel) {
                     onSwitchToDuel();
                 }
-            } else {
-                onInspectParticipant(occupant);
             }
+            onInspectParticipant(occupant);
             return;
         }
 
@@ -1922,14 +1921,11 @@ function BattleGridComponent({
                                             transformStyle: "preserve-3d",
                                         }}
                                         onClick={() => {
-                                            if (p.id === currentParticipant?.id) {
-                                                onInspectParticipant(p);
-                                            } else if (isEnemyOccupant) {
+                                            if (isEnemyOccupant) {
                                                 onSelectTarget(p.id.toString());
                                                 if (pDist <= curReach && onSwitchToDuel) onSwitchToDuel();
-                                            } else {
-                                                onInspectParticipant(p);
                                             }
+                                            onInspectParticipant(p);
                                         }}
                                     >
                                         {/* Ground Drop-Shadow & Flight Stand for Airborne Creatures */}

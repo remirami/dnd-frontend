@@ -232,7 +232,14 @@ export function ClashCard({
                     <CornerFiligree position="tr" color={isEnemyTurn ? "#ef4444" : "#c5a059"} />
 
                     {/* Portrait & Info */}
-                    <div className="flex items-center gap-2">
+                    <div
+                        className={`flex items-center gap-2 ${onInspectParticipant && attacker ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+                        onClick={() => {
+                            if (onInspectParticipant && attacker) {
+                                onInspectParticipant(attacker);
+                            }
+                        }}
+                    >
                         <CombatantPortrait
                             participant={attacker}
                             size="sm"
@@ -302,7 +309,14 @@ export function ClashCard({
                     <CornerFiligree position="tr" color="#f59e0b" />
 
                     {/* Portrait & Info */}
-                    <div className="flex items-center gap-2">
+                    <div
+                        className={`flex items-center gap-2 ${onInspectParticipant && defender ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+                        onClick={() => {
+                            if (onInspectParticipant && defender) {
+                                onInspectParticipant(defender);
+                            }
+                        }}
+                    >
                         <CombatantPortrait
                             participant={defender}
                             size="sm"

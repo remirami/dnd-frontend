@@ -360,7 +360,11 @@ export function BattlefieldArena({
     const handleSelectTargetGrid = useCallback((id: string) => {
         onSelectTarget(id);
         setIsClashLocked(true);
-    }, [onSelectTarget]);
+        const p = allParticipants.find(part => part.id.toString() === id);
+        if (p) {
+            onInspectParticipant(p);
+        }
+    }, [onSelectTarget, onInspectParticipant, allParticipants]);
 
     const handleSwitchToDuel = useCallback(() => {
         if (targetParticipant) setIsClashLocked(true);
@@ -464,6 +468,7 @@ export function BattlefieldArena({
                                     setIsClashLocked(false);
                                 } else {
                                     onSelectTarget(activeDefender.id.toString());
+                                    onInspectParticipant(activeDefender);
                                     setIsClashLocked(true);
                                 }
                             }}
