@@ -21,6 +21,29 @@ const hpGrad = (cur: number, max: number) => {
     return 'from-rose-600 to-rose-400';
 };
 
+const SLOT_INFO: Record<string, { label: string; icon: string }> = {
+    main_hand: { label: "Main Hand", icon: "⚔️" },
+    off_hand: { label: "Off Hand", icon: "🗡️" },
+    armor: { label: "Armor", icon: "🛡️" },
+    helmet: { label: "Helmet", icon: "⛑️" },
+    amulet: { label: "Amulet", icon: "📿" },
+    ring: { label: "Ring", icon: "💍" },
+    ring_2: { label: "Ring 2", icon: "💍" },
+    gloves: { label: "Gloves", icon: "🧤" },
+    boots: { label: "Boots", icon: "👢" },
+    cloak: { label: "Cloak", icon: "🧥" },
+    eyes: { label: "Eyes", icon: "👁️" },
+};
+
+const RARITY_COLORS: Record<string, { text: string; border: string; bg: string }> = {
+    common: { text: "text-slate-200", border: "border-[#c5a059]/20", bg: "bg-[#181a24]" },
+    uncommon: { text: "text-emerald-400", border: "border-emerald-500/30", bg: "bg-emerald-950/20" },
+    rare: { text: "text-sky-400", border: "border-sky-500/30", bg: "bg-sky-950/20" },
+    "very rare": { text: "text-purple-400", border: "border-purple-500/30", bg: "bg-purple-950/20" },
+    legendary: { text: "text-[#e0bc75]", border: "border-[#c5a059]/50", bg: "bg-[#c5a059]/10" },
+    artifact: { text: "text-rose-400", border: "border-rose-500/40", bg: "bg-rose-950/20" },
+};
+
 export function ParticipantInspectorDrawer({
     participant,
     onClose,
@@ -64,6 +87,77 @@ export function ParticipantInspectorDrawer({
 
     // Debuffs and standard conditions
     const afflictions = conditionsList.filter((c: any) => !isBuffCondition(c));
+
+    // Extract equipped gear: prioritize character.character_items (character sheet equipment tab/paperdoll),
+    // fallback to participant.equipped_gear, then legacy participant.equipped_items
+    const equippedFromChar: any[] = (char?.character_items || [])
+        .filter((ci: any) => ci.is_equipped && ci.equipment_slot && ci.equipment_slot !== 'inventory')
+        .map((ci: any) => {
+            const details = ci.item_details || {};
+            const isShield = ci.equipment_slot === 'off_hand' && (
+                /shield/i.test(details.name || '') ||
+                details.armor_type_display?.toLowerCase() === 'shield'
+            );
+            return {
+                id: ci.id,
+                name: details.name || 'Unnamed Item',
+                slot: ci.equipment_slot,
+                isShield,
+                rarity: (details.rarity || 'common').toLowerCase(),
+                damage_dice: details.damage_dice,
+                damage_type: details.damage_type,
+                base_ac: details.base_ac,
+                ac_bonus: details.ac_bonus,
+                is_attuned: ci.is_attuned,
+                requires_attunement: details.requires_attunement,
+            };
+        });
+
+    const equippedFromBackend: any[] = ((participant as any).equipped_gear || []).map((g: any) => ({
+        id: g.id,
+        name: g.name,
+        slot: g.slot,
+        isShield: g.is_shield || (g.slot === 'off_hand' && /shield/i.test(g.name || '')),
+        rarity: (g.rarity || 'common').toLowerCase(),
+        damage_dice: g.damage_dice,
+        damage_type: g.damage_type,
+        base_ac: g.base_ac,
+        ac_bonus: g.ac_bonus,
+        is_attuned: g.is_attuned,
+    }));
+
+    const legacyEquipped: any[] = [];
+    if (participant.equipped_items?.weapon) {
+        legacyEquipped.push({
+            name: participant.equipped_items.weapon.name,
+            slot: 'main_hand',
+            damage_dice: participant.equipped_items.weapon.damage_dice,
+            rarity: 'common',
+        });
+    }
+    if (participant.equipped_items?.armor) {
+        legacyEquipped.push({
+            name: participant.equipped_items.armor.name,
+            slot: 'armor',
+            base_ac: participant.equipped_items.armor.base_ac,
+            rarity: 'common',
+        });
+    }
+    if (participant.equipped_items?.shield) {
+        legacyEquipped.push({
+            name: participant.equipped_items.shield.name,
+            slot: 'off_hand',
+            isShield: true,
+            ac_bonus: participant.equipped_items.shield.ac_bonus,
+            rarity: 'common',
+        });
+    }
+
+    const equippedList = equippedFromChar.length > 0
+        ? equippedFromChar
+        : equippedFromBackend.length > 0
+            ? equippedFromBackend
+            : legacyEquipped;
 
     return (
         <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] bg-[#10121a]/98 border-l border-[#c5a059]/40 shadow-[0_0_40px_rgba(0,0,0,0.8)] backdrop-blur-xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-250 font-lora">
@@ -342,29 +436,82 @@ export function ParticipantInspectorDrawer({
                 )}
 
                 {/* Equipped Items (if player character) */}
-                {participant.equipped_items && (
+                {isPlayer && (
                     <div className="space-y-2">
-                        <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-[#c5a059]">
-                            Equipped Gear
-                        </h4>
-                        <div className="flex flex-col gap-1.5">
-                            {participant.equipped_items.weapon && (
-                                <div className="px-3 py-2 rounded bg-[#181a24] border border-[#c5a059]/20 text-xs flex items-center justify-between">
-                                    <span className="text-[#e0bc75] font-semibold">⚔️ {participant.equipped_items.weapon.name}</span>
-                                    <span className="text-slate-400 font-fira-sans">{participant.equipped_items.weapon.damage_dice}</span>
-                                </div>
-                            )}
-                            {participant.equipped_items.armor && (
-                                <div className="px-3 py-2 rounded bg-[#181a24] border border-[#c5a059]/20 text-xs flex items-center justify-between">
-                                    <span className="text-slate-200">🛡 {participant.equipped_items.armor.name}</span>
-                                </div>
-                            )}
-                            {participant.equipped_items.shield && (
-                                <div className="px-3 py-2 rounded bg-[#181a24] border border-[#c5a059]/20 text-xs flex items-center justify-between">
-                                    <span className="text-slate-200">🛡 {participant.equipped_items.shield.name}</span>
-                                </div>
-                            )}
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-[#c5a059]">
+                                Equipped Gear
+                            </h4>
+                            <span className="text-[10px] text-[#c5a059]/70 font-mono font-bold">
+                                {equippedList.length} {equippedList.length === 1 ? 'item' : 'items'}
+                            </span>
                         </div>
+
+                        {equippedList.length === 0 ? (
+                            <div className="px-3 py-3 rounded bg-[#181a24]/60 border border-[#c5a059]/15 text-center">
+                                <span className="text-slate-400 text-xs italic">No gear equipped on character sheet</span>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1.5">
+                                {equippedList.map((item: any, idx: number) => {
+                                    const slotMeta = SLOT_INFO[item.slot] || { label: item.slot, icon: "📦" };
+                                    const icon = item.isShield ? "🛡️" : slotMeta.icon;
+                                    const slotLabel = item.isShield ? "Shield / Off Hand" : slotMeta.label;
+                                    const rStyle = RARITY_COLORS[item.rarity] || RARITY_COLORS.common;
+
+                                    return (
+                                        <div
+                                            key={item.id || idx}
+                                            className={`px-3 py-2 rounded ${rStyle.bg} border ${rStyle.border} text-xs flex items-center justify-between gap-2 transition-all hover:border-[#c5a059]/40`}
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <span className="text-base select-none shrink-0" title={slotLabel}>
+                                                    {icon}
+                                                </span>
+                                                <div className="flex flex-col min-w-0">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className={`font-semibold truncate ${rStyle.text}`}>
+                                                            {item.name}
+                                                        </span>
+                                                        {item.is_attuned && (
+                                                            <span className="text-[9px] px-1 py-0.2 bg-[#c5a059]/20 text-[#e0bc75] rounded border border-[#c5a059]/40 font-mono">
+                                                                ⚡ Attuned
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-cinzel">
+                                                        {slotLabel}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right shrink-0">
+                                                {item.damage_dice && (
+                                                    <div className="text-[#e0bc75] font-fira-sans font-semibold text-xs">
+                                                        {item.damage_dice}
+                                                        {item.damage_type && (
+                                                            <span className="text-[10px] text-slate-400 ml-1 font-normal">
+                                                                {item.damage_type}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {item.base_ac !== undefined && item.base_ac !== null && (
+                                                    <div className="text-slate-300 font-fira-sans font-semibold text-xs">
+                                                        AC {item.base_ac}
+                                                    </div>
+                                                )}
+                                                {item.ac_bonus !== undefined && item.ac_bonus !== null && (
+                                                    <div className="text-emerald-400 font-fira-sans font-semibold text-xs">
+                                                        +{item.ac_bonus} AC
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
 

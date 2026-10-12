@@ -262,6 +262,21 @@ export interface CombatParticipant {
         armor?: { name: string; base_ac: number } | null;
         shield?: { name: string; ac_bonus: number } | null;
     };
+    equipped_gear?: Array<{
+        id: number;
+        name: string;
+        slot: string;
+        is_shield?: boolean;
+        rarity: string;
+        description?: string;
+        is_attuned?: boolean;
+        damage_dice?: string;
+        damage_type?: string;
+        weapon_type_display?: string;
+        armor_type_display?: string;
+        base_ac?: number;
+        ac_bonus?: number;
+    }>;
     effective_ac?: number;
     cover?: {
         type: string;
