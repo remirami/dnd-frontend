@@ -22,7 +22,13 @@ export function CombatLogDrawer({
     const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
+    // Draggable position states for the open / full-sized window
+    const [windowPos, setWindowPos] = useState<{ x: number; y: number } | null>(null);
+    const [maximizedPos, setMaximizedPos] = useState<{ x: number; y: number } | null>(null);
+    const [isWindowDragging, setIsWindowDragging] = useState(false);
+
     const pillRef = useRef<HTMLDivElement>(null);
+    const windowRef = useRef<HTMLDivElement>(null);
     const dragDataRef = useRef<{
         startX: number;
         startY: number;
@@ -30,19 +36,52 @@ export function CombatLogDrawer({
         initialTop: number;
         hasMoved: boolean;
     } | null>(null);
+    const windowDragDataRef = useRef<{
+        startX: number;
+        startY: number;
+        initialLeft: number;
+        initialTop: number;
+        hasMoved: boolean;
+    } | null>(null);
 
-    // Restore saved position on mount
+    // Restore saved positions on mount
     useEffect(() => {
         try {
-            const saved = localStorage.getItem("combat_hud_pill_pos");
-            if (saved) {
-                const parsed = JSON.parse(saved);
+            const savedPill = localStorage.getItem("combat_hud_pill_pos");
+            if (savedPill) {
+                const parsed = JSON.parse(savedPill);
                 if (typeof parsed.x === "number" && typeof parsed.y === "number") {
                     const maxX = Math.max(10, window.innerWidth - 200);
                     const maxY = Math.max(10, window.innerHeight - 50);
                     setPosition({
                         x: Math.max(10, Math.min(maxX, parsed.x)),
                         y: Math.max(10, Math.min(maxY, parsed.y)),
+                    });
+                }
+            }
+
+            const savedWin = localStorage.getItem("combat_log_win_pos");
+            if (savedWin) {
+                const parsed = JSON.parse(savedWin);
+                if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+                    const maxX = Math.max(10, window.innerWidth - 300);
+                    const maxY = Math.max(30, window.innerHeight - 100);
+                    setWindowPos({
+                        x: Math.max(10, Math.min(maxX, parsed.x)),
+                        y: Math.max(30, Math.min(maxY, parsed.y)),
+                    });
+                }
+            }
+
+            const savedMax = localStorage.getItem("combat_log_max_pos");
+            if (savedMax) {
+                const parsed = JSON.parse(savedMax);
+                if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+                    const maxX = Math.max(10, window.innerWidth - 300);
+                    const maxY = Math.max(30, window.innerHeight - 100);
+                    setMaximizedPos({
+                        x: Math.max(10, Math.min(maxX, parsed.x)),
+                        y: Math.max(30, Math.min(maxY, parsed.y)),
                     });
                 }
             }
@@ -132,6 +171,84 @@ export function CombatLogDrawer({
         setIsOpen((prev) => !prev);
     };
 
+    // Pointer down handler for smooth dragging of the expanded / full-sized window by its header
+    const handleHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        // Only primary click/touch
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        // Don't initiate drag if clicking an interactive control like a button
+        if ((e.target as HTMLElement).closest("button, a, input, select, textarea")) return;
+
+        const win = windowRef.current;
+        if (!win) return;
+        const rect = win.getBoundingClientRect();
+
+        windowDragDataRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            initialLeft: rect.left,
+            initialTop: rect.top,
+            hasMoved: false,
+        };
+
+        const onPointerMove = (moveEvent: PointerEvent) => {
+            if (!windowDragDataRef.current) return;
+            const dx = moveEvent.clientX - windowDragDataRef.current.startX;
+            const dy = moveEvent.clientY - windowDragDataRef.current.startY;
+
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                windowDragDataRef.current.hasMoved = true;
+                setIsWindowDragging(true);
+            }
+
+            if (windowDragDataRef.current.hasMoved) {
+                const currentWidth = win.offsetWidth || (isMaximized ? 740 : 540);
+                const minX = 10;
+                const maxX = Math.max(10, window.innerWidth - currentWidth - 10);
+                const minY = 20;
+                const maxY = Math.max(20, window.innerHeight - 60);
+
+                const newX = Math.max(minX, Math.min(maxX, windowDragDataRef.current.initialLeft + dx));
+                const newY = Math.max(minY, Math.min(maxY, windowDragDataRef.current.initialTop + dy));
+
+                if (isMaximized) {
+                    setMaximizedPos({ x: newX, y: newY });
+                } else {
+                    setWindowPos({ x: newX, y: newY });
+                }
+            }
+        };
+
+        const onPointerUp = () => {
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointercancel", onPointerUp);
+
+            if (windowDragDataRef.current?.hasMoved) {
+                setIsWindowDragging(false);
+                const currentWin = windowRef.current;
+                if (currentWin) {
+                    const currentRect = currentWin.getBoundingClientRect();
+                    const savedCoord = { x: Math.round(currentRect.left), y: Math.round(currentRect.top) };
+                    try {
+                        if (isMaximized) {
+                            localStorage.setItem("combat_log_max_pos", JSON.stringify(savedCoord));
+                        } else {
+                            localStorage.setItem("combat_log_win_pos", JSON.stringify(savedCoord));
+                        }
+                    } catch {
+                        // Ignore
+                    }
+                }
+            }
+
+            windowDragDataRef.current = null;
+        };
+
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
+        window.addEventListener("pointercancel", onPointerUp);
+    };
+
     // Latest action summary for compact HUD
     const latestAction = actions.length > 0 ? actions[actions.length - 1] : null;
 
@@ -214,25 +331,44 @@ export function CombatLogDrawer({
             {/* Expanded Slide-Up Floating Window */}
             {isOpen && (
                 <div
+                    ref={windowRef}
                     style={
                         isMaximized
-                            ? { left: "max(12px, calc(50vw - 370px))", top: "max(50px, calc(50vh - 380px))" }
-                            : position
-                            ? {
-                                  left: `${Math.min(position.x, Math.max(10, window.innerWidth - 560))}px`,
-                                  top: `${Math.max(50, Math.min(position.y - 450, window.innerHeight - 520))}px`,
-                              }
-                            : { bottom: "115px", left: "16px" }
+                            ? (maximizedPos
+                                ? { left: `${maximizedPos.x}px`, top: `${maximizedPos.y}px` }
+                                : { left: "max(12px, calc(50vw - 370px))", top: "max(50px, calc(50vh - 380px))" })
+                            : (windowPos
+                                ? { left: `${windowPos.x}px`, top: `${windowPos.y}px` }
+                                : position
+                                ? {
+                                      left: `${Math.min(position.x, Math.max(10, window.innerWidth - 560))}px`,
+                                      top: `${Math.max(50, Math.min(position.y - 450, window.innerHeight - 520))}px`,
+                                  }
+                                : { bottom: "115px", left: "16px" })
                     }
-                    className={`fixed z-50 bg-[#10121a]/98 border border-[#c5a059]/50 rounded-xl shadow-[0_12px_44px_rgba(0,0,0,0.9)] backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 transition-[width,height] duration-200 ${
+                    className={`fixed z-50 bg-[#10121a]/98 border border-[#c5a059]/50 rounded-xl shadow-[0_12px_44px_rgba(0,0,0,0.9)] backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 ${
+                        isWindowDragging ? "transition-none select-none" : "transition-[width,height] duration-200"
+                    } ${
                         isMaximized
                             ? "w-[96vw] sm:w-[740px] h-[82vh] max-h-[820px]"
                             : "w-[94vw] sm:w-[540px] h-[480px] sm:h-[520px]"
                     }`}
                 >
-                    {/* Header */}
-                    <div className="px-4 py-2.5 bg-[#151722] border-b border-[#c5a059]/20 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                    {/* Header (Draggable Handle) */}
+                    <div
+                        onPointerDown={handleHeaderPointerDown}
+                        className={`px-4 py-2.5 bg-[#151722] border-b border-[#c5a059]/20 flex items-center justify-between select-none touch-none ${
+                            isWindowDragging
+                                ? "cursor-grabbing bg-[#181a28]"
+                                : "cursor-grab hover:bg-[#181b26]"
+                        }`}
+                        title="Drag header to move window"
+                    >
+                        <div className="flex items-center gap-2 pointer-events-none">
+                            {/* Drag Grip Handle */}
+                            <span className="text-slate-500 hover:text-[#c5a059] text-xs font-mono select-none px-0.5 tracking-tighter" title="Drag to reposition">
+                                ⋮⋮
+                            </span>
                             <span className="text-sm">📜</span>
                             <h3 className="font-cinzel text-xs uppercase tracking-wider font-bold text-[#c5a059]">
                                 Combat Chronicle
@@ -240,13 +376,28 @@ export function CombatLogDrawer({
                             <span className="text-[10px] font-fira-sans px-1.5 py-0.2 rounded bg-[#c5a059]/15 text-[#e0bc75]">
                                 {actions.length} events
                             </span>
+                            {isMaximized && (
+                                <span className="text-[9px] font-cinzel font-semibold px-1.5 py-0.2 rounded bg-amber-950/60 border border-amber-600/40 text-amber-300">
+                                    Full-Sized
+                                </span>
+                            )}
                         </div>
-                        <div className="flex items-center gap-2">
-                            {!isMaximized && position && (
+                        <div className="flex items-center gap-2 pointer-events-auto">
+                            {(isMaximized ? !!maximizedPos : (!!windowPos || !!position)) && (
                                 <button
-                                    onClick={() => {
-                                        setPosition(null);
-                                        localStorage.removeItem("combat_hud_pill_pos");
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isMaximized) {
+                                            setMaximizedPos(null);
+                                            try { localStorage.removeItem("combat_log_max_pos"); } catch (_) {}
+                                        } else {
+                                            setWindowPos(null);
+                                            setPosition(null);
+                                            try {
+                                                localStorage.removeItem("combat_log_win_pos");
+                                                localStorage.removeItem("combat_hud_pill_pos");
+                                            } catch (_) {}
+                                        }
                                     }}
                                     title="Reset position to default"
                                     className="text-[10px] text-slate-400 hover:text-[#c5a059] px-1.5 py-0.5 rounded border border-slate-700 hover:border-[#c5a059]/40 font-lora transition-colors"
@@ -256,7 +407,10 @@ export function CombatLogDrawer({
                             )}
                             {/* Maximize / Restore Toggle */}
                             <button
-                                onClick={() => setIsMaximized((prev) => !prev)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsMaximized((prev) => !prev);
+                                }}
                                 title={isMaximized ? "Restore smaller window" : "Maximize window view"}
                                 className="text-slate-400 hover:text-[#c5a059] text-xs px-1.5 py-0.5 rounded border border-slate-700 hover:border-[#c5a059]/40 font-mono transition-colors"
                             >
@@ -264,7 +418,10 @@ export function CombatLogDrawer({
                             </button>
                             {/* Close Window */}
                             <button
-                                onClick={() => setIsOpen(false)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsOpen(false);
+                                }}
                                 className="text-slate-400 hover:text-white text-xs px-2 py-1 font-bold cursor-pointer transition-colors"
                             >
                                 ✕
