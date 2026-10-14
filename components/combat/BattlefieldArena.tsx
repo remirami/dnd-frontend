@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
 import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
-import { BattleGrid } from "@/components/combat/BattleGrid";
+import { BattleGrid, getDirectionalAttackCover, getParticipantSizeTiles } from "@/components/combat/BattleGrid";
 import { ClashCard } from "@/components/combat/ClashCard";
 import { computeRollPrediction } from "@/components/combat/ActionDock";
 import { isIncapacitating } from "@/lib/data/conditions";
@@ -326,35 +326,68 @@ export function BattlefieldArena({
         allParticipants
     ), [currentParticipant, activeDefender, isMeleeReach, allParticipants]);
 
+    // Directional cover calculation between currentParticipant and activeDefender
+    const dirCover = useMemo(() => {
+        if (!currentParticipant || !activeDefender) return null;
+        const curCol = Math.round((currentParticipant.position_x ?? 0) / 5);
+        const curRow = Math.round((currentParticipant.position_y ?? 0) / 5);
+        const defCol = Math.round((activeDefender.position_x ?? 0) / 5);
+        const defRow = Math.round((activeDefender.position_y ?? 0) / 5);
+        const defSize = getParticipantSizeTiles(activeDefender);
+        return getDirectionalAttackCover(
+            sessionId,
+            curCol,
+            curRow,
+            defCol,
+            defRow,
+            isMeleeReach,
+            defSize
+        );
+    }, [sessionId, currentParticipant, activeDefender, isMeleeReach]);
+
     const prediction = useMemo(() => {
         let hitChance = 65;
         const disadvReasons = [...rollPred.disadvReasons];
-        if (activeDefender?.cover) {
+
+        let effectiveCoverBonus = 0;
+        if (dirCover?.hasTotalCover) {
+            disadvReasons.push(`Total Cover (${dirCover.source}): Line of sight blocked`);
+        } else if (dirCover && dirCover.bonus > 0) {
+            effectiveCoverBonus = dirCover.bonus;
+            disadvReasons.push(`Half Cover: +${dirCover.bonus} AC (${dirCover.source})`);
+        } else if (!isMeleeReach && activeDefender?.cover && activeDefender.cover.bonus > 0) {
+            // Fallback to activeDefender.cover only for non-melee attacks if directional cover didn't detect it
+            effectiveCoverBonus = activeDefender.cover.bonus;
             disadvReasons.push(`Cover: +${activeDefender.cover.bonus} AC (${activeDefender.cover.source})`);
         }
 
         if (activeDefender && currentParticipant) {
-            const atkBonus = 5;
-            const targetAC = activeDefender.effective_ac ?? activeDefender.armor_class ?? 10;
-            const neededRoll = Math.max(1, Math.min(20, targetAC - atkBonus));
-            let baseChance = (21 - neededRoll) / 20;
-            if (rollPred.state === 'advantage') {
-                baseChance = 1 - Math.pow(1 - baseChance, 2);
-            } else if (rollPred.state === 'disadvantage') {
-                baseChance = Math.pow(baseChance, 2);
+            if (dirCover?.hasTotalCover) {
+                hitChance = 0;
+            } else {
+                const atkBonus = 5;
+                const baseAC = activeDefender.armor_class ?? 10;
+                const targetAC = baseAC + effectiveCoverBonus;
+                const neededRoll = Math.max(1, Math.min(20, targetAC - atkBonus));
+                let baseChance = (21 - neededRoll) / 20;
+                if (rollPred.state === 'advantage') {
+                    baseChance = 1 - Math.pow(1 - baseChance, 2);
+                } else if (rollPred.state === 'disadvantage') {
+                    baseChance = Math.pow(baseChance, 2);
+                }
+                hitChance = Math.round(Math.max(5, Math.min(95, baseChance * 100)));
             }
-            hitChance = Math.round(Math.max(5, Math.min(95, baseChance * 100)));
         }
 
         return {
             hitChance,
-            avgDamage: 8,
-            isAdvantage: rollPred.state === 'advantage',
-            isDisadvantage: rollPred.state === 'disadvantage',
-            advantageReasons: rollPred.advReasons,
+            avgDamage: dirCover?.hasTotalCover ? 0 : 8,
+            isAdvantage: rollPred.state === 'advantage' && !dirCover?.hasTotalCover,
+            isDisadvantage: rollPred.state === 'disadvantage' || Boolean(dirCover?.hasTotalCover),
+            advantageReasons: dirCover?.hasTotalCover ? [] : rollPred.advReasons,
             disadvantageReasons: disadvReasons,
         };
-    }, [activeDefender, currentParticipant, rollPred]);
+    }, [activeDefender, currentParticipant, rollPred, dirCover, isMeleeReach]);
 
 
     const handleSelectTargetGrid = useCallback((id: string) => {

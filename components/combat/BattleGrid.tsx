@@ -32,10 +32,10 @@ export const BATTLEFIELD_LAYOUTS: BattlefieldLayout[] = [
         theme: "Ancient Tomb Sanctuary",
         description: "Four massive monolithic pillars and crumbled tombs provide full tactical cover in the chamber center.",
         features: [
-            { col: 4, row: 2, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
-            { col: 4, row: 5, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
-            { col: 5, row: 2, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
-            { col: 5, row: 5, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (+5 AC / Dex saves)." },
+            { col: 4, row: 2, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (blocks movement & projectile line-of-sight)." },
+            { col: 4, row: 5, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (blocks movement & projectile line-of-sight)." },
+            { col: 5, row: 2, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (blocks movement & projectile line-of-sight)." },
+            { col: 5, row: 5, name: "Ancient Pillar", icon: "🏛️", cover: "total", blocksMovement: true, description: "Solid stone column providing total cover (blocks movement & projectile line-of-sight)." },
             { col: 3, row: 1, name: "Stone Sarcophagus", icon: "⚰️", cover: "half", blocksMovement: false, description: "Crumbled stone crypt providing half cover (+2 AC)." },
             { col: 6, row: 6, name: "Crumbled Masonry", icon: "🧱", cover: "half", blocksMovement: false, description: "Scattered rubble providing half cover (+2 AC)." },
         ],
@@ -104,18 +104,23 @@ export function getBattlefieldLayout(sessionId: number = 0): BattlefieldLayout {
 }
 
 export interface CoverInfo {
-    type: "half" | "three-quarters" | "total";
+    type: "half" | "three-quarters" | "total" | "none";
     bonus: number;
     source: string;
-    col: number;
-    row: number;
+    col?: number;
+    row?: number;
     description?: string;
+    hasTotalCover?: boolean;
 }
 
 export function getCoverForPosition(sessionId: number = 0, col: number, row: number, altitude: number = 0): CoverInfo | null {
     const layout = getBattlefieldLayout(sessionId);
     for (const feat of layout.features) {
         if (!feat.cover || feat.cover === "none") continue;
+        // Solid obstacles (impassable/total cover) do NOT grant an ambient AC bonus;
+        // they only provide directional line-of-sight blockage evaluated along attack vectors.
+        if (feat.blocksMovement || feat.cover === "total") continue;
+
         const dist = Math.max(Math.abs(col - feat.col), Math.abs(row - feat.row));
         if (dist <= 1) {
             // Low obstacles don't provide cover to flying units above 5 ft
@@ -131,6 +136,128 @@ export function getCoverForPosition(sessionId: number = 0, col: number, row: num
         }
     }
     return null;
+}
+
+export function getLineTiles(
+    startCol: number,
+    startRow: number,
+    targetCol: number,
+    targetRow: number
+): Array<{ col: number; row: number }> {
+    const tiles: Array<{ col: number; row: number }> = [];
+    let x0 = startCol, y0 = startRow;
+    const x1 = targetCol, y1 = targetRow;
+    const dx = Math.abs(x1 - x0);
+    const dy = Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+
+    while (true) {
+        if (x0 === x1 && y0 === y1) break;
+        if (!(x0 === startCol && y0 === startRow)) {
+            tiles.push({ col: x0, row: y0 });
+        }
+        const e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+    return tiles;
+}
+
+export function checkLineOfSight(
+    sessionId: number = 0,
+    fromCol: number,
+    fromRow: number,
+    toCol: number,
+    toRow: number
+): boolean {
+    const layout = getBattlefieldLayout(sessionId);
+    const intermediate = getLineTiles(fromCol, fromRow, toCol, toRow);
+    for (const tile of intermediate) {
+        const feat = layout.features.find(f => f.col === tile.col && f.row === tile.row);
+        if (feat && (feat.blocksMovement || feat.cover === "total")) {
+            return false;
+        }
+    }
+    return true;
+}
+
+export function getDirectionalAttackCover(
+    sessionId: number = 0,
+    fromCol: number,
+    fromRow: number,
+    toCol: number,
+    toRow: number,
+    isMelee: boolean = false,
+    targetSizeTiles: number = 1
+): { hasTotalCover: boolean; bonus: number; type: "none" | "half" | "three-quarters" | "total"; source: string | null } {
+    if (isMelee) {
+        return { hasTotalCover: false, bonus: 0, type: "none", source: null };
+    }
+    const dist = Math.max(Math.abs(fromCol - toCol), Math.abs(fromRow - toRow));
+    if (dist <= 1) {
+        // Point-blank ranged attack or directly adjacent: no intervening obstacle
+        return { hasTotalCover: false, bonus: 0, type: "none", source: null };
+    }
+
+    const layout = getBattlefieldLayout(sessionId);
+    const targetTiles: Array<{ col: number; row: number }> = [];
+    for (let dc = 0; dc < targetSizeTiles; dc++) {
+        for (let dr = 0; dr < targetSizeTiles; dr++) {
+            targetTiles.push({ col: toCol + dc, row: toRow + dr });
+        }
+    }
+
+    let allBlocked = true;
+    let halfCoverFound: string | null = null;
+    let totalInterveningFound: string | null = null;
+
+    for (const tTile of targetTiles) {
+        const line = getLineTiles(fromCol, fromRow, tTile.col, tTile.row);
+        let tileBlocked = false;
+        for (const pt of line) {
+            const feat = layout.features.find(f => f.col === pt.col && f.row === pt.row);
+            if (feat) {
+                if (feat.blocksMovement || feat.cover === "total") {
+                    tileBlocked = true;
+                    totalInterveningFound = feat.name;
+                    break;
+                } else if (feat.cover === "half" || feat.cover === "three-quarters") {
+                    halfCoverFound = feat.name;
+                }
+            }
+        }
+        if (!tileBlocked) {
+            allBlocked = false;
+        }
+    }
+
+    if (allBlocked && targetTiles.length > 0) {
+        return {
+            hasTotalCover: true,
+            bonus: 0,
+            type: "total",
+            source: totalInterveningFound || "Solid Obstacle"
+        };
+    }
+
+    if (halfCoverFound) {
+        return {
+            hasTotalCover: false,
+            bonus: 2,
+            type: "half",
+            source: halfCoverFound
+        };
+    }
+
+    return { hasTotalCover: false, bonus: 0, type: "none", source: null };
 }
 
 
@@ -1475,7 +1602,7 @@ function BattleGridComponent({
                                             feat.difficultTerrain ? 'bg-blue-950/80 text-blue-300 border border-blue-600/60' :
                                             'bg-slate-800 text-slate-300'
                                         }`}>
-                                            {feat.blocksMovement ? '🧱 Impassable (+5 AC)' : feat.cover === 'half' ? '🛡️ Half Cover (+2 AC)' : feat.difficultTerrain ? '💧 Difficult Terrain' : 'Obstacle'}
+                                            {feat.blocksMovement ? '🧱 Impassable (Blocks LOS)' : feat.cover === 'half' ? '🛡️ Half Cover (+2 AC)' : feat.difficultTerrain ? '💧 Difficult Terrain' : 'Obstacle'}
                                         </span>
                                     </div>
                                     {feat.description && (
@@ -1973,7 +2100,12 @@ function BattleGridComponent({
 
                                         {/* Token Name & HP Badge & Cover Indicator */}
                                         {(() => {
+                                            const isMelee = pDist <= curReach;
+                                            const dirCover = (pIsTarget && currentParticipant && currentParticipant.id !== p.id)
+                                                ? getDirectionalAttackCover(sessionId, curCol, curRow, coords.col, coords.row, isMelee, sizeTiles)
+                                                : null;
                                             const pCover = p.cover || getCoverForPosition(sessionId, coords.col, coords.row, pAlt);
+
                                             return (
                                                 <div
                                                     className={`flex flex-col items-center mt-1 pointer-events-none mx-auto select-none ${
@@ -1999,14 +2131,28 @@ function BattleGridComponent({
                                                         }`}>
                                                             {p.current_hp}/{p.max_hp}
                                                         </span>
-                                                        {pCover && (
+                                                        {pIsTarget && dirCover?.hasTotalCover ? (
+                                                            <span
+                                                                className="text-[8px] sm:text-[9px] font-fira-sans font-extrabold px-1 py-0.2 rounded bg-rose-950/95 text-rose-300 border border-rose-500/80 shadow-xs flex items-center gap-0.5 animate-pulse"
+                                                                title={`Total Cover (${dirCover.source}): Line of sight blocked from attacker`}
+                                                            >
+                                                                🛑 Blocked
+                                                            </span>
+                                                        ) : pIsTarget && !isMelee && dirCover && dirCover.bonus > 0 ? (
+                                                            <span
+                                                                className="text-[8px] sm:text-[9px] font-fira-sans font-extrabold px-1 py-0.2 rounded bg-amber-950/95 text-amber-300 border border-amber-500/80 shadow-xs flex items-center gap-0.5"
+                                                                title={`${dirCover.source}: +${dirCover.bonus} AC (Half Cover)`}
+                                                            >
+                                                                🛡️+{dirCover.bonus}
+                                                            </span>
+                                                        ) : !pIsTarget && pCover && pCover.bonus > 0 ? (
                                                             <span
                                                                 className="text-[8px] sm:text-[9px] font-fira-sans font-extrabold px-1 py-0.2 rounded bg-amber-950/95 text-amber-300 border border-amber-500/80 shadow-xs flex items-center gap-0.5"
                                                                 title={`${pCover.source}: +${pCover.bonus} AC (${pCover.type === 'half' ? 'Half Cover' : 'Cover'})`}
                                                             >
                                                                 🛡️+{pCover.bonus}
                                                             </span>
-                                                        )}
+                                                        ) : null}
                                                     </div>
 
                                                     {/* Micro HP Progress Line */}
@@ -2337,11 +2483,13 @@ function BattleGridComponent({
                                             : "bg-slate-900 text-slate-300 border-slate-700"
                                     }`}>
                                         {hTerrain.blocksMovement
-                                            ? "⛔ Impassable"
+                                            ? "⛔ Solid Impassable"
                                             : hTerrain.cover === "half"
                                             ? "🛡️ Half Cover (+2 AC)"
+                                            : hTerrain.cover === "three-quarters"
+                                            ? "🛡️ 3/4 Cover (+5 AC)"
                                             : hTerrain.cover === "total"
-                                            ? "🛡️ Total Cover (+5 AC)"
+                                            ? "⛔ Total Cover"
                                             : hTerrain.difficultTerrain
                                             ? "💧 Difficult"
                                             : "Obstacle"}
@@ -2350,9 +2498,11 @@ function BattleGridComponent({
 
                                 {/* Tactical Mechanics */}
                                 <div className="flex flex-col gap-1 text-xs font-fira-sans text-amber-200 font-medium">
-                                    {hTerrain.cover === "half" && <span>• Grants +2 AC & Dex saves to nearby combatants (within 5ft)</span>}
-                                    {hTerrain.cover === "total" && !hTerrain.blocksMovement && <span>• Grants +5 AC & Dex saves within 5ft</span>}
-                                    {hTerrain.blocksMovement && <span>• Solid obstacle: blocks character and monster movement</span>}
+                                    {hTerrain.cover === "half" && <span>• Half Cover: Grants +2 AC & Dex saves when intervening against ranged attacks</span>}
+                                    {hTerrain.cover === "three-quarters" && <span>• 3/4 Cover: Grants +5 AC & Dex saves when intervening against ranged attacks</span>}
+                                    {(hTerrain.blocksMovement || hTerrain.cover === "total") && (
+                                        <span>• Solid obstacle: Blocks movement & projectile line-of-sight (Total Cover)</span>
+                                    )}
                                     {hTerrain.difficultTerrain && <span>• Difficult terrain: costs double movement (10 ft / tile)</span>}
                                 </div>
 

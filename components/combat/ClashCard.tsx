@@ -377,18 +377,20 @@ export function ClashCard({
                 <div className="mt-0.5 p-2 rounded-lg bg-[#12141f] border border-[#c5a059]/20 flex items-center justify-between text-[11px] font-lora">
                     <div className="flex items-center gap-2">
                         {prediction.hitChance != null && (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1" title={prediction.disadvantageReasons?.join(" • ") || undefined}>
                                 <span className="text-slate-400">Hit:</span>
                                 <span
                                     className={`font-fira-sans font-bold ${
-                                        prediction.hitChance >= 70
+                                        prediction.hitChance === 0
+                                            ? "text-rose-500 font-extrabold"
+                                            : prediction.hitChance >= 70
                                             ? "text-emerald-400"
                                             : prediction.hitChance >= 45
                                             ? "text-amber-300"
                                             : "text-rose-400"
                                     }`}
                                 >
-                                    {prediction.hitChance}%
+                                    {prediction.hitChance === 0 ? "0% (Blocked)" : `${prediction.hitChance}%`}
                                 </span>
                             </div>
                         )}
@@ -403,15 +405,29 @@ export function ClashCard({
                     </div>
 
                     <div className="flex items-center gap-1 flex-wrap">
-                        {prediction.isAdvantage && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-amber-950 border border-amber-500/60 text-amber-300">
-                                ⚡ Advantage
+                        {prediction.hitChance === 0 ? (
+                            <span
+                                className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-rose-950 border border-rose-500/60 text-rose-300 animate-pulse"
+                                title={prediction.disadvantageReasons?.find(r => r.includes("Total Cover")) || "Line of sight blocked by total cover"}
+                            >
+                                🛑 Total Cover
                             </span>
-                        )}
-                        {prediction.isDisadvantage && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-purple-950 border border-purple-500/60 text-purple-300">
-                                ⚠️ Disadv
-                            </span>
+                        ) : (
+                            <>
+                                {prediction.isAdvantage && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-amber-950 border border-amber-500/60 text-amber-300">
+                                        ⚡ Advantage
+                                    </span>
+                                )}
+                                {prediction.isDisadvantage && (
+                                    <span
+                                        className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-purple-950 border border-purple-500/60 text-purple-300"
+                                        title={prediction.disadvantageReasons?.join(" • ") || undefined}
+                                    >
+                                        ⚠️ Disadv
+                                    </span>
+                                )}
+                            </>
                         )}
                         {onInspectParticipant && defender && (
                             <Button
