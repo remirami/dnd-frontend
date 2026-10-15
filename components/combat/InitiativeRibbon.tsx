@@ -237,21 +237,36 @@ export function InitiativeRibbon({
                             size="sm"
                             onClick={onNextTurn}
                             disabled={aiProcessing}
-                            className="bg-[#181a21] hover:bg-[#222638] border border-slate-700 text-slate-300 font-cinzel text-xs h-8 px-3 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                            title="Skip to next participant"
+                            className="bg-[#181a21] hover:bg-[#222638] border border-slate-700 text-slate-300 font-cinzel text-xs h-8 px-2.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            title="Skip to next participant (Shortcut: Spacebar)"
                         >
-                            Skip →
+                            <span>Skip →</span>
+                            <kbd className="px-1 py-0.5 rounded bg-black/60 border border-slate-700 text-[9px] text-slate-400 font-mono font-normal">
+                                Space
+                            </kbd>
                         </Button>
                     </div>
                 ) : (
-                    <Button
-                        size="sm"
-                        onClick={onNextTurn}
-                        disabled={aiProcessing}
-                        className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs uppercase tracking-wider h-8 px-4 rounded shadow-[0_0_15px_rgba(197,160,89,0.3)] hover:shadow-[0_0_20px_rgba(197,160,89,0.5)] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        End Turn →
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400 font-sans">
+                            <kbd className="px-1.5 py-0.5 text-[10px] bg-black/60 border border-slate-700 rounded text-amber-200/90 font-mono shadow-sm">
+                                Space
+                            </kbd>
+                            <span className="text-[10px] text-slate-400 font-medium">to skip</span>
+                        </span>
+                        <Button
+                            size="sm"
+                            onClick={onNextTurn}
+                            disabled={aiProcessing}
+                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs uppercase tracking-wider h-8 px-3.5 rounded shadow-[0_0_15px_rgba(197,160,89,0.3)] hover:shadow-[0_0_20px_rgba(197,160,89,0.5)] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            title="End Turn (Shortcut: Spacebar)"
+                        >
+                            <span>End Turn →</span>
+                            <kbd className="hidden md:inline-block px-1 py-0.5 text-[9px] bg-black/30 border border-black/20 rounded text-[#0c0d12] font-mono tracking-normal normal-case font-bold">
+                                Space
+                            </kbd>
+                        </Button>
+                    </div>
                 )}
             </div>
         </div>

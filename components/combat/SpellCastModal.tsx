@@ -37,6 +37,19 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "vicious mockery": { saveType: "WIS", damageDice: "1d4", damageType: "psychic", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
     "acid splash": { saveType: "DEX", damageDice: "1d6", damageType: "acid", halfOnSave: false, range: "60 ft", castingTime: "1 action", isAoE: true },
     "poison spray": { saveType: "CON", damageDice: "1d12", damageType: "poison", condition: "poisoned", halfOnSave: false, range: "10 ft", castingTime: "1 action" },
+    "chill touch": { isAttackRoll: true, damageDice: "1d8", damageType: "necrotic", range: "120 ft", castingTime: "1 action" },
+    "produce flame": { isAttackRoll: true, damageDice: "1d8", damageType: "fire", range: "30 ft", castingTime: "1 action" },
+    "thorn whip": { isAttackRoll: true, damageDice: "1d6", damageType: "piercing", range: "30 ft", castingTime: "1 action" },
+    "primal savagery": { isAttackRoll: true, damageDice: "1d10", damageType: "acid", range: "Touch", castingTime: "1 action" },
+    "thunderclap": { saveType: "CON", damageDice: "1d6", damageType: "thunder", halfOnSave: false, range: "Self (5-ft sphere)", castingTime: "1 action", isAoE: true },
+    "word of radiance": { saveType: "CON", damageDice: "1d6", damageType: "radiant", halfOnSave: false, range: "Self (5-ft sphere)", castingTime: "1 action", isAoE: true },
+    "mind sliver": { saveType: "INT", damageDice: "1d6", damageType: "psychic", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
+    "frostbite": { saveType: "CON", damageDice: "1d6", damageType: "cold", halfOnSave: false, range: "60 ft", castingTime: "1 action" },
+    "infestation": { saveType: "CON", damageDice: "1d6", damageType: "poison", halfOnSave: false, range: "30 ft", castingTime: "1 action" },
+    "create bonfire": { saveType: "DEX", damageDice: "1d8", damageType: "fire", halfOnSave: false, requiresConcentration: true, range: "60 ft (5-ft cube)", castingTime: "1 action", isAoE: true },
+    "lightning lure": { saveType: "STR", damageDice: "1d8", damageType: "lightning", halfOnSave: false, range: "15 ft", castingTime: "1 action" },
+    "sword burst": { saveType: "DEX", damageDice: "1d6", damageType: "force", halfOnSave: false, range: "Self (5-ft sphere)", castingTime: "1 action", isAoE: true },
+    "shillelagh": { damageDice: "1d8", damageType: "magical bludgeoning", range: "Touch", castingTime: "1 bonus action", isBonusAction: true },
     "guidance": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
     "resistance": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
 
@@ -193,8 +206,26 @@ function SpellCastModalContent({
         );
     }, [caster.character?.stats?.spell_attack_bonus, caster.character?.proficiency_bonus, spellcastingMod]);
 
-    // Slot selection state
-    const [selectedLevel, setSelectedLevel] = useState<number>(baseLevel);
+    // Slot selection state - default to lowest available slot level >= baseLevel
+    const initialLevel = useMemo(() => {
+        if (baseLevel === 0) return 0;
+        const baseSlot = getSpellSlots(baseLevel);
+        if (baseSlot && baseSlot.remaining > 0) return baseLevel;
+        const charSlots = caster.character?.stats?.spell_slots || {};
+        const maxKnownSlot = Math.max(
+            ...Object.keys(charSlots).map(Number),
+            baseLevel
+        );
+        for (let lvl = baseLevel; lvl <= Math.min(9, Math.max(maxKnownSlot, baseLevel)); lvl++) {
+            const s = getSpellSlots(lvl);
+            if (s && s.remaining > 0) {
+                return lvl;
+            }
+        }
+        return baseLevel;
+    }, [baseLevel, getSpellSlots, caster.character?.stats?.spell_slots]);
+
+    const [selectedLevel, setSelectedLevel] = useState<number>(initialLevel);
     const [isRitual, setIsRitual] = useState<boolean>(false);
 
     // Target selection state
@@ -208,13 +239,22 @@ function SpellCastModalContent({
     const isMultiMissile = spellNameLower === "magic missile";
     const totalDarts = 3 + Math.max(0, selectedLevel - 1);
 
+    const upcastMultiTargetSpells = [
+        "hold person", "invisibility", "blindness/deafness", "charm person",
+        "fly", "banishment", "command"
+    ];
+    const isUpcastMultiTarget = upcastMultiTargetSpells.includes(spellNameLower);
+    const maxAllowedTargets = isUpcastMultiTarget
+        ? 1 + Math.max(0, selectedLevel - baseLevel)
+        : 1;
+
     const isBuffSpell = useMemo(() => {
         const clean = spellNameLower.trim();
         const buffList = [
             "mage armor", "shield", "shield of faith", "bless", "haste", "heroism", "barkskin",
             "protection from evil and good", "protection from undead", "protect from undead",
             "protect from evil and good", "guidance", "resistance", "invisibility",
-            "blur", "mirror image", "false life", "armor of agathys", "expeditious retreat", "fire shield"
+            "blur", "mirror image", "false life", "armor of agathys", "expeditious retreat", "fire shield", "aid", "fly"
         ];
         return buffList.includes(clean);
     }, [spellNameLower]);
@@ -299,11 +339,20 @@ function SpellCastModalContent({
     const isCurrentTargetOutOfRange = selectedTarget ? isTargetOutOfRange(selectedTarget) : false;
 
     const [selectedTargetIds, setSelectedTargetIds] = useState<number[]>(() => {
-        if (!isAoE) return [];
-        if (isHealingSpell) {
-            return allyParticipants.map((a) => a.id);
+        if (isAoE) {
+            if (isHealingSpell) {
+                return allyParticipants.map((a) => a.id);
+            }
+            return enemyParticipants.map((e) => e.id);
         }
-        return enemyParticipants.map((e) => e.id);
+        if (isUpcastMultiTarget) {
+            if (initialTargetId) {
+                return [parseInt(initialTargetId)];
+            }
+            const firstTarget = (isHealingSpell || isBuffSpell) ? allyParticipants[0] : enemyParticipants[0];
+            return firstTarget ? [firstTarget.id] : [];
+        }
+        return [];
     });
 
     // Magic Missile individual dart allocations (Target ID -> Dart Count)
@@ -366,6 +415,18 @@ function SpellCastModalContent({
     };
 
     const toggleTargetId = (id: number) => {
+        if (isUpcastMultiTarget) {
+            setSelectedTargetIds((prev) => {
+                if (prev.includes(id)) {
+                    return prev.filter((x) => x !== id);
+                }
+                if (prev.length >= maxAllowedTargets) {
+                    return [...prev.slice(1), id];
+                }
+                return [...prev, id];
+            });
+            return;
+        }
         setSelectedTargetIds((prev) =>
             prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
         );
@@ -396,10 +457,55 @@ function SpellCastModalContent({
         return levels;
     }, [baseLevel, caster.character?.stats?.spell_slots]);
 
-    // Compute effective damage or healing dice based on slot level
+    // Determine caster level for cantrip scaling (5e rules: scales at lvl 5, 11, 17)
+    const casterLevel = caster.character?.level ?? caster.character_level ?? caster.level ?? 1;
+    const cantripMultiplier = casterLevel >= 17 ? 4 : casterLevel >= 11 ? 3 : casterLevel >= 5 ? 2 : 1;
+
+    // Compute effective damage or healing dice based on slot level and cantrip scaling
     const computedFormula = useMemo(() => {
         if (isMultiMissile) {
             return `${totalDarts}x Darts (1d4+1 Force each)`;
+        }
+
+        if (spellNameLower === "scorching ray") {
+            const extraRays = Math.max(0, selectedLevel - baseLevel);
+            const totalRays = 3 + extraRays;
+            return `${totalRays}x Rays (2d6 Fire each — ${totalRays * 2}d6 total)`;
+        }
+
+        if (spellNameLower === "sleep") {
+            const extraDice = Math.max(0, selectedLevel - baseLevel) * 2;
+            return `${5 + extraDice}d8 HP pool`;
+        }
+
+        if (spellNameLower === "color spray") {
+            const extraDice = Math.max(0, selectedLevel - baseLevel) * 2;
+            return `${6 + extraDice}d10 HP pool`;
+        }
+
+        if (spellNameLower === "spiritual weapon") {
+            const extraDice = Math.floor(Math.max(0, selectedLevel - baseLevel) / 2);
+            return `${1 + extraDice}d8+${spellcastingMod} Force`;
+        }
+
+        if (spellNameLower === "disintegrate") {
+            const extraDice = Math.max(0, selectedLevel - baseLevel) * 3;
+            return `${10 + extraDice}d6+40 Force`;
+        }
+
+        if (spellNameLower === "armor of agathys") {
+            const hp = 5 * selectedLevel;
+            return `${hp} Temp HP & ${hp} Cold Retaliation`;
+        }
+
+        if (spellNameLower === "false life") {
+            const bonus = 5 * Math.max(0, selectedLevel - 1);
+            return `1d4 + ${4 + bonus} Temp HP`;
+        }
+
+        if (spellNameLower === "aid") {
+            const boost = 5 + 5 * Math.max(0, selectedLevel - 2);
+            return `+${boost} Max & Current HP`;
         }
 
         if (mechanics.isHealing && mechanics.healingBaseDice) {
@@ -413,8 +519,27 @@ function SpellCastModalContent({
         }
 
         if (mechanics.damageDice) {
+            if (baseLevel === 0) {
+                // Cantrip scaling by character level (Level 1-4: 1x, 5-10: 2x, 11-16: 3x, 17-20: 4x)
+                let baseDiceStr = mechanics.damageDice;
+                if (spellNameLower === "toll the dead" && selectedTarget) {
+                    const curHp = selectedTarget.current_hp ?? 0;
+                    const maxHp = selectedTarget.max_hp ?? 0;
+                    if (maxHp > 0 && curHp < maxHp) {
+                        baseDiceStr = "1d12";
+                    }
+                }
+                const match = baseDiceStr.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+                if (match) {
+                    const totalDice = parseInt(match[1]) * cantripMultiplier;
+                    const mod = match[3] || "";
+                    return `${totalDice}d${match[2]}${mod}`;
+                }
+                return baseDiceStr;
+            }
+
             const extra = selectedLevel > baseLevel ? (selectedLevel - baseLevel) * (mechanics.upcastDiceCount || 1) : 0;
-            const match = mechanics.damageDice.match(/^(\d+)d(\d+)(\+\d+)?$/);
+            const match = mechanics.damageDice.match(/^(\d+)d(\d+)([+-]\d+)?$/);
             if (match) {
                 const totalDice = parseInt(match[1]) + extra;
                 const mod = match[3] || "";
@@ -428,11 +553,47 @@ function SpellCastModalContent({
             (dp) => dp.spell_slot_level === selectedLevel
         );
         if (dbProg) {
+            if (baseLevel === 0 && cantripMultiplier > 1) {
+                const match = dbProg.damage_dice.match(/^(\d+)d(\d+)([+-]\d+)?$/);
+                if (match) {
+                    const totalDice = parseInt(match[1]) * cantripMultiplier;
+                    const mod = match[3] || "";
+                    return `${totalDice}d${match[2]}${mod}`;
+                }
+            }
             return dbProg.damage_dice;
         }
 
+        // Generic fallback for any unlisted cantrip with baseLevel === 0:
+        // parse description for damage dice pattern (e.g. 1d8, 1d10, 1d6, 1d12, 1d4)
+        if (baseLevel === 0) {
+            const descMatch = (spellDescription || "").match(/(\d+)d(\d+)([+-]\d+)?/i);
+            if (descMatch) {
+                const totalDice = parseInt(descMatch[1]) * cantripMultiplier;
+                const mod = descMatch[3] || "";
+                return `${totalDice}d${descMatch[2]}${mod}`;
+            }
+        }
+
         return "";
-    }, [isMultiMissile, totalDarts, mechanics, selectedLevel, baseLevel, spellcastingMod, spell.spell_details?.damage_progression]);
+    }, [isMultiMissile, totalDarts, mechanics, selectedLevel, baseLevel, spellcastingMod, spell.spell_details?.damage_progression, cantripMultiplier, spellNameLower, selectedTarget, spellDescription]);
+
+    // Dynamic tactical description for buffs factoring upcasting
+    const dynamicBuffEffect = useMemo(() => {
+        if (spellNameLower === "armor of agathys") {
+            const hp = 5 * selectedLevel;
+            return `❄️ Rime Warded: Spectral frost grants ${hp} temp HP; melee attackers take ${hp} retaliatory cold damage.`;
+        }
+        if (spellNameLower === "false life") {
+            const bonus = 5 * Math.max(0, selectedLevel - 1);
+            return `❤️ Bolstered: Grants 1d4 + ${4 + bonus} temporary hit points.`;
+        }
+        if (spellNameLower === "aid") {
+            const boost = 5 + 5 * Math.max(0, selectedLevel - 2);
+            return `🛡️ Toughness: Increases maximum and current HP by ${boost} for 8 hours.`;
+        }
+        return BUFF_TACTICAL_EFFECTS[spellNameLower] || "Combat Enhancement (Target radiates emerald aura)";
+    }, [spellNameLower, selectedLevel]);
 
     // Check slot availability
     const currentSlotInfo = selectedLevel > 0 ? getSpellSlots(selectedLevel) : null;
@@ -460,6 +621,8 @@ function SpellCastModalContent({
             formula = "1d4+1";
         } else if (isAoE) {
             targetsToCast = selectedTargetIds;
+        } else if (isUpcastMultiTarget) {
+            targetsToCast = selectedTargetIds.length > 0 ? selectedTargetIds : (selectedTargetId ? [selectedTargetId] : []);
         } else if (selectedTargetId) {
             targetsToCast = [selectedTargetId];
         }
@@ -623,11 +786,16 @@ function SpellCastModalContent({
                         <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
                                 <label className="font-cinzel font-bold text-[#c5a059] uppercase tracking-wider text-[11px]">
-                                    {isAoE ? "AoE Target Selection" : "Target Selection"}
+                                    {isAoE ? "AoE Target Selection" : isUpcastMultiTarget ? "Multi-Target Selection" : "Target Selection"}
                                 </label>
                                 {isAoE && (
                                     <Badge className="bg-purple-950 text-purple-300 border-purple-800 text-[9px] font-mono">
                                         Multi-Target ({selectedTargetIds.length})
+                                    </Badge>
+                                )}
+                                {isUpcastMultiTarget && (
+                                    <Badge className="bg-purple-950 text-purple-300 border-purple-800 text-[9px] font-mono">
+                                        Targets ({selectedTargetIds.length} / {maxAllowedTargets} max)
                                     </Badge>
                                 )}
                             </div>
@@ -695,7 +863,7 @@ function SpellCastModalContent({
                             {displayedParticipants.map((p) => {
                                 const isSelected = isMultiMissile
                                     ? (dartAllocations[p.id] || 0) > 0
-                                    : isAoE
+                                    : (isAoE || isUpcastMultiTarget)
                                     ? selectedTargetIds.includes(p.id)
                                     : selectedTargetId === p.id;
                                 const isSelf = p.id === caster.id;
@@ -724,7 +892,7 @@ function SpellCastModalContent({
                                                     setDartAllocations({ [p.id]: totalDarts });
                                                     setSelectedTargetId(p.id);
                                                 }
-                                            } else if (isAoE) {
+                                            } else if (isAoE || isUpcastMultiTarget) {
                                                 toggleTargetId(p.id);
                                             } else {
                                                 setSelectedTargetId(p.id);
@@ -741,7 +909,7 @@ function SpellCastModalContent({
                                                         setDartAllocations({ [p.id]: totalDarts });
                                                         setSelectedTargetId(p.id);
                                                     }
-                                                } else if (isAoE) {
+                                                } else if (isAoE || isUpcastMultiTarget) {
                                                     toggleTargetId(p.id);
                                                 } else {
                                                     setSelectedTargetId(p.id);
@@ -754,13 +922,13 @@ function SpellCastModalContent({
                                                 : isSelected
                                                 ? isMultiMissile
                                                     ? "bg-[#251b2e] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)] cursor-pointer"
-                                                    : isAoE
+                                                    : (isAoE || isUpcastMultiTarget)
                                                     ? "bg-[#241a29] border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)] cursor-pointer"
                                                     : "bg-[#25201b] border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.25)] cursor-pointer"
                                                 : "bg-[#181a24] border-slate-800 hover:border-slate-600 cursor-pointer"
                                         }`}
                                     >
-                                        {isAoE && !isMultiMissile && (
+                                        {(isAoE || isUpcastMultiTarget) && !isMultiMissile && (
                                             <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border flex-shrink-0 transition-colors ${
                                                 isSelected
                                                     ? "bg-purple-600 border-purple-400 text-white"
@@ -897,7 +1065,7 @@ function SpellCastModalContent({
                                         ✨ Positive Tactical Buff
                                     </span>
                                     <div className="text-xs font-bold font-fira-sans text-emerald-200 mt-1 flex items-center gap-1.5">
-                                        <span>{BUFF_TACTICAL_EFFECTS[spellNameLower] || "Combat Enhancement (Target radiates emerald aura)"}</span>
+                                        <span>{dynamicBuffEffect}</span>
                                     </div>
                                     <p className="text-[10px] text-emerald-400/80 mt-1 font-lora">
                                         Applies tactical buffs, AC modifications, or protective wards directly to the target combatant.
@@ -915,12 +1083,19 @@ function SpellCastModalContent({
                                                 {mechanics.damageType}
                                             </Badge>
                                         )}
+                                        {baseLevel === 0 && spellNameLower === "eldritch blast" && cantripMultiplier > 1 && (
+                                            <span className="text-[10px] text-purple-300/80 font-mono">
+                                                ({cantripMultiplier} beams)
+                                            </span>
+                                        )}
                                     </div>
                                     <p className="text-[10px] text-slate-400 mt-0.5 font-lora">
                                         {isHealingSpell
                                             ? "Restores hit points up to target's maximum health."
+                                            : baseLevel === 0
+                                            ? `Cantrip potency scales with character level (Level ${casterLevel}: ${cantripMultiplier} ${spellNameLower === "eldritch blast" ? `beam${cantripMultiplier > 1 ? "s" : ""}` : `dice`}).`
                                             : selectedLevel > baseLevel
-                                            ? `Upcast from base Level ${baseLevel} for extra damage.`
+                                            ? `Upcast from base Level ${baseLevel} for extra potency.`
                                             : "Standard spell potency."}
                                     </p>
                                 </div>
@@ -956,6 +1131,8 @@ function SpellCastModalContent({
                                 ? `${assignedDartsCount}/${totalDarts} Darts Assigned`
                                 : isAoE
                                 ? `${selectedTargetIds.length} Target${selectedTargetIds.length !== 1 ? 's' : ''} in AoE`
+                                : isUpcastMultiTarget
+                                ? `${selectedTargetIds.length} / ${maxAllowedTargets} Target${maxAllowedTargets !== 1 ? 's' : ''}`
                                 : (selectedTarget ? selectedTarget.name : "None selected")}
                         </span>
                     </div>

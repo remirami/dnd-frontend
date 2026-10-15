@@ -531,6 +531,7 @@ export default function CharacterDetailsPage() {
                                         const dexMod = stats?.dexterity ? getAbilityModifier(stats.dexterity) : 0;
 
                                         const weapon = character.character_items?.find(i => i.is_equipped && i.equipment_slot === 'main_hand');
+                                        const isMonk = character.character_class?.name?.toLowerCase() === 'monk';
                                         let mod = strMod;
                                         let damageDice = "1";
 
@@ -538,10 +539,13 @@ export default function CharacterDetailsPage() {
                                             const isFinesse = weapon.item_details.properties?.some((p: any) => p.name === 'Finesse');
                                             if (weapon.item_details.weapon_type_display?.includes('Ranged')) {
                                                 mod = dexMod;
-                                            } else if (isFinesse && dexMod > strMod) {
+                                            } else if ((isFinesse || isMonk) && dexMod > strMod) {
                                                 mod = dexMod;
                                             }
                                             damageDice = weapon.item_details.damage_dice || "1d4";
+                                        } else if (isMonk) {
+                                            damageDice = stats?.martial_arts_die || "1d4";
+                                            if (dexMod > strMod) mod = dexMod;
                                         }
 
                                         const toHit = formatModifier(mod + pb);
@@ -567,6 +571,104 @@ export default function CharacterDetailsPage() {
                                 </div>
                             </FantasyCard>
                         </div>
+
+                        {/* Monk Ki Points Pool Banner */}
+                        {((stats?.ki_points_max ?? 0) > 0) && (
+                            <FantasyCard glowOnHover={false} className="p-4 bg-[#141721]/80 border border-[#c5a059]/40 relative overflow-hidden">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-[#c5a059]/20 border border-[#c5a059]/60 flex items-center justify-center text-xl shadow-inner">
+                                            🥋
+                                        </div>
+                                        <div>
+                                            <div className="font-cinzel-decorative font-bold text-sm text-[#c5a059] flex items-center gap-2">
+                                                Ki Points Pool
+                                                <span className="text-[10px] font-sans px-2 py-0.5 rounded bg-[#c5a059]/20 border border-[#c5a059]/40 text-[#f5ebd2]">
+                                                    Martial Arts: {stats?.martial_arts_die || '1d4'}
+                                                </span>
+                                            </div>
+                                            <div className="text-xs text-[#d1cdb8]/70 font-lora">
+                                                Regained after a Short or Long Rest. Used for Flurry of Blows, Patient Defense, Step of the Wind & Subclass Disciplines.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        {/* Ki point pips */}
+                                        <div className="flex flex-wrap gap-1.5 items-center">
+                                            {Array.from({ length: stats?.ki_points_max || 0 }).map((_, i) => {
+                                                const isAvailable = i < (stats?.ki_points_current ?? 0);
+                                                return (
+                                                    <button
+                                                        key={i}
+                                                        onClick={async () => {
+                                                            try {
+                                                                if (isAvailable) {
+                                                                    await charactersApi.useKi(character.id, { amount: 1, action: 'spend' });
+                                                                    toast.success("Spent 1 Ki point");
+                                                                } else {
+                                                                    await charactersApi.useKi(character.id, { amount: 1, action: 'regain' });
+                                                                    toast.success("Restored 1 Ki point");
+                                                                }
+                                                                await loadCharacter(characterId);
+                                                            } catch (err: any) {
+                                                                toast.error(err.response?.data?.error || "Failed to update Ki");
+                                                            }
+                                                        }}
+                                                        title={isAvailable ? "Click to spend Ki point" : "Click to regain Ki point"}
+                                                        className={`w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer flex items-center justify-center text-[10px] font-bold ${
+                                                            isAvailable
+                                                                ? "bg-gradient-to-br from-[#c5a059] to-[#967733] border-[#f5ebd2] text-[#0c0d12] shadow-[0_0_8px_rgba(197,160,89,0.5)] hover:scale-110"
+                                                                : "bg-[#181a21] border-[#c5a059]/20 text-[#d1cdb8]/30 hover:border-[#c5a059]/60"
+                                                        }`}
+                                                    >
+                                                        {isAvailable ? "☯" : "○"}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="text-right pl-2 border-l border-[#c5a059]/20">
+                                            <div className="text-lg font-bold font-fira-sans text-[#c5a059]">
+                                                {stats?.ki_points_current ?? 0} <span className="text-xs text-[#d1cdb8]/60">/ {stats?.ki_points_max}</span>
+                                            </div>
+                                            <div className="flex gap-1 mt-0.5">
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await charactersApi.useKi(character.id, { amount: 1, action: 'spend' });
+                                                            toast.success("Spent 1 Ki point");
+                                                            await loadCharacter(characterId);
+                                                        } catch (err: any) {
+                                                            toast.error(err.response?.data?.error || "Failed to spend Ki");
+                                                        }
+                                                    }}
+                                                    disabled={(stats?.ki_points_current ?? 0) <= 0}
+                                                    className="text-[10px] px-2 py-0.5 rounded bg-[#c5a059]/20 hover:bg-[#c5a059]/30 text-[#f5ebd2] border border-[#c5a059]/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                    Spend
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await charactersApi.useKi(character.id, { action: 'reset' });
+                                                            toast.success("Ki points reset to max");
+                                                            await loadCharacter(characterId);
+                                                        } catch (err: any) {
+                                                            toast.error(err.response?.data?.error || "Failed to reset Ki");
+                                                        }
+                                                    }}
+                                                    disabled={(stats?.ki_points_current ?? 0) >= (stats?.ki_points_max ?? 0)}
+                                                    className="text-[10px] px-2 py-0.5 rounded bg-[#181a21] hover:bg-[#c5a059]/10 text-[#d1cdb8] border border-[#c5a059]/30 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                    Reset
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </FantasyCard>
+                        )}
 
                         {/* Ability Scores */}
                         <div>
@@ -737,9 +839,15 @@ export default function CharacterDetailsPage() {
                                                                 <h4 className="font-cinzel-decorative font-bold text-sm text-[#d1cdb8]">
                                                                     {baseName} {isStacked && <span className="text-xs text-[#c5a059]/70 font-normal ml-2">x{group.length}</span>}
                                                                 </h4>
-                                                                <span className="text-[10px] px-2 py-0.5 rounded bg-[#181a21] border border-[#c5a059]/30 text-[#c5a059] uppercase tracking-wider">
-                                                                    {firstFeature.feature_type === 'racial' ? 'Race' : firstFeature.feature_type}
-                                                                </span>
+                                                                {firstFeature.name.startsWith("Boon of") || firstFeature.source?.includes("Epic Boon") ? (
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/25 border border-amber-500/60 text-amber-300 font-cinzel font-bold uppercase tracking-wider shadow-[0_0_8px_rgba(245,158,11,0.25)]">
+                                                                        Epic Boon
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded bg-[#181a21] border border-[#c5a059]/30 text-[#c5a059] uppercase tracking-wider">
+                                                                        {firstFeature.feature_type === 'racial' ? 'Race' : firstFeature.feature_type}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <p className="text-xs sm:text-sm text-[#d1cdb8]/80 leading-relaxed">{firstFeature.description}</p>
 

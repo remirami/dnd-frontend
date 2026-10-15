@@ -52,6 +52,7 @@ interface BattlefieldArenaProps {
     isMoving?: boolean;
     isOperating?: boolean;
     aoeTargeting?: AoETargetingConfig | null;
+    aoeHoverPreview?: AoETargetingConfig | null;
     onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
     onCancelAoETargeting?: () => void;
     environmentalEffects?: import("@/lib/types/combat").EnvironmentalEffect[];
@@ -248,6 +249,7 @@ export function BattlefieldArena({
     isMoving,
     isOperating,
     aoeTargeting,
+    aoeHoverPreview,
     onConfirmAoECast,
     onCancelAoETargeting,
     environmentalEffects,
@@ -434,7 +436,7 @@ export function BattlefieldArena({
                             {currentParticipant?.name} is {incapacitatingName}
                         </h4>
                         <p className="text-[11px] text-red-300/90 font-lora leading-tight mt-0.5">
-                            Incapacitated creatures cannot take actions or reactions. You cannot attack, cast spells, or use abilities this turn. Click <strong>End Turn →</strong> above to proceed.
+                            Incapacitated creatures cannot take actions or reactions. You cannot attack, cast spells, or use abilities this turn. Click <strong>End Turn →</strong> (or press <kbd className="px-1 py-0.5 text-[9px] bg-black/60 border border-red-500/40 rounded text-red-200 font-mono">Space</kbd>) to proceed.
                         </p>
                     </div>
                 </div>
@@ -482,6 +484,7 @@ export function BattlefieldArena({
                     isMoving={isMoving}
                     isOperating={isOperating}
                     aoeTargeting={aoeTargeting}
+                    aoeHoverPreview={aoeHoverPreview}
                     onConfirmAoECast={onConfirmAoECast}
                     onCancelAoETargeting={onCancelAoETargeting}
                     environmentalEffects={environmentalEffects}

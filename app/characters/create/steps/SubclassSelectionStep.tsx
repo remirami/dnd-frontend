@@ -45,7 +45,7 @@ export default function SubclassSelectionStep({
         setLoading(true);
         setError("");
         try {
-            const response = await api.get(`/character-classes/${formData.character_class_id}/subclasses/?ruleset=${formData.ruleset_version || '2014'}`);
+            const response = await api.get(`/character-classes/${formData.character_class_id}/subclasses/?ruleset=${formData.ruleset_version || '2024'}`);
             setSubclasses(response.data);
 
             // Auto-skip if no subclasses available? 

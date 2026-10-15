@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { CombatSession, DamagePayload, HealingPayload, AITurnResponse, AutoEnemyTurnsResponse } from '@/lib/types/combat';
+import type { CombatSession, CombatParticipant, DamagePayload, HealingPayload, AITurnResponse, AutoEnemyTurnsResponse } from '@/lib/types/combat';
 
 export const combatApi = {
     // Get all combat sessions
@@ -34,7 +34,7 @@ export const combatApi = {
 
     // Add participant to combat
     addParticipant: (id: number, data: { participant_type: 'character' | 'enemy'; character_id?: number; enemy_id?: number; enemy_name?: string }) =>
-        apiClient.post<CombatSession>(`/combat/sessions/${id}/add_participant/`, data),
+        apiClient.post<{ message: string; participant: CombatParticipant; session: CombatSession }>(`/combat/sessions/${id}/add_participant/`, data),
 
     // Remove participant from combat
     removeParticipant: (id: number, data: { participant_id?: number; character_id?: number }) =>
@@ -45,7 +45,22 @@ export const combatApi = {
         apiClient.post<CombatSession>(`/combat/sessions/${id}/roll_initiative/`, overrides ? { overrides } : {}),
 
     // Make an attack
-    attack: (sessionId: number, data: { attacker_id: number; target_id: number; attack_name: string; attack_bonus: number; advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean; is_ranged?: boolean; weapon_slot?: string }) =>
+    attack: (sessionId: number, data: {
+        attacker_id: number;
+        target_id: number;
+        attack_name: string;
+        attack_bonus: number;
+        advantage?: boolean;
+        disadvantage?: boolean;
+        dm_override?: boolean;
+        inspiration?: boolean;
+        is_ranged?: boolean;
+        weapon_slot?: string;
+        smite_slot_level?: number;
+        use_divine_smite?: boolean;
+        use_sneak_attack?: boolean;
+        use_bardic_inspiration?: boolean;
+    }) =>
         apiClient.post<any>(`/combat/sessions/${sessionId}/attack/`, data),
 
     // Cast a spell
@@ -190,4 +205,32 @@ export const combatApi = {
             participant: any;
             session?: CombatSession;
         }>(`/combat/sessions/${sessionId}/set_altitude/`, data),
+
+    grapple: (sessionId: number, data: { grappler_id: number; target_id: number }) =>
+        apiClient.post<{
+            success: boolean;
+            message: string;
+            session: CombatSession;
+        }>(`/combat/sessions/${sessionId}/grapple/`, data),
+
+    escapeGrapple: (sessionId: number, data: { participant_id: number }) =>
+        apiClient.post<{
+            success: boolean;
+            message: string;
+            session: CombatSession;
+        }>(`/combat/sessions/${sessionId}/escape_grapple/`, data),
+
+    releaseGrapple: (sessionId: number, data: { grappler_id: number }) =>
+        apiClient.post<{
+            success: boolean;
+            message: string;
+            session: CombatSession;
+        }>(`/combat/sessions/${sessionId}/release_grapple/`, data),
+
+    pin: (sessionId: number, data: { grappler_id: number; target_id?: number }) =>
+        apiClient.post<{
+            success: boolean;
+            message: string;
+            session: CombatSession;
+        }>(`/combat/sessions/${sessionId}/pin/`, data),
 };

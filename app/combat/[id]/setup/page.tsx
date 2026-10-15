@@ -8,7 +8,7 @@ import { charactersApi } from "@/lib/api/characters";
 import { enemiesApi } from "@/lib/api/enemies";
 import FantasyCard from "@/components/ui/FantasyCard";
 import Navbar from "@/components/layout/Navbar";
-import { Swords, Skull, Users, Search, X, Play, Trash2, Shuffle, ChevronDown, Check } from "lucide-react";
+import { Swords, Skull, Users, Search, X, Play, Trash2, Shuffle, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import type { Character } from "@/lib/types/character";
 import type { Enemy } from "@/lib/types/enemy";
 import type { CombatSession, CombatParticipant } from "@/lib/types/combat";
@@ -32,12 +32,97 @@ export default function CombatSetupPage() {
     const [initiativeValues, setInitiativeValues] = useState<Record<number, number>>({});
     const [loading, setLoading] = useState(true);
     const [cancelling, setCancelling] = useState(false);
+    const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
     const sessionId = Number(params.id);
 
     const hasStartedRef = useRef(false);
     const sessionRef = useRef<CombatSession | null>(null);
     const isMountedRef = useRef(true);
+    const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Tracks the user's latest desired inclusion state for each character (true = in combat, false = removed)
+    const desiredStateRef = useRef<Map<number, boolean>>(new Map());
+    // Tracks the known backend participant ID for each character (id > 0 if confirmed on server, null if absent)
+    const serverParticipantIdsRef = useRef<Map<number, number | null>>(new Map());
+    // Tracks whether a sync worker loop is actively running for a character
+    const activeSyncRef = useRef<Set<number>>(new Set());
+
+    const showWarning = (msg: string) => {
+        if (warningTimeoutRef.current) {
+            clearTimeout(warningTimeoutRef.current);
+        }
+        setWarningMessage(msg);
+        warningTimeoutRef.current = setTimeout(() => {
+            setWarningMessage(null);
+        }, 4000);
+    };
+
+    const updateServerMap = (s: CombatSession | null, chars?: Character[]) => {
+        if (!s?.participants) return;
+        const serverCharIds = new Set<number>();
+        for (const p of s.participants) {
+            if (p.participant_type === 'character' && p.character?.id && p.id > 0) {
+                serverParticipantIdsRef.current.set(p.character.id, p.id);
+                serverCharIds.add(p.character.id);
+            }
+        }
+        const charList = chars || characters;
+        for (const c of charList) {
+            if (!serverCharIds.has(c.id)) {
+                serverParticipantIdsRef.current.set(c.id, null);
+            }
+        }
+    };
+
+    const applyDesiredCharacterState = (incomingSession: CombatSession, charList?: Character[]): CombatSession => {
+        if (!incomingSession?.participants) return incomingSession;
+
+        const chars = charList || characters;
+        const enemies = incomingSession.participants.filter(p => p.participant_type === 'enemy');
+        const serverCharacters = incomingSession.participants.filter(p => p.participant_type === 'character');
+
+        const finalCharacters: CombatParticipant[] = [];
+
+        for (const char of chars) {
+            const isDesired = desiredStateRef.current.has(char.id)
+                ? desiredStateRef.current.get(char.id)!
+                : serverCharacters.some(p => p.character?.id === char.id || p.name === char.name);
+
+            if (isDesired) {
+                const serverP = serverCharacters.find(p => p.character?.id === char.id || p.name === char.name);
+                if (serverP) {
+                    finalCharacters.push(serverP);
+                } else {
+                    const existingOptimistic = sessionRef.current?.participants?.find(
+                        p => (p.participant_type === 'character' && p.character?.id === char.id) || p.name === char.name
+                    );
+                    if (existingOptimistic) {
+                        finalCharacters.push(existingOptimistic);
+                    } else {
+                        finalCharacters.push({
+                            id: -char.id,
+                            combat_session: sessionId,
+                            participant_type: 'character',
+                            character: char,
+                            name: char.name,
+                            initiative: 0,
+                            current_hp: (char as any).stats?.hit_points || (char as any).max_hp || 10,
+                            max_hp: (char as any).stats?.max_hit_points || (char as any).max_hp || 10,
+                            armor_class: (char as any).stats?.armor_class || 10,
+                            is_active: true,
+                            conditions: [],
+                        } as any);
+                    }
+                }
+            }
+        }
+
+        return {
+            ...incomingSession,
+            participants: [...finalCharacters, ...enemies],
+        };
+    };
 
     useEffect(() => {
         sessionRef.current = session;
@@ -154,7 +239,7 @@ export default function CombatSetupPage() {
             await handleAddEnemy(enemy.id);
         } catch (error: any) {
             const msg = error?.response?.data?.error || "No enemies found with those filters.";
-            alert(msg);
+            showWarning(msg);
         } finally {
             setIsAddingRandom(false);
         }
@@ -167,9 +252,19 @@ export default function CombatSetupPage() {
                 charactersApi.getAll(),
             ]);
 
-            setSession(sessionRes.data);
             const charData = charactersRes.data.results || [];
             setCharacters(charData);
+
+            // Initialize desiredStateRef from the initial session
+            for (const char of charData) {
+                const isIn = sessionRes.data?.participants?.some(
+                    p => (p.participant_type === 'character' && p.character?.id === char.id) || p.name === char.name
+                );
+                desiredStateRef.current.set(char.id, !!isIn);
+            }
+
+            setSession(sessionRes.data);
+            updateServerMap(sessionRes.data, charData);
         } catch (error) {
             console.error("Failed to load data:", error);
         } finally {
@@ -177,73 +272,180 @@ export default function CombatSetupPage() {
         }
     };
 
-    const handleToggleCharacter = async (characterId: number, characterName: string) => {
-        const existingParticipant = session?.participants?.find(
+    const handleToggleCharacter = (characterId: number, characterName: string) => {
+        const char = characters.find(c => c.id === characterId);
+        const currentInSession = session?.participants?.some(
             p => (p.participant_type === 'character' && p.character?.id === characterId) || p.name === characterName
         );
 
-        if (existingParticipant) {
-            // De-select character (always permitted)
-            try {
-                await combatApi.removeParticipant(sessionId, {
-                    participant_id: existingParticipant.id,
-                    character_id: characterId,
-                });
-                setInitiativeValues(prev => {
-                    const copy = { ...prev };
-                    delete copy[existingParticipant.id];
-                    return copy;
-                });
-                const response = await combatApi.getById(sessionId);
-                setSession(response.data);
-            } catch (error: any) {
-                console.error("Failed to remove character:", error);
-                alert(`Failed to remove character: ${error.response?.data?.error || error.message}`);
+        const currentDesired = desiredStateRef.current.has(characterId)
+            ? desiredStateRef.current.get(characterId)!
+            : !!currentInSession;
+
+        const nextDesired = !currentDesired;
+
+        // If user wants to add, check limits
+        if (nextDesired) {
+            const currentPartyCount = (session?.participants || []).filter(p => p.participant_type === 'character').length;
+            if (currentPartyCount >= MAX_PARTY_PARTICIPANTS) {
+                showWarning(`Party roster is full (maximum ${MAX_PARTY_PARTICIPANTS} characters). De-select a hero first.`);
+                return;
             }
-            return;
+            if (totalCount >= MAX_TOTAL_PARTICIPANTS) {
+                showWarning(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants). Remove a participant first.`);
+                return;
+            }
         }
 
-        // Limit checks before adding
-        if (isPartyFull) {
-            alert(`Party roster is full (maximum ${MAX_PARTY_PARTICIPANTS} characters). De-select a hero first.`);
-            return;
-        }
-        if (isTotalFull) {
-            alert(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants). Remove a participant first.`);
-            return;
-        }
+        // Record desired state
+        desiredStateRef.current.set(characterId, nextDesired);
 
-        // Add character
-        try {
-            await combatApi.addParticipant(sessionId, {
-                participant_type: 'character',
-                character_id: characterId,
+        // OPTIMISTIC UPDATE: Instant 0ms perceived latency
+        if (nextDesired) {
+            if (char) {
+                const optimisticParticipant: CombatParticipant = {
+                    id: -char.id, // temporary optimistic id
+                    combat_session: sessionId,
+                    participant_type: 'character',
+                    character: char,
+                    name: char.name,
+                    initiative: 0,
+                    current_hp: (char as any).stats?.hit_points || (char as any).max_hp || 10,
+                    max_hp: (char as any).stats?.max_hit_points || (char as any).max_hp || 10,
+                    armor_class: (char as any).stats?.armor_class || 10,
+                    is_active: true,
+                    conditions: [],
+                } as any;
+
+                setSession(prev => {
+                    if (!prev) return prev;
+                    const filtered = (prev.participants || []).filter(
+                        p => !(p.participant_type === 'character' && p.character?.id === characterId) && p.name !== characterName
+                    );
+                    return {
+                        ...prev,
+                        participants: [...filtered, optimisticParticipant],
+                    };
+                });
+            }
+        } else {
+            // De-select immediately
+            setSession(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    participants: (prev.participants || []).filter(
+                        p => !(p.participant_type === 'character' && p.character?.id === characterId) && p.name !== characterName
+                    ),
+                };
             });
+            setInitiativeValues(prev => {
+                const copy = { ...prev };
+                const p = session?.participants?.find(
+                    part => (part.participant_type === 'character' && part.character?.id === characterId) || part.name === characterName
+                );
+                if (p) delete copy[p.id];
+                delete copy[-characterId];
+                return copy;
+            });
+        }
 
-            // Reload session
-            const response = await combatApi.getById(sessionId);
-            setSession(response.data);
+        // Trigger background sync loop for this character
+        syncCharacter(characterId, characterName);
+    };
+
+    const syncCharacter = async (characterId: number, characterName: string) => {
+        if (activeSyncRef.current.has(characterId)) {
+            // Already syncing; when the active call completes it will inspect desiredStateRef again
+            return;
+        }
+        activeSyncRef.current.add(characterId);
+
+        try {
+            while (true) {
+                const targetState = desiredStateRef.current.get(characterId);
+                const serverPid = serverParticipantIdsRef.current.get(characterId) ?? null;
+                const isOnServer = serverPid !== null && serverPid > 0;
+
+                if (targetState === true && !isOnServer) {
+                    const resp = await combatApi.addParticipant(sessionId, {
+                        participant_type: 'character',
+                        character_id: characterId,
+                    });
+                    const realPid = resp.data.participant?.id || null;
+                    serverParticipantIdsRef.current.set(characterId, realPid);
+
+                    if (resp.data.session) {
+                        setSession(applyDesiredCharacterState(resp.data.session));
+                    }
+                } else if (targetState === false && isOnServer) {
+                    const resp = await combatApi.removeParticipant(sessionId, {
+                        participant_id: serverPid,
+                        character_id: characterId,
+                    });
+                    serverParticipantIdsRef.current.set(characterId, null);
+
+                    if (resp.data.session) {
+                        setSession(applyDesiredCharacterState(resp.data.session));
+                    }
+                } else {
+                    // Current server status matches targetState!
+                    break;
+                }
+            }
         } catch (error: any) {
-            console.error("Failed to add character:", error);
-            alert(`Failed to add character: ${error.response?.data?.error || error.message}`);
+            console.error("Failed to sync character:", error);
+            showWarning(`Failed to sync character: ${error.response?.data?.error || error.message}`);
+            try {
+                const fresh = await combatApi.getById(sessionId);
+                setSession(applyDesiredCharacterState(fresh.data));
+                updateServerMap(fresh.data);
+            } catch {}
+        } finally {
+            activeSyncRef.current.delete(characterId);
         }
     };
 
     const handleRemoveParticipant = async (participantId: number) => {
+        const prevSession = session;
+        const participantToRemove = session?.participants?.find(p => p.id === participantId);
+        const charId = participantToRemove?.character?.id;
+
+        if (charId) {
+            desiredStateRef.current.set(charId, false);
+            serverParticipantIdsRef.current.set(charId, null);
+        }
+
+        // Optimistic removal (0ms latency)
+        setSession(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                participants: prev.participants.filter(p => p.id !== participantId),
+            };
+        });
+        setInitiativeValues(prev => {
+            const copy = { ...prev };
+            delete copy[participantId];
+            return copy;
+        });
+
         try {
-            await combatApi.removeParticipant(sessionId, {
+            const resp = await combatApi.removeParticipant(sessionId, {
                 participant_id: participantId,
             });
-            setInitiativeValues(prev => {
-                const copy = { ...prev };
-                delete copy[participantId];
-                return copy;
-            });
-            const response = await combatApi.getById(sessionId);
-            setSession(response.data);
+            if (resp.data.session) {
+                setSession(applyDesiredCharacterState(resp.data.session));
+                updateServerMap(resp.data.session);
+            } else {
+                const response = await combatApi.getById(sessionId);
+                setSession(applyDesiredCharacterState(response.data));
+                updateServerMap(response.data);
+            }
         } catch (error: any) {
             console.error("Failed to remove participant:", error);
-            alert(`Failed to remove participant: ${error.response?.data?.error || error.message}`);
+            setSession(prevSession);
+            showWarning(`Failed to remove participant: ${error.response?.data?.error || error.message}`);
         }
     };
 
@@ -251,28 +453,31 @@ export default function CombatSetupPage() {
         if (!enemyId) return;
 
         if (isEnemyFull) {
-            alert(`Enemy roster is full (maximum ${MAX_ENEMY_PARTICIPANTS} enemies). Remove an enemy first.`);
+            showWarning(`Enemy roster is full (maximum ${MAX_ENEMY_PARTICIPANTS} enemies). Remove an enemy first.`);
             return;
         }
         if (isTotalFull) {
-            alert(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants). Remove a participant first.`);
+            showWarning(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants). Remove a participant first.`);
             return;
         }
 
         try {
-            await combatApi.addParticipant(sessionId, {
+            const resp = await combatApi.addParticipant(sessionId, {
                 participant_type: 'enemy',
                 enemy_id: enemyId,
             });
 
-            // Reload session
-            const response = await combatApi.getById(sessionId);
-            setSession(response.data);
-            // Optional: clear search after adding
-            // setSearchQuery(""); 
+            if (resp.data.session) {
+                setSession(applyDesiredCharacterState(resp.data.session));
+                updateServerMap(resp.data.session);
+            } else {
+                const response = await combatApi.getById(sessionId);
+                setSession(applyDesiredCharacterState(response.data));
+                updateServerMap(response.data);
+            }
         } catch (error: any) {
             console.error("Failed to add enemy:", error);
-            alert(`Failed to add enemy: ${error.response?.data?.error || error.message}`);
+            showWarning(`Failed to add enemy: ${error.response?.data?.error || error.message}`);
         }
     };
 
@@ -284,13 +489,13 @@ export default function CombatSetupPage() {
     const handleStartCombat = async () => {
         const participants = session?.participants || [];
         if (!session || participants.length === 0) {
-            alert("Add at least one participant before starting combat");
+            showWarning("Add at least one participant before starting combat");
             return;
         }
 
         const hasEnemy = participants.some(p => p.participant_type === 'enemy');
         if (!hasEnemy) {
-            alert("Add at least one enemy before starting combat");
+            showWarning("Add at least one enemy before starting combat");
             return;
         }
 
@@ -304,7 +509,7 @@ export default function CombatSetupPage() {
         } catch (error) {
             hasStartedRef.current = false;
             console.error("Failed to start combat:", error);
-            alert("Failed to start combat");
+            showWarning("Failed to start combat");
         }
     };
 
@@ -353,8 +558,25 @@ export default function CombatSetupPage() {
     const enemyParticipantsInRoster = session.participants?.filter(p => p.participant_type === "enemy") || [];
 
     return (
-        <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col">
+        <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col relative">
             <Navbar showActions={true} />
+
+            {/* Warning Toast Notification */}
+            {warningMessage && (
+                <div className="fixed top-6 right-6 z-50 max-w-md bg-[#181a21]/95 border-2 border-[#c5a059] text-[#f1ede2] p-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] backdrop-blur-md flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-200">
+                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-xs font-lora flex-1 leading-relaxed text-[#f1ede2]">
+                        {warningMessage}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setWarningMessage(null)}
+                        className="text-[#c5a059]/60 hover:text-[#c5a059] transition-colors -mr-1 -mt-1 p-1 cursor-pointer"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
 
             <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 space-y-6">
 
@@ -440,14 +662,7 @@ export default function CombatSetupPage() {
                                     return (
                                         <div
                                             key={char.id}
-                                            onClick={() => {
-                                                if (cannotAdd) {
-                                                    if (isPartyFull) alert(`Party roster is full (maximum ${MAX_PARTY_PARTICIPANTS} characters). De-select a hero first.`);
-                                                    else alert(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants).`);
-                                                    return;
-                                                }
-                                                handleToggleCharacter(char.id, char.name);
-                                            }}
+                                            onClick={() => handleToggleCharacter(char.id, char.name)}
                                             title={
                                                 isAdded ? "Click to de-select character"
                                                 : cannotAdd ? (isPartyFull ? "Party roster full (max 6)" : "Encounter limit reached (max 16)")

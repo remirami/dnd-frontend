@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Dices } from "lucide-react";
+import { Dices, Sparkles } from "lucide-react";
 import { racesApi, classesApi, backgroundsApi } from "@/lib/api/gamedata";
 import api from "@/lib/api/client";
 import type { CharacterFormData } from "../CharacterCreationWizard";
@@ -39,7 +39,7 @@ export default function BasicInfoStep({
     const loadGameData = async () => {
         setLoading(true);
         try {
-            const params = { ruleset: formData.ruleset_version || '2014' };
+            const params = { ruleset: formData.ruleset_version || '2024' };
             const [racesRes, classesRes, backgroundsRes, languagesRes] = await Promise.all([
                 racesApi.getAll(params),
                 classesApi.getAll(params),
@@ -90,17 +90,6 @@ export default function BasicInfoStep({
                 <div className="flex space-x-3">
                     <button
                         type="button"
-                        onClick={() => updateFormData({ ruleset_version: '2014', race_id: null, background_id: null, character_class_id: null })}
-                        className={`px-4 py-2 text-xs font-lora font-bold rounded transition-all cursor-pointer ${
-                            formData.ruleset_version === '2014'
-                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.35)] border border-[#e0bc75]"
-                                : "bg-[#12141a] text-[#d1cdb8]/70 border border-[#c5a059]/25 hover:bg-[#c5a059]/10 hover:text-[#d1cdb8]"
-                        }`}
-                    >
-                        2014 (Legacy)
-                    </button>
-                    <button
-                        type="button"
                         onClick={() => updateFormData({ ruleset_version: '2024', race_id: null, background_id: null, character_class_id: null })}
                         className={`px-4 py-2 text-xs font-lora font-bold rounded transition-all cursor-pointer ${
                             formData.ruleset_version === '2024'
@@ -109,6 +98,17 @@ export default function BasicInfoStep({
                         }`}
                     >
                         2024 (Standard)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => updateFormData({ ruleset_version: '2014', race_id: null, background_id: null, character_class_id: null })}
+                        className={`px-4 py-2 text-xs font-lora font-bold rounded transition-all cursor-pointer ${
+                            formData.ruleset_version === '2014'
+                                ? "bg-[#c5a059] text-[#0c0d12] shadow-[0_0_12px_rgba(197,160,89,0.35)] border border-[#e0bc75]"
+                                : "bg-[#12141a] text-[#d1cdb8]/70 border border-[#c5a059]/25 hover:bg-[#c5a059]/10 hover:text-[#d1cdb8]"
+                        }`}
+                    >
+                        2014 (Legacy)
                     </button>
                 </div>
                 <p className="text-xs text-[#d1cdb8]/60 font-lora italic">
@@ -146,7 +146,7 @@ export default function BasicInfoStep({
                         <SelectValue placeholder={`Select a ${raceLabel.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent className="bg-[#181a21] border border-[#c5a059]/40 text-[#d1cdb8] font-lora">
-                        {races.map((r) => (
+                        {[...races].sort((a, b) => (a.name_display || a.name || '').localeCompare(b.name_display || b.name || '')).map((r) => (
                             <SelectItem key={r.id} value={r.id.toString()}>
                                 {r.name_display || r.name}
                             </SelectItem>
@@ -154,16 +154,87 @@ export default function BasicInfoStep({
                     </SelectContent>
                 </Select>
                 {selectedRace && (
-                    <div className="mt-2 p-3.5 bg-[#12141a] rounded border border-[#c5a059]/25 text-sm font-lora">
-                        <p className="text-[#d1cdb8]/90 italic">{selectedRace.description}</p>
-
-                        {/* Only show Racial ASI for 2014 */}
-                        {!is2024 && selectedRace.ability_score_increases && (
-                            <div className="mt-2 text-xs">
-                                <span className="font-semibold text-[#c5a059]">ASI: </span>
-                                <span className="text-[#d1cdb8]/70">{selectedRace.ability_score_increases}</span>
-                            </div>
+                    <div className="mt-2.5 p-4 bg-[#12141a]/90 rounded-lg border border-[#c5a059]/30 text-sm font-lora shadow-inner space-y-3">
+                        {/* Flavor Description */}
+                        {selectedRace.description && (
+                            <p className="text-[#d1cdb8]/90 italic leading-relaxed text-xs sm:text-sm">
+                                {selectedRace.description}
+                            </p>
                         )}
+
+                        {/* Species / Race Quick Badges */}
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#c5a059]/20 text-[11px]">
+                            {/* Speed */}
+                            {selectedRace.speed && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0c0d12] border border-[#c5a059]/30 text-[#d1cdb8]">
+                                    <span className="text-[#c5a059] font-bold uppercase tracking-wider text-[10px]">Speed:</span>
+                                    <span>{selectedRace.speed} ft.</span>
+                                </span>
+                            )}
+                            {/* Size */}
+                            {(selectedRace.size_display || selectedRace.size) && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0c0d12] border border-[#c5a059]/30 text-[#d1cdb8]">
+                                    <span className="text-[#c5a059] font-bold uppercase tracking-wider text-[10px]">Size:</span>
+                                    <span>{selectedRace.size_display || (selectedRace.size === 'S' ? 'Small' : selectedRace.size === 'M' ? 'Medium' : selectedRace.size)}</span>
+                                </span>
+                            )}
+                            {/* Skill Proficiencies */}
+                            {selectedRace.skill_proficiencies && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0c0d12] border border-[#c5a059]/30 text-[#d1cdb8]">
+                                    <span className="text-[#c5a059] font-bold uppercase tracking-wider text-[10px]">Skills:</span>
+                                    <span>{selectedRace.skill_proficiencies}</span>
+                                </span>
+                            )}
+                            {/* ASI for 2014 */}
+                            {!is2024 && selectedRace.ability_score_increases && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#c5a059]/15 border border-[#c5a059]/40 text-[#f5ecd5]">
+                                    <span className="text-[#e0bc75] font-bold uppercase tracking-wider text-[10px]">ASI:</span>
+                                    <span>{selectedRace.ability_score_increases}</span>
+                                </span>
+                            )}
+                            {/* ASI Note for 2024 */}
+                            {is2024 && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#c5a059]/10 border border-[#c5a059]/20 text-[#d1cdb8]/80 text-[10px]">
+                                    <span className="text-[#c5a059] font-bold uppercase tracking-wider text-[10px]">ASI:</span>
+                                    <span>Chosen via Background (Step 3)</span>
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Traits & Bonuses List */}
+                        {(() => {
+                            const traitsList: any[] = Array.isArray(selectedRace.traits)
+                                ? selectedRace.traits
+                                : typeof selectedRace.traits === 'string'
+                                    ? JSON.parse(selectedRace.traits || '[]')
+                                    : [];
+
+                            if (traitsList.length === 0) return null;
+
+                            return (
+                                <div className="pt-2 border-t border-[#c5a059]/20 space-y-2">
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-[#c5a059] uppercase tracking-wider">
+                                        <Sparkles className="w-3.5 h-3.5 text-[#e0bc75]" />
+                                        <span>{is2024 ? "Species Traits & Powers" : "Racial Traits & Feats"}</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {traitsList.map((trait: any, idx: number) => (
+                                            <div
+                                                key={trait.name || idx}
+                                                className="p-2.5 rounded bg-[#0c0d12]/70 border border-[#c5a059]/20 hover:border-[#c5a059]/40 transition-colors"
+                                            >
+                                                <div className="text-xs font-bold text-[#e0bc75] mb-1">
+                                                    {trait.name}
+                                                </div>
+                                                <div className="text-[11px] text-[#d1cdb8]/80 leading-relaxed font-sans">
+                                                    {trait.description}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Extra Language Selection (Legacy) */}
                         {needsExtraLanguage && (

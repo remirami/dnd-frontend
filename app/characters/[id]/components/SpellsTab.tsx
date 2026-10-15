@@ -672,9 +672,15 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                 Cantrips
                             </button>
 
-                            {Array.from({ length: Math.max(5, maxAccessibleSlotLevel) }).map((_, i) => {
+                            {Array.from({ length: 9 }).map((_, i) => {
                                 const lvlNum = i + 1;
-                                const isCurrentTier = lvlNum <= maxAccessibleSlotLevel;
+                                const isWarlockArcanum = isWarlock && (
+                                    (character.level >= 11 && lvlNum === 6) ||
+                                    (character.level >= 13 && lvlNum === 7) ||
+                                    (character.level >= 15 && lvlNum === 8) ||
+                                    (character.level >= 17 && lvlNum === 9)
+                                );
+                                const isCurrentTier = lvlNum <= maxAccessibleSlotLevel || isWarlockArcanum;
                                 return (
                                     <button
                                         key={lvlNum}
@@ -683,12 +689,14 @@ export function SpellsTab({ character, onUpdate }: SpellsTabProps) {
                                         className={`px-2.5 py-1 rounded-sm text-xs font-cinzel font-bold border transition-colors cursor-pointer ${
                                             browseLevel === lvlNum.toString()
                                                 ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
+                                                : isWarlockArcanum
+                                                ? 'bg-purple-950/60 border-purple-500/50 text-purple-300 hover:bg-purple-900/40'
                                                 : isCurrentTier
                                                 ? 'bg-[#181a21] border-[#c5a059]/40 text-[#c5a059] hover:bg-[#c5a059]/15'
                                                 : 'bg-[#14151b] border-slate-800 text-slate-500 hover:text-slate-300'
                                         }`}
                                     >
-                                        Level {lvlNum} {isCurrentTier && "✦"}
+                                        Level {lvlNum} {isCurrentTier && "✦"}{isWarlockArcanum && " (Arcanum)"}
                                     </button>
                                 );
                             })}

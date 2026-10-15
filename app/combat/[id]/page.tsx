@@ -12,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { CombatLog } from "./CombatLog";
 import { MonsterStatblockModal } from "@/components/monsters/MonsterStatblockModal";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
-import { Trophy, Skull, Award, Zap } from "lucide-react";
+import { Trophy, Skull, Award, Zap, AlertTriangle, Loader2 } from "lucide-react";
 import { RespiteModal } from "@/components/gauntlet/RespiteModal";
 import { VictoryDefeatModal } from "@/components/gauntlet/VictoryDefeatModal";
 import { InitiativeRibbon } from "@/components/combat/InitiativeRibbon";
@@ -59,6 +60,7 @@ export default function CombatPage() {
     const [isMoving, setIsMoving] = useState(false);
     const [isMovementOperating, setIsMovementOperating] = useState(false);
     const [aoeTargeting, setAoeTargeting] = useState<AoETargetingConfig | null>(null);
+    const [aoeHoverPreview, setAoeHoverPreview] = useState<AoETargetingConfig | null>(null);
     const [viewMode, setViewMode] = useState<"grid" | "duel">("grid");
 
     const [activeTab, setActiveTab] = useState<'attack' | 'damage'>('attack');
@@ -66,6 +68,8 @@ export default function CombatPage() {
     const [gauntletRun, setGauntletRun] = useState<GauntletRun | null>(null);
     const [isRespiteOpen, setIsRespiteOpen] = useState(false);
     const [gauntletModalType, setGauntletModalType] = useState<'victory' | 'defeat' | null>(null);
+    const [endCombatDialogOpen, setEndCombatDialogOpen] = useState(false);
+    const [isEndingCombat, setIsEndingCombat] = useState(false);
     const logRef = useRef<HTMLDivElement>(null);
     const sessionRef = useRef<CombatSession | null>(null);
     const isAiRunningRef = useRef(false);
@@ -474,6 +478,40 @@ export default function CombatPage() {
         }
     };
 
+    const handleNextTurnRef = useRef(handleNextTurn);
+    useEffect(() => {
+        handleNextTurnRef.current = handleNextTurn;
+    });
+
+    // Global keyboard shortcut: Spacebar to End / Skip Turn
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if event target is an input, textarea, select, or editable element
+            const target = e.target as HTMLElement | null;
+            if (
+                target instanceof HTMLInputElement ||
+                target instanceof HTMLTextAreaElement ||
+                target instanceof HTMLSelectElement ||
+                target?.isContentEditable
+            ) {
+                return;
+            }
+
+            // Ignore if active modals or overlays are open
+            if (statblockParticipant || selectedSpellForCast || aoeTargeting || isRespiteOpen || gauntletModalType) {
+                return;
+            }
+
+            if (e.code === "Space" || e.key === " ") {
+                e.preventDefault();
+                handleNextTurnRef.current();
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [statblockParticipant, selectedSpellForCast, aoeTargeting, isRespiteOpen, gauntletModalType]);
+
     const handleAiTurn = async () => {
         if (aiProcessing || isAiRunningRef.current) return;
         await stepByStepEnemyTurns();
@@ -486,7 +524,17 @@ export default function CombatPage() {
     const handleAttack = async (
         attackName: string,
         attackBonus: number,
-        options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean; is_ranged?: boolean }
+        options?: {
+            advantage?: boolean;
+            disadvantage?: boolean;
+            dm_override?: boolean;
+            inspiration?: boolean;
+            is_ranged?: boolean;
+            smite_slot_level?: number;
+            use_divine_smite?: boolean;
+            use_sneak_attack?: boolean;
+            use_bardic_inspiration?: boolean;
+        }
     ) => {
         setAoeTargeting(null);
         const current = getCurrentParticipant();
@@ -519,6 +567,10 @@ export default function CombatPage() {
                 dm_override: options?.dm_override,
                 inspiration: options?.inspiration,
                 is_ranged: options?.is_ranged,
+                smite_slot_level: options?.smite_slot_level,
+                use_divine_smite: options?.use_divine_smite,
+                use_sneak_attack: options?.use_sneak_attack,
+                use_bardic_inspiration: options?.use_bardic_inspiration,
             });
             if (res.data) {
                 const dmgAmount = res.data.damage_amount || res.data.damage || 0;
@@ -876,16 +928,24 @@ export default function CombatPage() {
         }
     };
 
-    const handleEndCombat = async () => {
-        if (!confirm("Are you sure you want to end this combat?")) return;
+    const handleEndCombat = () => {
+        if (session?.status === 'ended') {
+            router.push(gauntletRunId ? "/gauntlet" : "/combat");
+            return;
+        }
+        setEndCombatDialogOpen(true);
+    };
+
+    const confirmEndCombat = async () => {
+        setIsEndingCombat(true);
         try {
             await combatApi.end(sessionId);
-            router.push("/combat");
         } catch (error: any) {
             console.error("Failed to end combat:", error);
-            if (error?.response?.status === 400) {
-                router.push("/combat");
-            }
+        } finally {
+            setIsEndingCombat(false);
+            setEndCombatDialogOpen(false);
+            router.push(gauntletRunId ? "/gauntlet" : "/combat");
         }
     };
 
@@ -1063,6 +1123,103 @@ export default function CombatPage() {
         }
     };
 
+    const handleGrapple = async (targetId: number) => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        if (current.attacks_remaining <= 0 && current.action_used) {
+            alert(`${current.name} has no attacks or action remaining to Grapple.`);
+            return;
+        }
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.grapple(sessionId, {
+                grappler_id: current.id,
+                target_id: targetId,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to grapple:", err);
+            alert(err.response?.data?.error || "Grapple attempt failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
+    const handleEscapeGrapple = async () => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        if (current.action_used) {
+            alert(`${current.name} has already used their action this turn.`);
+            return;
+        }
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.escapeGrapple(sessionId, {
+                participant_id: current.id,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to escape grapple:", err);
+            alert(err.response?.data?.error || "Escape grapple failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
+    const handleReleaseGrapple = async () => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.releaseGrapple(sessionId, {
+                grappler_id: current.id,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to release grapple:", err);
+            alert(err.response?.data?.error || "Release grapple failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
+    const handlePin = async () => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        if (current.action_used) {
+            alert(`${current.name} has already used their action this turn.`);
+            return;
+        }
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.pin(sessionId, {
+                grappler_id: current.id,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to pin target:", err);
+            alert(err.response?.data?.error || "Pin attempt failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
     // 5E Spatial AoE Spell Targeting Handlers
     const handleStartAoETargeting = (config: AoETargetingConfig) => {
         setSelectedSpellForCast(null);
@@ -1074,12 +1231,16 @@ export default function CombatPage() {
         if (!aoeTargeting || !current) return;
         const config = aoeTargeting;
         setAoeTargeting(null);
+        if (config.isFeature && config.onConfirm) {
+            await config.onConfirm(data.targetIds);
+            return;
+        }
         await handleCastSpell({
             casterId: current.id,
             targetId: data.targetIds[0] || null,
             targetIds: data.targetIds,
-            spellName: config.spell.name,
-            spellLevel: config.spellLevel,
+            spellName: config.spell?.name || config.featureName || "Spell",
+            spellLevel: config.spellLevel ?? 0,
             saveType: config.saveType,
             saveDc: config.saveDc,
             damageString: config.damageFormula,
@@ -1093,6 +1254,7 @@ export default function CombatPage() {
 
     const handleCancelAoETargeting = () => {
         setAoeTargeting(null);
+        setAoeHoverPreview(null);
     };
 
     if (loading) {
@@ -1168,12 +1330,13 @@ export default function CombatPage() {
                         /bow|crossbow|dart|sling|blowgun/i.test(item.name || '');
 
                     // 5e Ability modifier rules:
-                    // - Finesse weapons (dagger, rapier, scimitar, dart) use max(STR, DEX)
+                    // - Finesse weapons (dagger, rapier, scimitar, dart) and Monk weapons use max(STR, DEX)
                     // - Pure ranged weapons (bow, crossbow, sling) use DEX
                     // - Thrown melee weapons (javelin, spear, handaxe, trident) use STR
                     // - Standard melee weapons use STR
+                    const isMonk = charData?.character_class?.name?.toLowerCase() === 'monk' || currentParticipant?.is_monk;
                     let abilityMod = stats?.strength_modifier || 0;
-                    if (isFinesse) {
+                    if (isFinesse || isMonk) {
                         abilityMod = Math.max(stats?.strength_modifier || 0, stats?.dexterity_modifier || 0);
                     } else if (isRanged && !isThrown) {
                         abilityMod = stats?.dexterity_modifier || 0;
@@ -1207,17 +1370,60 @@ export default function CombatPage() {
                         rangeLong,
                     };
                 });
-            if (weapons.length > 0) return weapons;
+
+            const isMonk = charData?.character_class?.name?.toLowerCase() === 'monk' || currentParticipant?.is_monk;
+            const monkDie = currentParticipant?.martial_arts_die || stats?.martial_arts_die || '1d4';
+            const unarmedDamage = isMonk ? monkDie : '1';
+            const unarmedAbilityMod = isMonk
+                ? Math.max(stats?.strength_modifier || 0, stats?.dexterity_modifier || 0)
+                : (stats?.strength_modifier || 0);
+
+            const unarmedAttack = {
+                name: isMonk ? 'Unarmed Strike (Martial Arts)' : 'Unarmed Strike',
+                bonus: profBonus + unarmedAbilityMod,
+                damage: unarmedDamage,
+                damageType: 'bludgeoning',
+                properties: isMonk ? ['Monk Weapon', 'Finesse', 'Melee'] : ['Melee'],
+                abilityMod: unarmedAbilityMod,
+                isEquipped: !weapons.some(w => w.isEquipped),
+                isRanged: false,
+                isThrown: false,
+                rangeNormal: 5,
+                rangeLong: 5,
+            };
+
+            return [...weapons, unarmedAttack];
         }
 
         // Fallback: use the equipped_items computed field from the backend
+        const isMonk = charData?.character_class?.name?.toLowerCase() === 'monk' || currentParticipant?.is_monk;
+        const monkDie = currentParticipant?.martial_arts_die || stats?.martial_arts_die || '1d4';
+        const unarmedDamage = isMonk ? monkDie : '1';
+        const unarmedAbilityMod = isMonk
+            ? Math.max(stats?.strength_modifier || 0, stats?.dexterity_modifier || 0)
+            : (stats?.strength_modifier || 0);
+
+        const unarmedAttack = {
+            name: isMonk ? 'Unarmed Strike (Martial Arts)' : 'Unarmed Strike',
+            bonus: profBonus + unarmedAbilityMod,
+            damage: unarmedDamage,
+            damageType: 'bludgeoning',
+            properties: isMonk ? ['Monk Weapon', 'Finesse', 'Melee'] : ['Melee'],
+            abilityMod: unarmedAbilityMod,
+            isEquipped: true,
+            isRanged: false,
+            isThrown: false,
+            rangeNormal: 5,
+            rangeLong: 5,
+        };
+
         if (currentParticipant?.equipped_items?.weapon) {
             const weapon = currentParticipant.equipped_items.weapon;
             const isFinesse = (weapon as any).finesse || /dagger|rapier|scimitar|shortsword|dart/i.test(weapon.name || '');
             const isThrown = (weapon as any).thrown || /javelin|spear|handaxe|dart|dagger|trident|light hammer/i.test(weapon.name || '');
             const isRanged = (weapon as any).weapon_type?.toLowerCase().includes('ranged') || /bow|crossbow|dart|sling|blowgun/i.test(weapon.name || '');
             let abilityMod = stats?.strength_modifier || 0;
-            if (isFinesse) {
+            if (isFinesse || isMonk) {
                 abilityMod = Math.max(stats?.strength_modifier || 0, stats?.dexterity_modifier || 0);
             } else if (isRanged && !isThrown) {
                 abilityMod = stats?.dexterity_modifier || 0;
@@ -1238,10 +1444,10 @@ export default function CombatPage() {
                 isEquipped: true,
                 isRanged,
                 isThrown,
-            }];
+            }, unarmedAttack];
         }
 
-        return [];
+        return [unarmedAttack];
     };
 
     // Get prepared spells grouped by level
@@ -1307,13 +1513,8 @@ export default function CombatPage() {
                         </p>
                         <div className="flex gap-3 pt-2">
                             <Button
-                                onClick={async () => {
-                                    try {
-                                        await combatApi.end(sessionId);
-                                    } catch (e) {
-                                        // Ignore if already ended
-                                    }
-                                    router.push('/combat');
+                                onClick={() => {
+                                    setCombatOutcome(null);
                                 }}
                                 className="flex-1 bg-[#181a21] hover:bg-[#c5a059]/15 text-[#c5a059] border border-[#c5a059]/40 h-11 text-xs font-semibold rounded cursor-pointer"
                             >
@@ -1321,19 +1522,24 @@ export default function CombatPage() {
                             </Button>
                             <Button
                                 onClick={async () => {
+                                    setIsEndingCombat(true);
                                     try {
                                         await combatApi.end(sessionId);
                                     } catch (e) {
                                         // Ignore if already ended
+                                    } finally {
+                                        setIsEndingCombat(false);
+                                        router.push(gauntletRunId ? '/gauntlet' : '/combat');
                                     }
-                                    router.push('/combat');
                                 }}
-                                className={`flex-1 h-11 font-bold text-xs uppercase tracking-wider rounded cursor-pointer ${combatOutcome === 'victory'
+                                disabled={isEndingCombat}
+                                className={`flex-1 h-11 font-bold text-xs uppercase tracking-wider rounded cursor-pointer flex items-center justify-center gap-2 ${combatOutcome === 'victory'
                                     ? 'bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] shadow-[0_0_15px_rgba(197,160,89,0.4)]'
                                     : 'bg-red-800 hover:bg-red-700 text-white'
                                     }`}
                             >
-                                Conclude Combat
+                                {isEndingCombat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                <span>{isEndingCombat ? 'Concluding...' : 'Conclude Combat'}</span>
                             </Button>
                         </div>
                     </div>
@@ -1356,6 +1562,39 @@ export default function CombatPage() {
                     type={gauntletModalType}
                 />
             )}
+
+            {/* End Combat Confirmation Modal */}
+            <Dialog open={endCombatDialogOpen} onOpenChange={setEndCombatDialogOpen}>
+                <DialogContent className="max-w-md bg-[#12141c] border border-red-500/40 text-slate-100 font-lora shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+                    <DialogHeader>
+                        <DialogTitle className="font-cinzel text-xl text-red-400 flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                            End Combat Encounter?
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-300 text-xs mt-2 leading-relaxed font-lora">
+                            Are you sure you wish to conclude this combat encounter? Active participant states and combat resources will be finalized in your War Archives.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-4 flex gap-2 sm:justify-end">
+                        <Button
+                            variant="outline"
+                            onClick={() => setEndCombatDialogOpen(false)}
+                            disabled={isEndingCombat}
+                            className="border-slate-700 hover:bg-slate-800 text-slate-300 text-xs h-9 cursor-pointer"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={confirmEndCombat}
+                            disabled={isEndingCombat}
+                            className="bg-red-900 hover:bg-red-800 text-white font-semibold text-xs h-9 px-4 cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.3)] flex items-center gap-2"
+                        >
+                            {isEndingCombat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                            <span>{isEndingCombat ? "Ending..." : "End Combat"}</span>
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* 1. Compact Header Bar */}
             <div className="border-b border-[#181a21] bg-[#0c0d12]/95 backdrop-blur-md z-30 font-lora flex-shrink-0">
@@ -1456,9 +1695,15 @@ export default function CombatPage() {
                         </Button>
                         <Button
                             onClick={handleEndCombat}
-                            className="bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-red-100 border border-red-500/50 text-xs h-7 font-semibold rounded px-3 py-1 transition-all shadow-[0_0_12px_rgba(239,68,68,0.2)] cursor-pointer"
+                            disabled={isEndingCombat}
+                            className={`${
+                                session?.status === 'ended'
+                                    ? 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-amber-100 border border-amber-500/50'
+                                    : 'bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-red-100 border border-red-500/50'
+                            } text-xs h-7 font-semibold rounded px-3 py-1 transition-all shadow-[0_0_12px_rgba(239,68,68,0.2)] cursor-pointer flex items-center gap-1.5`}
                         >
-                            End Combat
+                            {isEndingCombat && <Loader2 className="w-3 h-3 animate-spin" />}
+                            <span>{session?.status === 'ended' ? 'Exit Arena' : isEndingCombat ? 'Ending...' : 'End Combat'}</span>
                         </Button>
                     </div>
                 </div>
@@ -1507,6 +1752,7 @@ export default function CombatPage() {
                 isMoving={isMoving}
                 isOperating={isMovementOperating}
                 aoeTargeting={aoeTargeting}
+                aoeHoverPreview={aoeHoverPreview}
                 onConfirmAoECast={handleConfirmAoECast}
                 onCancelAoETargeting={handleCancelAoETargeting}
                 environmentalEffects={session?.environmental_effects}
@@ -1533,6 +1779,7 @@ export default function CombatPage() {
                 }}
                 onStartAoETargeting={handleStartAoETargeting}
                 onCancelAoETargeting={handleCancelAoETargeting}
+                onAoEHoverPreview={setAoeHoverPreview}
                 enemyAttacks={enemyAttacks}
                 damageAmount={damageAmount}
                 setDamageAmount={setDamageAmount}
@@ -1549,6 +1796,10 @@ export default function CombatPage() {
                 onDisengage={handleDisengage}
                 onDodge={handleDodge}
                 onSetAltitude={handleSetAltitude}
+                onGrapple={handleGrapple}
+                onEscapeGrapple={handleEscapeGrapple}
+                onReleaseGrapple={handleReleaseGrapple}
+                onPin={handlePin}
             />
 
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}

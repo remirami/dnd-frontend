@@ -83,7 +83,7 @@ export default function CharacterCreationWizard() {
     const [isRandomizingStep, setIsRandomizingStep] = useState(false);
     const [formData, setFormData] = useState<CharacterFormData>({
         name: "",
-        ruleset_version: "2014",
+        ruleset_version: "2024",
         race_id: null,
         character_class_id: null,
         character_class_name: undefined,
@@ -156,7 +156,7 @@ export default function CharacterCreationWizard() {
 
             setFormData({
                 name: data.name || "",
-                ruleset_version: data.ruleset_version || "2014",
+                ruleset_version: data.ruleset_version || "2024",
                 race_id: data.race_id || null,
                 character_class_id: data.character_class_id || null,
                 character_class_name: data.character_class_name,
@@ -228,7 +228,7 @@ export default function CharacterCreationWizard() {
                         break;
                     }
                     const subRes = await api.get(
-                        `/character-classes/${formData.character_class_id}/subclasses/?ruleset=${formData.ruleset_version || '2014'}`
+                        `/character-classes/${formData.character_class_id}/subclasses/?ruleset=${formData.ruleset_version || '2024'}`
                     );
                     const subList = Array.isArray(subRes.data) ? subRes.data : [];
                     if (subList.length > 0) {
@@ -410,7 +410,7 @@ export default function CharacterCreationWizard() {
                     }
 
                     const res = await api.get(
-                        `/characters/starting_spell_choices/?class_name=${clsName}&ruleset=${formData.ruleset_version || '2014'}`
+                        `/characters/starting_spell_choices/?class_name=${clsName}&ruleset=${formData.ruleset_version || '2024'}`
                     );
                     const spellData = res.data;
 

@@ -427,6 +427,16 @@ export function ClashCard({
                                         ⚠️ Disadv
                                     </span>
                                 )}
+                                {defender?.grappled_by_id === attacker?.id && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-orange-950 border border-orange-500/60 text-orange-300">
+                                        🤼 Grappled
+                                    </span>
+                                )}
+                                {attacker?.grappled_by_id === defender?.id && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-rose-950 border border-rose-500/60 text-rose-300">
+                                        🪢 Grappled by Target
+                                    </span>
+                                )}
                             </>
                         )}
                         {onInspectParticipant && defender && (

@@ -277,6 +277,7 @@ interface BattleGridProps {
     isMoving?: boolean;
     isOperating?: boolean;
     aoeTargeting?: AoETargetingConfig | null;
+    aoeHoverPreview?: AoETargetingConfig | null;
     onConfirmAoECast?: (data: { targetIds: number[] }) => Promise<void>;
     onCancelAoETargeting?: () => void;
     environmentalEffects?: EnvironmentalEffect[];
@@ -358,6 +359,21 @@ function getCompassHeading(deg: number): string {
     if (normalized >= 202.5 && normalized < 247.5) return "SW";
     if (normalized >= 247.5 && normalized < 292.5) return "W";
     return "NW";
+}
+
+// 5E Creature type detection for targeted AoE censures (Turn Undead, Turn the Unholy)
+export function isUndeadParticipant(p: CombatParticipant): boolean {
+    const ct = (p.creature_type || (p as any).enemy_stats?.creature_type || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
+    if (ct.includes("undead")) return true;
+    return /skeleton|zombie|ghoul|ghast|wight|wraith|mummy|specter|ghost|shadow|vampire|lich|banshee|death knight|crawling claw|shadow horror|poltergeist|dracolich/i.test(name);
+}
+
+export function isFiendParticipant(p: CombatParticipant): boolean {
+    const ct = (p.creature_type || (p as any).enemy_stats?.creature_type || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
+    if (ct.includes("fiend") || ct.includes("demon") || ct.includes("devil")) return true;
+    return /demon|devil|imp|quasit|hell hound|succubus|incubus|balor|pit fiend|barbed devil|bearded devil|chain devil|bone devil/i.test(name);
 }
 
 // Calculate cells affected by 5E Area of Effect template
@@ -599,6 +615,7 @@ function BattleGridComponent({
     isMoving = false,
     isOperating = false,
     aoeTargeting,
+    aoeHoverPreview,
     onConfirmAoECast,
     onCancelAoETargeting,
     environmentalEffects,
@@ -1003,6 +1020,8 @@ function BattleGridComponent({
         const set = new Set<string>();
         activeEnemies.forEach((enemy) => {
             if (enemy.reaction_used) return;
+            // 5e Rules: Enemy grappled by current participant is being dragged and does not threaten OA against grappler
+            if (currentParticipant?.is_grappling && (enemy.grappled_by_id === currentParticipant.id || currentParticipant.grappling_target_id === enemy.id)) return;
             const isInc = enemy.conditions?.some((c: any) =>
                 isIncapacitating(typeof c === "string" ? c : c.name)
             );
@@ -1211,6 +1230,8 @@ function BattleGridComponent({
 
         const enemiesLeft = activeEnemies.filter((enemy) => {
             if (enemy.reaction_used) return false;
+            // 5e Rules: Enemy grappled by current participant is being dragged and does not get an Opportunity Attack against grappler
+            if (currentParticipant?.is_grappling && (enemy.grappled_by_id === currentParticipant.id || currentParticipant.grappling_target_id === enemy.id)) return false;
             const ecoords = resolveParticipantCoords(enemy, allParticipants);
             const wasAdjacent = Math.max(Math.abs(curCol - ecoords.col), Math.abs(curRow - ecoords.row)) <= 1;
             const willBeAdjacent = Math.max(Math.abs(targetCol - ecoords.col), Math.abs(targetRow - ecoords.row)) <= 1;
@@ -1240,50 +1261,84 @@ function BattleGridComponent({
     }, [hoveredCell, sessionId, curAlt]);
 
 
-    // 5E AoE Spell Footprint Calculation
-    const aoeFootprint = useMemo(() => {
-        if (!aoeTargeting || !hoveredCell) return new Set<string>();
-        const hCol = Math.round(hoveredCell.x / 5);
-        const hRow = Math.round(hoveredCell.y / 5);
-        return getAoECells(hCol, hRow, curCol, curRow, aoeTargeting.shape, aoeTargeting.size);
-    }, [aoeTargeting, hoveredCell, curCol, curRow]);
+    // 5E AoE Spell & Feat Footprint Calculation (Active Targeting or Hover Preview)
+    const activeAoE = aoeTargeting || aoeHoverPreview;
+    const isCasterCentered = activeAoE?.origin === 'caster';
+    const centerCol = isCasterCentered ? curCol : (hoveredCell ? Math.round(hoveredCell.x / 5) : curCol);
+    const centerRow = isCasterCentered ? curRow : (hoveredCell ? Math.round(hoveredCell.y / 5) : curRow);
 
-    // Active participants in AoE footprint
+    const aoeFootprint = useMemo(() => {
+        if (!activeAoE) return new Set<string>();
+        if (!isCasterCentered && !hoveredCell) return new Set<string>();
+        return getAoECells(centerCol, centerRow, curCol, curRow, activeAoE.shape, activeAoE.size);
+    }, [activeAoE, isCasterCentered, hoveredCell, centerCol, centerRow, curCol, curRow]);
+
+    // Active participants in AoE footprint with targeted filter matching (e.g. undead, fiend, allies)
     const aoeTargets = useMemo(() => {
-        if (!aoeTargeting || aoeFootprint.size === 0) return { enemies: [], allies: [], all: [] };
+        if (!activeAoE || aoeFootprint.size === 0) return { enemies: [], allies: [], matching: [], all: [] };
         const enemies: CombatParticipant[] = [];
         const allies: CombatParticipant[] = [];
+        const matching: CombatParticipant[] = [];
         const all: CombatParticipant[] = [];
 
         allParticipants.forEach((p) => {
             if (p.current_hp > 0 && p.is_active) {
+                // The caster is never targeted or damaged by their own offensive blast / Self-origin AoE
+                if (p.id === currentParticipant?.id && !activeAoE.isHealing) {
+                    return;
+                }
                 const coords = resolveParticipantCoords(p, allParticipants);
                 if (aoeFootprint.has(`${coords.col},${coords.row}`)) {
                     all.push(p);
-                    if (p.participant_type === 'enemy') {
+                    const isEnemy = p.participant_type === 'enemy';
+                    if (isEnemy) {
                         enemies.push(p);
                     } else {
                         allies.push(p);
                     }
+
+                    if (activeAoE.targetFilter === 'undead') {
+                        if (isEnemy && isUndeadParticipant(p)) matching.push(p);
+                    } else if (activeAoE.targetFilter === 'fiend_or_undead') {
+                        if (isEnemy && (isUndeadParticipant(p) || isFiendParticipant(p))) matching.push(p);
+                    } else if (activeAoE.targetFilter === 'bloodied_allies') {
+                        if (!isEnemy && p.current_hp < Math.floor(p.max_hp / 2)) matching.push(p);
+                    } else if (activeAoE.targetFilter === 'allies') {
+                        if (!isEnemy) matching.push(p);
+                    } else if (activeAoE.targetFilter === 'enemies') {
+                        if (isEnemy) matching.push(p);
+                    } else {
+                        matching.push(p);
+                    }
                 }
             }
         });
-        return { enemies, allies, all };
-    }, [aoeTargeting, aoeFootprint, allParticipants]);
+        return { enemies, allies, matching, all };
+    }, [activeAoE, aoeFootprint, allParticipants]);
 
     const aoeTheme = useMemo(() => {
-        if (!aoeTargeting) return getAoETheme("");
-        return getAoETheme(aoeTargeting.spell.name, aoeTargeting.damageType);
-    }, [aoeTargeting]);
+        if (!activeAoE) return getAoETheme("");
+        const name = activeAoE.featureName || activeAoE.spell?.name || "";
+        const fallbackDt = name.toLowerCase().includes('turn') ? 'radiant' : '';
+        return getAoETheme(name, activeAoE.damageType || fallbackDt);
+    }, [activeAoE]);
 
-    const handleAoEClick = async (targetX: number, targetY: number) => {
+    const handleAoEClick = async (targetX?: number, targetY?: number) => {
         if (!aoeTargeting || !onConfirmAoECast) return;
         const targetIds = aoeTargets.all.map((p) => p.id);
 
-        if (aoeTargets.allies.length > 0) {
+        if (
+            aoeTargets.allies.length > 0 &&
+            !aoeTargeting.isHealing &&
+            aoeTargeting.targetFilter !== 'allies' &&
+            aoeTargeting.targetFilter !== 'bloodied_allies' &&
+            aoeTargeting.targetFilter !== 'undead' &&
+            aoeTargeting.targetFilter !== 'fiend_or_undead'
+        ) {
             const allyNames = aoeTargets.allies.map((a) => a.name).join(", ");
+            const actionName = aoeTargeting.featureName || aoeTargeting.spell?.name || "Action";
             const confirmed = confirm(
-                `⚠️ FRIENDLY FIRE WARNING!\n\n${allyNames} will be caught in the blast area!\n\nDo you want to proceed with casting ${aoeTargeting.spell.name}?`
+                `⚠️ FRIENDLY FIRE WARNING!\n\n${allyNames} will be caught in the blast area!\n\nDo you want to proceed with ${actionName}?`
             );
             if (!confirmed) return;
         }
@@ -1376,18 +1431,71 @@ function BattleGridComponent({
 
     return (
         <div ref={rootContainerRef} className="w-full max-w-3xl sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto flex flex-col items-center gap-2 select-none font-lora relative">
-            {/* 0. AoE Targeting Mode Banner (Pillar 6.3) */}
+            {/* 0. AoE Hover Preview Floating Pill (Shows before clicking) */}
+            {!aoeTargeting && aoeHoverPreview && (
+                <div className="w-full p-2 rounded-lg bg-gradient-to-r from-[#12141a]/95 via-[#1c1810]/95 to-[#12141a]/95 border-2 border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.3)] flex flex-wrap items-center justify-between gap-2 animate-in fade-in duration-150 backdrop-blur-md">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-lg animate-pulse flex-shrink-0">
+                            {aoeTheme.badge.startsWith('✨') ? '✨' : aoeTheme.badge.startsWith('💀') ? '💀' : '👁️'}
+                        </span>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-cinzel font-bold text-xs sm:text-sm text-amber-200 uppercase tracking-wider truncate">
+                                    {aoeHoverPreview.featureName || aoeHoverPreview.spell?.name} (Area Preview)
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-600/50 text-[10px] font-cinzel font-semibold text-amber-300">
+                                    {aoeHoverPreview.shape.toUpperCase()}: {aoeHoverPreview.size} FT {aoeHoverPreview.origin === 'caster' ? '(Centered on Caster)' : ''}
+                                </span>
+                                {aoeHoverPreview.saveType && (
+                                    <span className="px-1.5 py-0.5 rounded bg-black/60 border border-amber-800/60 text-[10px] font-fira-sans text-amber-300">
+                                        DC {aoeHoverPreview.saveDc} {aoeHoverPreview.saveType} Save
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[10px] sm:text-[11px] text-[#d1cdb8]/80 font-lora mt-0.5">
+                                {aoeHoverPreview.description || (aoeHoverPreview.origin === 'caster'
+                                    ? `30ft radius burst centered on ${currentParticipant?.name}.`
+                                    : 'Visualizing blast template area on the battle grid.')}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-nowrap flex-shrink-0">
+                        {aoeTargets.matching.length > 0 && aoeHoverPreview.targetFilter === 'undead' ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-400 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-sm whitespace-nowrap animate-pulse">
+                                <span>💀</span> {aoeTargets.matching.length} Undead in Range
+                            </span>
+                        ) : aoeTargets.matching.length > 0 && aoeHoverPreview.targetFilter === 'fiend_or_undead' ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-400 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-sm whitespace-nowrap animate-pulse">
+                                <span>⚡</span> {aoeTargets.matching.length} Fiends/Undead in Range
+                            </span>
+                        ) : aoeTargets.enemies.length > 0 ? (
+                            <span className="px-2 py-0.5 rounded bg-red-900/80 border border-red-500 text-[11px] font-cinzel font-bold text-red-100 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                                <span>🎯</span> {aoeTargets.enemies.length} {aoeTargets.enemies.length === 1 ? 'Enemy' : 'Enemies'} in Range
+                            </span>
+                        ) : (
+                            <span className="px-2 py-0.5 rounded bg-slate-900/80 border border-slate-700 text-[11px] font-cinzel text-slate-300 whitespace-nowrap">
+                                0 Targets in Range
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* 0. AoE Active Targeting Mode Banner (Locked on click) */}
             {aoeTargeting && (
                 <div className="w-full p-2.5 rounded-lg bg-gradient-to-r from-red-950 via-[#181a24] to-red-950 border-2 border-red-500/70 shadow-[0_0_20px_rgba(239,68,68,0.35)] flex flex-wrap items-center justify-between gap-2 animate-in fade-in duration-200">
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-xl animate-pulse flex-shrink-0">🔥</span>
+                        <span className="text-xl animate-pulse flex-shrink-0">
+                            {aoeTheme.badge.startsWith('✨') ? '✨' : aoeTheme.badge.startsWith('💀') ? '💀' : '🔥'}
+                        </span>
                         <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-cinzel font-bold text-xs sm:text-sm text-red-200 uppercase tracking-wider truncate">
-                                    Aiming {aoeTargeting.spell.name}
+                                    Aiming {aoeTargeting.featureName || aoeTargeting.spell?.name}
                                 </span>
                                 <span className="px-1.5 py-0.5 rounded bg-red-900/60 border border-red-700/50 text-[10px] font-cinzel font-semibold text-red-300">
-                                    {aoeTargeting.shape.toUpperCase()}: {aoeTargeting.size} FT
+                                    {aoeTargeting.shape.toUpperCase()}: {aoeTargeting.size} FT {aoeTargeting.origin === 'caster' ? '(Centered on Caster)' : ''}
                                 </span>
                                 {aoeTargeting.saveType && (
                                     <span className="px-1.5 py-0.5 rounded bg-black/50 border border-slate-700 text-[10px] font-fira-sans text-amber-300">
@@ -1396,22 +1504,46 @@ function BattleGridComponent({
                                 )}
                             </div>
                             <p className="text-[10px] sm:text-[11px] text-slate-300 font-lora mt-0.5">
-                                Hover over grid cells to aim template. Click square to unleash spell.
+                                {aoeTargeting.origin === 'caster'
+                                    ? `Centered on ${currentParticipant?.name}. Click 'Invoke' or click anywhere on the grid to activate.`
+                                    : 'Hover over grid cells to aim template. Click square to unleash spell.'}
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2 flex-nowrap flex-shrink-0">
-                        {aoeTargets.enemies.length > 0 && (
+                        {aoeTargets.matching.length > 0 && aoeTargeting.targetFilter === 'undead' ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-900/90 border border-amber-400 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-sm whitespace-nowrap animate-pulse">
+                                <span>💀</span> {aoeTargets.matching.length} Undead
+                            </span>
+                        ) : aoeTargets.matching.length > 0 && aoeTargeting.targetFilter === 'fiend_or_undead' ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-900/90 border border-amber-400 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-sm whitespace-nowrap animate-pulse">
+                                <span>⚡</span> {aoeTargets.matching.length} Fiends/Undead
+                            </span>
+                        ) : aoeTargets.enemies.length > 0 ? (
                             <span className="px-2 py-0.5 rounded bg-red-900/80 border border-red-500 text-[11px] font-cinzel font-bold text-red-100 flex items-center gap-1 shadow-sm whitespace-nowrap">
                                 <span>🎯</span> {aoeTargets.enemies.length} {aoeTargets.enemies.length === 1 ? 'Enemy' : 'Enemies'}
                             </span>
+                        ) : (
+                            <span className="px-2 py-0.5 rounded bg-slate-800/80 border border-slate-600 text-[11px] font-cinzel text-slate-300 whitespace-nowrap">
+                                0 Targets in Range
+                            </span>
                         )}
-                        {aoeTargets.allies.length > 0 && (
+                        {aoeTargets.allies.length > 0 && !aoeTargeting.isHealing && aoeTargeting.targetFilter !== 'allies' && aoeTargeting.targetFilter !== 'bloodied_allies' && aoeTargeting.targetFilter !== 'undead' && aoeTargeting.targetFilter !== 'fiend_or_undead' && (
                             <span className="px-2 py-0.5 rounded bg-amber-950/90 border border-amber-500 text-[11px] font-cinzel font-bold text-amber-200 flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.4)] animate-pulse whitespace-nowrap">
                                 <span>⚠️</span> {aoeTargets.allies.length} {aoeTargets.allies.length === 1 ? 'Ally' : 'Allies'} (Friendly Fire)
                             </span>
                         )}
+
+                        {/* One-click Confirm Button */}
+                        <button
+                            type="button"
+                            onClick={() => handleAoEClick(curX, curY)}
+                            className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs font-cinzel font-bold cursor-pointer transition-all shadow-[0_0_12px_rgba(251,191,36,0.4)] whitespace-nowrap"
+                        >
+                            ✓ {aoeTargeting.isFeature ? `Invoke ${aoeTargeting.featureName}` : 'Confirm Cast'}
+                        </button>
+
                         {onCancelAoETargeting && (
                             <button
                                 type="button"
@@ -2013,8 +2145,14 @@ function BattleGridComponent({
                                 const curReach = (currentParticipant as any)?.reach ?? (curSizeTiles >= 4 ? 15 : curSizeTiles === 3 ? 10 : 5);
                                 const isMeleeEnemy = Boolean(isEnemyOccupant && pDist <= curReach && pDist >= 0);
                                 const pIsTarget = p.id.toString() === targetId;
-                                const pIsAoEEnemy = aoeTargets.enemies.some(e => e.id === p.id);
-                                const pIsAoEAlly = aoeTargets.allies.some(a => a.id === p.id);
+                                const isTargetFiltered = Boolean(activeAoE?.targetFilter);
+                                const pMatchesFilter = Boolean(activeAoE && aoeTargets.matching.some(m => m.id === p.id));
+                                const pIsAoEEnemy = isTargetFiltered
+                                    ? pMatchesFilter && isEnemyOccupant
+                                    : aoeTargets.enemies.some(e => e.id === p.id);
+                                const pIsAoEAlly = isTargetFiltered
+                                    ? pMatchesFilter && !isEnemyOccupant
+                                    : aoeTargets.allies.some(a => a.id === p.id);
                                 const pIsOAThreat = Boolean(hoveredOARisk && hoveredOARisk.some(e => e.id === p.id));
 
                                 const activeBuffs = (p as any).active_buffs || [];
@@ -2047,12 +2185,23 @@ function BattleGridComponent({
                                             zIndex: depthZIndex,
                                             transformStyle: "preserve-3d",
                                         }}
-                                        onClick={() => {
+                                        onClick={async (e) => {
+                                            if (aoeTargeting) {
+                                                e.stopPropagation();
+                                                setHoveredCell({ x: coords.col * 5, y: coords.row * 5 });
+                                                await handleCellClick(coords.col * 5, coords.row * 5, p);
+                                                return;
+                                            }
                                             if (isEnemyOccupant) {
                                                 onSelectTarget(p.id.toString());
                                                 if (pDist <= curReach && onSwitchToDuel) onSwitchToDuel();
                                             }
                                             onInspectParticipant(p);
+                                        }}
+                                        onMouseEnter={() => {
+                                            if (aoeTargeting) {
+                                                setHoveredCell({ x: coords.col * 5, y: coords.row * 5 });
+                                            }
                                         }}
                                     >
                                         {/* Ground Drop-Shadow & Flight Stand for Airborne Creatures */}
@@ -2153,6 +2302,14 @@ function BattleGridComponent({
                                                                 🛡️+{pCover.bonus}
                                                             </span>
                                                         ) : null}
+                                                        {activeAoE && pMatchesFilter && (
+                                                            <span
+                                                                className="text-[8px] sm:text-[9px] font-fira-sans font-extrabold px-1 py-0.2 rounded bg-amber-950/95 text-amber-200 border border-amber-400/80 shadow-xs flex items-center gap-0.5 animate-pulse"
+                                                                title={`Targeted by ${activeAoE.featureName || activeAoE.spell?.name} Area (${pDist}ft from caster)`}
+                                                            >
+                                                                {activeAoE.targetFilter === 'undead' ? '💀 Undead' : activeAoE.targetFilter === 'fiend_or_undead' ? '⚡ Fiend/Undead' : activeAoE.targetFilter === 'bloodied_allies' ? '🤍 Heal Target' : '🎯 In Range'}
+                                                            </span>
+                                                        )}
                                                     </div>
 
                                                     {/* Micro HP Progress Line */}
@@ -2176,50 +2333,63 @@ function BattleGridComponent({
                         </div>
 
                         {/* 5E AoE Spell Spatial Blast Overlay (Clipped to grid bounds to prevent viewport expansion) */}
-                        {aoeTargeting && hoveredCell && (
+                        {activeAoE && (isCasterCentered || hoveredCell) && (
                             <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-hidden rounded-lg">
                                 <defs>
                                     <radialGradient id="aoeBlastGrad" cx="50%" cy="50%" r="50%">
-                                        <stop offset="0%" stopColor={aoeTheme.svgColor} stopOpacity="0.45" />
+                                        <stop offset="0%" stopColor={aoeTheme.svgColor} stopOpacity={isCasterCentered ? "0.55" : "0.45"} />
                                         <stop offset="70%" stopColor={aoeTheme.svgColor} stopOpacity="0.25" />
                                         <stop offset="100%" stopColor={aoeTheme.svgColor} stopOpacity="0.0" />
                                     </radialGradient>
                                 </defs>
 
                                 {/* Sphere or Cylinder AoE Blast Template */}
-                                {(aoeTargeting.shape === "sphere" || aoeTargeting.shape === "cylinder") && (
+                                {(activeAoE.shape === "sphere" || activeAoE.shape === "cylinder") && (
                                     <>
                                         <ellipse
-                                            cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
-                                            cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                            rx={`${((aoeTargeting.size / 5) / COLS) * 100}%`}
-                                            ry={`${((aoeTargeting.size / 5) / ROWS) * 100}%`}
+                                            cx={`${((centerCol + 0.5) / COLS) * 100}%`}
+                                            cy={`${((centerRow + 0.5) / ROWS) * 100}%`}
+                                            rx={`${((activeAoE.size / 5) / COLS) * 100}%`}
+                                            ry={`${((activeAoE.size / 5) / ROWS) * 100}%`}
                                             fill="url(#aoeBlastGrad)"
                                             stroke={aoeTheme.svgColor}
-                                            strokeWidth="2"
-                                            strokeDasharray="6 4"
+                                            strokeWidth={isCasterCentered ? "2.5" : "2"}
+                                            strokeDasharray={isCasterCentered ? "8 4" : "6 4"}
                                             className="animate-pulse"
                                         />
-                                        {/* Crosshair at ground zero */}
+                                        {/* Crosshair / Beacon at ground zero */}
                                         <circle
-                                            cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
-                                            cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
-                                            r="4"
+                                            cx={`${((centerCol + 0.5) / COLS) * 100}%`}
+                                            cy={`${((centerRow + 0.5) / ROWS) * 100}%`}
+                                            r={isCasterCentered ? "5" : "4"}
                                             fill={aoeTheme.svgColor}
                                             stroke="#ffffff"
                                             strokeWidth="1.5"
                                         />
+                                        {isCasterCentered && (
+                                            <ellipse
+                                                cx={`${((centerCol + 0.5) / COLS) * 100}%`}
+                                                cy={`${((centerRow + 0.5) / ROWS) * 100}%`}
+                                                rx={`${((activeAoE.size / 10) / COLS) * 100}%`}
+                                                ry={`${((activeAoE.size / 10) / ROWS) * 100}%`}
+                                                fill="none"
+                                                stroke={aoeTheme.svgColor}
+                                                strokeWidth="1"
+                                                strokeDasharray="4 4"
+                                                opacity="0.6"
+                                            />
+                                        )}
                                     </>
                                 )}
 
                                 {/* Cube AoE Blast Template */}
-                                {aoeTargeting.shape === "cube" && (
+                                {activeAoE.shape === "cube" && (
                                     <>
                                         <rect
-                                            x={`${((Math.round(hoveredCell.x / 5) - Math.floor(aoeTargeting.size / 10)) / COLS) * 100}%`}
-                                            y={`${((Math.round(hoveredCell.y / 5) - Math.floor(aoeTargeting.size / 10)) / ROWS) * 100}%`}
-                                            width={`${((aoeTargeting.size / 5) / COLS) * 100}%`}
-                                            height={`${((aoeTargeting.size / 5) / ROWS) * 100}%`}
+                                            x={`${((centerCol - Math.floor(activeAoE.size / 10)) / COLS) * 100}%`}
+                                            y={`${((centerRow - Math.floor(activeAoE.size / 10)) / ROWS) * 100}%`}
+                                            width={`${((activeAoE.size / 5) / COLS) * 100}%`}
+                                            height={`${((activeAoE.size / 5) / ROWS) * 100}%`}
                                             fill="url(#aoeBlastGrad)"
                                             stroke={aoeTheme.svgColor}
                                             strokeWidth="2"
@@ -2227,8 +2397,8 @@ function BattleGridComponent({
                                             className="animate-pulse"
                                         />
                                         <circle
-                                            cx={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
-                                            cy={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
+                                            cx={`${((centerCol + 0.5) / COLS) * 100}%`}
+                                            cy={`${((centerRow + 0.5) / ROWS) * 100}%`}
                                             r="4"
                                             fill={aoeTheme.svgColor}
                                             stroke="#ffffff"
@@ -2238,12 +2408,12 @@ function BattleGridComponent({
                                 )}
 
                                 {/* Line AoE Beam */}
-                                {aoeTargeting.shape === "line" && (
+                                {activeAoE.shape === "line" && (
                                     <line
                                         x1={`${((curCol + 0.5) / COLS) * 100}%`}
                                         y1={`${((curRow + 0.5) / ROWS) * 100}%`}
-                                        x2={`${((Math.round(hoveredCell.x / 5) + 0.5) / COLS) * 100}%`}
-                                        y2={`${((Math.round(hoveredCell.y / 5) + 0.5) / ROWS) * 100}%`}
+                                        x2={`${((centerCol + 0.5) / COLS) * 100}%`}
+                                        y2={`${((centerRow + 0.5) / ROWS) * 100}%`}
                                         stroke={aoeTheme.svgColor}
                                         strokeWidth="16"
                                         strokeOpacity="0.35"
@@ -2253,15 +2423,15 @@ function BattleGridComponent({
                                 )}
 
                                 {/* Cone AoE Vector & Polygon */}
-                                {aoeTargeting.shape === "cone" && (() => {
-                                    const hCol = Math.round(hoveredCell.x / 5);
-                                    const hRow = Math.round(hoveredCell.y / 5);
+                                {activeAoE.shape === "cone" && (() => {
+                                    const hCol = hoveredCell ? Math.round(hoveredCell.x / 5) : curCol;
+                                    const hRow = hoveredCell ? Math.round(hoveredCell.y / 5) : curRow;
                                     const dx = (hCol - curCol);
                                     const dy = (hRow - curRow);
                                     const dist = Math.hypot(dx, dy);
                                     if (dist <= 0) return null;
                                     const theta = Math.atan2(dy, dx);
-                                    const rSquares = aoeTargeting.size / 5;
+                                    const rSquares = activeAoE.size / 5;
                                     const halfAngle = 0.4636; // ~26.56 deg (5e standard: cone width = distance)
                                     const cLeft = curCol + 0.5 + rSquares * Math.cos(theta - halfAngle);
                                     const rLeft = curRow + 0.5 + rSquares * Math.sin(theta - halfAngle);

@@ -46,8 +46,21 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
     const [feats, setFeats] = useState<Feat[]>([]);
     const [selectedFeat, setSelectedFeat] = useState<Feat | null>(null);
     const [featSearch, setFeatSearch] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
     const pendingLevel = character.pending_asi_levels?.[0];
+
+    useEffect(() => {
+        if (open) {
+            if (pendingLevel === 20) {
+                setActiveTab("feat");
+                setCategoryFilter("epic_boon");
+            } else {
+                setActiveTab("asi");
+                setCategoryFilter("all");
+            }
+        }
+    }, [open, pendingLevel]);
 
     useEffect(() => {
         if (open && activeTab === "feat") {
@@ -130,9 +143,49 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
         }
     };
 
-    const filteredFeats = feats.filter(feat =>
-        feat.name.toLowerCase().includes(featSearch.toLowerCase())
-    );
+    const filteredFeats = feats.filter(feat => {
+        const matchesSearch =
+            feat.name.toLowerCase().includes(featSearch.toLowerCase()) ||
+            feat.description.toLowerCase().includes(featSearch.toLowerCase());
+
+        const isBoon = feat.category === 'epic_boon' || feat.name.startsWith('Boon of');
+        if (categoryFilter === "epic_boon") return matchesSearch && isBoon;
+        if (categoryFilter === "general") return matchesSearch && (feat.category === 'general' || (!feat.category && !isBoon));
+        if (categoryFilter === "origin") return matchesSearch && feat.category === 'origin';
+        if (categoryFilter === "fighting_style") return matchesSearch && feat.category === 'fighting_style';
+        return matchesSearch;
+    });
+
+    const isBoonFeat = (feat: Feat) => feat.category === 'epic_boon' || feat.name.startsWith('Boon of');
+
+    const getCategoryBadge = (feat: Feat) => {
+        if (isBoonFeat(feat)) {
+            return (
+                <span className="px-2 py-0.5 text-[10px] font-cinzel font-bold tracking-wider rounded bg-amber-500/25 text-amber-300 border border-amber-500/60 shadow-[0_0_8px_rgba(245,158,11,0.25)]">
+                    EPIC BOON
+                </span>
+            );
+        }
+        if (feat.category === 'origin') {
+            return (
+                <span className="px-2 py-0.5 text-[10px] font-cinzel font-semibold tracking-wider rounded bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                    ORIGIN
+                </span>
+            );
+        }
+        if (feat.category === 'fighting_style') {
+            return (
+                <span className="px-2 py-0.5 text-[10px] font-cinzel font-semibold tracking-wider rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    FIGHTING STYLE
+                </span>
+            );
+        }
+        return (
+            <span className="px-2 py-0.5 text-[10px] font-cinzel tracking-wider rounded bg-slate-800/80 text-slate-300 border border-slate-700">
+                GENERAL
+            </span>
+        );
+    };
 
     if (!pendingLevel) {
         return null;
@@ -141,17 +194,30 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold uppercase tracking-wider shadow-[0_0_14px_rgba(197,160,89,0.35)]">
-                    ⚡ Choose ASI/Feat (Level {pendingLevel})
+                <Button className={pendingLevel === 20
+                    ? "bg-gradient-to-r from-[#d4af37] via-[#f3e5ab] to-[#aa771c] hover:brightness-110 text-[#0c0d12] font-cinzel font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(212,175,55,0.6)] border border-[#ffd700]"
+                    : "bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold uppercase tracking-wider shadow-[0_0_14px_rgba(197,160,89,0.35)]"
+                }>
+                    {pendingLevel === 20 ? "🌟 Choose Epic Boon (Level 20)" : `⚡ Choose ASI/Feat (Level ${pendingLevel})`}
                 </Button>
             </DialogTrigger>
             <DialogContent className="bg-[#10121a]/98 text-slate-100 border border-[#c5a059]/60 shadow-[0_8px_36px_rgba(0,0,0,0.85)] backdrop-blur-xl font-lora max-w-3xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader className="border-b border-[#c5a059]/20 pb-3">
-                    <DialogTitle className="font-cinzel text-lg font-bold text-[#c5a059] tracking-wide">
-                        Ability Score Improvement / Feat Selection
+                    <DialogTitle className="font-cinzel text-lg font-bold text-[#c5a059] tracking-wide flex items-center gap-2">
+                        {pendingLevel === 20 ? (
+                            <>
+                                <span className="text-amber-400">🌟</span>
+                                <span>Epic Boon Selection (Level 20)</span>
+                            </>
+                        ) : (
+                            <span>Ability Score Improvement / Feat Selection</span>
+                        )}
                     </DialogTitle>
                     <DialogDescription className="font-lora text-xs text-[#d1cdb8]/70 mt-1">
-                        Level {pendingLevel} — Choose to improve your ability scores or take a powerful feat
+                        {pendingLevel === 20
+                            ? "Level 20 — A legendary milestone! Select a transcendent Epic Boon or feat to empower your character."
+                            : `Level ${pendingLevel} — Choose to improve your ability scores or take a powerful feat`
+                        }
                     </DialogDescription>
                 </DialogHeader>
 
@@ -167,7 +233,7 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
                             value="feat"
                             className="font-cinzel text-xs font-semibold tracking-wider data-[state=active]:bg-[#181a24] data-[state=active]:text-[#e0bc75] data-[state=active]:border data-[state=active]:border-[#c5a059]/50 text-slate-400"
                         >
-                            Feat
+                            {pendingLevel === 20 ? "🌟 Epic Boons & Feats" : "Feat"}
                         </TabsTrigger>
                     </TabsList>
 
@@ -277,41 +343,87 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
 
                     <TabsContent value="feat" className="space-y-4 mt-4">
                         <div className="space-y-3">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {[
+                                    { id: "all", label: "All Feats" },
+                                    { id: "epic_boon", label: "🌟 Epic Boons", highlight: true },
+                                    { id: "general", label: "General" },
+                                    { id: "origin", label: "Origin" },
+                                    { id: "fighting_style", label: "Fighting Style" },
+                                ].map(cat => (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        onClick={() => setCategoryFilter(cat.id)}
+                                        className={`px-2.5 py-1 rounded text-xs font-cinzel transition-all ${
+                                            categoryFilter === cat.id
+                                                ? cat.highlight
+                                                    ? "bg-amber-500/25 text-amber-300 border border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.25)] font-bold"
+                                                    : "bg-[#181a24] text-[#e0bc75] border border-[#c5a059]/60 font-semibold"
+                                                : "bg-[#0c0d12]/60 text-slate-400 hover:text-slate-200 border border-slate-800"
+                                        }`}
+                                    >
+                                        {cat.label}
+                                    </button>
+                                ))}
+                            </div>
+
                             <Input
-                                placeholder="Search feats..."
+                                placeholder="Search feats and boons..."
                                 value={featSearch}
                                 onChange={(e) => setFeatSearch(e.target.value)}
                                 className="bg-[#0c0d12]/80 border-[#c5a059]/40 text-slate-100 placeholder:text-slate-500 font-lora text-sm focus:border-[#c5a059]"
                             />
 
                             <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
-                                {filteredFeats.map(feat => (
-                                    <Card
-                                        key={feat.id}
-                                        className={`cursor-pointer transition-all duration-150 border ${
-                                            selectedFeat?.id === feat.id
-                                                ? "bg-[#181a24] border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.25)]"
-                                                : feat.is_eligible
-                                                    ? "bg-[#12141a]/60 border-[#c5a059]/25 hover:border-[#c5a059]/60 hover:bg-[#181a24]/60"
-                                                    : "bg-[#0c0d12]/40 border-slate-800/60 opacity-50 cursor-not-allowed"
-                                        }`}
-                                        onClick={() => feat.is_eligible && setSelectedFeat(feat)}
-                                    >
-                                        <CardHeader className="p-3">
-                                            <CardTitle className="text-sm font-cinzel font-bold flex items-center justify-between">
-                                                <span className={selectedFeat?.id === feat.id ? "text-[#e0bc75]" : "text-slate-100"}>
-                                                    {feat.name}
-                                                </span>
-                                                {!feat.is_eligible && (
-                                                    <span className="text-xs text-rose-400 font-lora font-normal">🔒 {feat.reason_if_not}</span>
-                                                )}
-                                            </CardTitle>
-                                            <CardDescription className="text-xs font-lora text-[#d1cdb8]/75 mt-1 leading-relaxed">
-                                                {feat.description}
-                                            </CardDescription>
-                                        </CardHeader>
-                                    </Card>
-                                ))}
+                                {filteredFeats.length === 0 ? (
+                                    <div className="text-center py-8 text-xs font-lora text-[#d1cdb8]/60 italic">
+                                        No feats found matching the current search and filter.
+                                    </div>
+                                ) : (
+                                    filteredFeats.map(feat => {
+                                        const isBoon = isBoonFeat(feat);
+                                        return (
+                                            <Card
+                                                key={feat.id}
+                                                className={`cursor-pointer transition-all duration-150 border ${
+                                                    selectedFeat?.id === feat.id
+                                                        ? isBoon
+                                                            ? "bg-[#1f1b13] border-[#ffd700] shadow-[0_0_16px_rgba(255,215,0,0.35)]"
+                                                            : "bg-[#181a24] border-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.25)]"
+                                                        : feat.is_eligible
+                                                            ? isBoon
+                                                                ? "bg-[#14120e]/70 border-amber-500/30 hover:border-amber-400/70 hover:bg-[#1a1711]"
+                                                                : "bg-[#12141a]/60 border-[#c5a059]/25 hover:border-[#c5a059]/60 hover:bg-[#181a24]/60"
+                                                            : "bg-[#0c0d12]/40 border-slate-800/60 opacity-50 cursor-not-allowed"
+                                                }`}
+                                                onClick={() => feat.is_eligible && setSelectedFeat(feat)}
+                                            >
+                                                <CardHeader className="p-3">
+                                                    <CardTitle className="text-sm font-cinzel font-bold flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={selectedFeat?.id === feat.id ? "text-[#e0bc75]" : "text-slate-100"}>
+                                                                {feat.name}
+                                                            </span>
+                                                            {getCategoryBadge(feat)}
+                                                        </div>
+                                                        {!feat.is_eligible && (
+                                                            <span className="text-xs text-rose-400 font-lora font-normal">🔒 {feat.reason_if_not}</span>
+                                                        )}
+                                                    </CardTitle>
+                                                    <CardDescription className="text-xs font-lora text-[#d1cdb8]/75 mt-1 leading-relaxed">
+                                                        {feat.description}
+                                                    </CardDescription>
+                                                    {isBoon && (
+                                                        <div className="text-[11px] font-lora text-amber-300/80 mt-1.5 italic">
+                                                            ✨ Epic Boon: Restricted to 20th-level characters. Can only be chosen once unless stated otherwise.
+                                                        </div>
+                                                    )}
+                                                </CardHeader>
+                                            </Card>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
 
@@ -327,9 +439,17 @@ export function ASIFeatDialog({ character, onUpdate }: ASIFeatDialogProps) {
                             <Button
                                 onClick={handleApplyFeat}
                                 disabled={loading || !selectedFeat}
-                                className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs uppercase tracking-wider h-8 px-4 shadow-[0_0_14px_rgba(197,160,89,0.35)] disabled:opacity-50"
+                                className={selectedFeat && isBoonFeat(selectedFeat)
+                                    ? "bg-gradient-to-r from-[#d4af37] via-[#f3e5ab] to-[#aa771c] text-[#0c0d12] font-cinzel font-bold text-xs uppercase tracking-wider h-8 px-4 shadow-[0_0_14px_rgba(212,175,55,0.5)] border border-[#ffd700]"
+                                    : "bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-cinzel font-bold text-xs uppercase tracking-wider h-8 px-4 shadow-[0_0_14px_rgba(197,160,89,0.35)] disabled:opacity-50"
+                                }
                             >
-                                {loading ? "Applying..." : "Take Feat"}
+                                {loading
+                                    ? "Applying..."
+                                    : selectedFeat && isBoonFeat(selectedFeat)
+                                        ? "Take Epic Boon"
+                                        : "Take Feat"
+                                }
                             </Button>
                         </DialogFooter>
                     </TabsContent>

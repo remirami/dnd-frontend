@@ -113,7 +113,7 @@ export default function SpellSelectionStep({
             }
 
             // Fetch spell options
-            const response = await api.get(`/characters/starting_spell_choices/?class_name=${className}&ruleset=${formData.ruleset_version || '2014'}`);
+            const response = await api.get(`/characters/starting_spell_choices/?class_name=${className}&ruleset=${formData.ruleset_version || '2024'}`);
             setSpellData(response.data);
 
             // If no cantrips, default to spells tab

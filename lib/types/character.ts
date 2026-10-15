@@ -41,6 +41,10 @@ export interface CharacterStats {
     expended_spell_slots?: Record<string, number>;
     hit_dice_used?: number;
     hit_dice_total?: string;
+    ki_points_max?: number;
+    ki_points_current?: number;
+    ki_points_used?: number;
+    martial_arts_die?: string;
 }
 
 export interface ClassLevel {
@@ -133,6 +137,7 @@ export interface Feat {
     proficiency_requirements: string;
     ability_score_increase?: string;
     source: string;
+    category?: string;
     is_eligible?: boolean;
     reason_if_not?: string | null;
 }

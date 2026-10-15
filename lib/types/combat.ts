@@ -49,6 +49,9 @@ export interface CharacterStats {
     spell_attack_bonus?: number | null;
     spell_slots: Record<string, number>;       // e.g. { "1": 4, "2": 3 }
     expended_spell_slots: Record<string, number>;
+    martial_arts_die?: string;
+    ki_points_max?: number;
+    ki_points_current?: number;
 }
 
 export interface CharacterItemDetails {
@@ -235,6 +238,37 @@ export interface CombatParticipant {
     level?: number;
     is_rogue?: boolean;
     cunning_action_available?: boolean;
+    has_sneak_attack?: boolean;
+    sneak_attack_dice?: string;
+    sneak_attack_used_this_turn?: boolean;
+    has_uncanny_dodge?: boolean;
+    has_divine_smite?: boolean;
+    channel_divinity_remaining?: number;
+    channel_divinity_max?: number;
+    is_cleric?: boolean;
+    can_turn_undead?: boolean;
+    destroy_undead_cr?: number | null;
+    is_monk?: boolean;
+    ki_pool_remaining?: number;
+    ki_pool_max?: number;
+    martial_arts_die?: string;
+    can_flurry_of_blows?: boolean;
+    can_patient_defense?: boolean;
+    can_step_of_the_wind?: boolean;
+    can_stunning_strike?: boolean;
+    is_bard?: boolean;
+    bardic_inspiration_remaining?: number;
+    bardic_inspiration_max?: number;
+    bardic_inspiration_die?: string;
+    is_druid?: boolean;
+    wild_shape_remaining?: number;
+    wild_shape_max?: number;
+    is_wild_shaped?: boolean;
+    wild_shape_beast?: string | null;
+    is_wizard?: boolean;
+    has_arcane_recovery?: boolean;
+    arcane_recovery_used?: boolean;
+    arcane_recovery_max_levels?: number;
     size?: string;
     size_display?: string;
     creature_type?: string;
@@ -251,6 +285,12 @@ export interface CombatParticipant {
     has_dwarven_resilience?: boolean;
     has_hellish_resistance?: boolean;
     feature_uses?: Record<string, any>;
+    is_grappling?: boolean;
+    grappled_by_id?: number | null;
+    grappled_by_name?: string | null;
+    grappling_target_id?: number | null;
+    has_grappler_feat?: boolean;
+    is_pinned?: boolean;
     death_save_status?: {
         successes: number;
         failures: number;
@@ -445,17 +485,25 @@ export interface AutoEnemyTurnsResponse {
 }
 
 export interface AoETargetingConfig {
-    spell: CharacterSpell;
-    spellLevel: number;
+    spell?: CharacterSpell | null;
+    spellLevel?: number;
+    featureName?: string;
+    featureAmount?: number;
+    targetId?: number;
+    isFeature?: boolean;
+    origin?: 'caster' | 'target';
+    targetFilter?: 'all' | 'enemies' | 'allies' | 'undead' | 'fiend_or_undead' | 'bloodied_allies';
     shape: 'sphere' | 'cone' | 'line' | 'cube' | 'cylinder';
     size: number;
     saveType?: string;
-    saveDc: number;
-    damageFormula: string;
+    saveDc?: number;
+    damageFormula?: string;
     damageType?: string;
     isHealing?: boolean;
     halfOnSave?: boolean;
     requiresConcentration?: boolean;
     isBonusAction?: boolean;
     castingTime?: string;
+    description?: string;
+    onConfirm?: (targetIds: number[]) => Promise<void> | void;
 }

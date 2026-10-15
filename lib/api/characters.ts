@@ -106,4 +106,5 @@ export const charactersApi = {
     shortRest: (id: number, data: { hit_dice_to_spend: number }) => apiClient.post(`/characters/${id}/short_rest/`, data),
     expendSpellSlot: (id: number, level: number) => apiClient.post(`/characters/${id}/expend_spell_slot/`, { level }),
     restoreSpellSlot: (id: number, level: number) => apiClient.post(`/characters/${id}/restore_spell_slot/`, { level }),
+    useKi: (id: number, data?: { amount?: number; action?: 'spend' | 'regain' | 'reset' }) => apiClient.post(`/characters/${id}/use_ki/`, data || { amount: 1, action: 'spend' }),
 };
