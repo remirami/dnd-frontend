@@ -236,7 +236,7 @@ export default function CombatSetupPage() {
             });
             const enemy = response.data;
             if (!enemy?.id) throw new Error("No enemy returned");
-            await handleAddEnemy(enemy.id);
+            await handleAddEnemy(enemy.id, enemy);
         } catch (error: any) {
             const msg = error?.response?.data?.error || "No enemies found with those filters.";
             showWarning(msg);
@@ -449,7 +449,7 @@ export default function CombatSetupPage() {
         }
     };
 
-    const handleAddEnemy = async (enemyId: number) => {
+    const handleAddEnemy = async (enemyId: number, enemyData?: any) => {
         if (!enemyId) return;
 
         if (isEnemyFull) {
@@ -459,6 +459,31 @@ export default function CombatSetupPage() {
         if (isTotalFull) {
             showWarning(`Encounter is at maximum capacity (${MAX_TOTAL_PARTICIPANTS} participants). Remove a participant first.`);
             return;
+        }
+
+        const resolvedEnemy = enemyData || enemies.find(e => e.id === enemyId);
+        const prevSession = session;
+        if (resolvedEnemy) {
+            const optimisticParticipant: CombatParticipant = {
+                id: -Date.now(),
+                combat_session: sessionId,
+                participant_type: 'enemy',
+                name: resolvedEnemy.name,
+                initiative: 0,
+                current_hp: resolvedEnemy.hit_points || 10,
+                max_hp: resolvedEnemy.hit_points || 10,
+                armor_class: resolvedEnemy.armor_class || 10,
+                is_active: true,
+                conditions: [],
+            } as any;
+
+            setSession(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    participants: [...(prev.participants || []), optimisticParticipant],
+                };
+            });
         }
 
         try {
@@ -477,6 +502,9 @@ export default function CombatSetupPage() {
             }
         } catch (error: any) {
             console.error("Failed to add enemy:", error);
+            if (prevSession) {
+                setSession(prevSession);
+            }
             showWarning(`Failed to add enemy: ${error.response?.data?.error || error.message}`);
         }
     };
@@ -851,7 +879,7 @@ export default function CombatSetupPage() {
                                             return (
                                                 <div
                                                     key={enemy.id}
-                                                    onClick={() => { if (!cannotAddEnemy) handleAddEnemy(enemy.id); }}
+                                                    onClick={() => { if (!cannotAddEnemy) handleAddEnemy(enemy.id, enemy); }}
                                                     className={`px-4 py-3 flex justify-between items-center group transition-colors ${
                                                         cannotAddEnemy
                                                             ? "opacity-40 cursor-not-allowed"
