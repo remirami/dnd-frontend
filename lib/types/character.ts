@@ -169,6 +169,7 @@ export interface CharacterItem {
         properties_display?: string[];
         two_handed?: boolean;
         light?: boolean;
+        mastery_property?: string;
         // Armor specific
         armor_type_display?: string;
         base_ac?: number;

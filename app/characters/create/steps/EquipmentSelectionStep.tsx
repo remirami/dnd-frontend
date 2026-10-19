@@ -15,6 +15,11 @@ import {
     isTwoHandedWeapon,
     rollRandomWeaponLoadout,
 } from "@/lib/data/weaponProficiencies";
+import {
+    WeaponMasteryBadge,
+    getWeaponMasteryProperty,
+    canCharacterUseMastery,
+} from "@/components/combat/WeaponMasteryBadge";
 
 interface EquipmentChoice {
     choice_number: number;
@@ -148,6 +153,11 @@ export default function EquipmentSelectionStep({
     const selectedSecondaryObj = useMemo(() => {
         return allWeapons.find((w) => w.name.toLowerCase() === (formData.secondary_weapon || "").toLowerCase());
     }, [allWeapons, formData.secondary_weapon]);
+
+    // Check if character can use 2024 Weapon Masteries
+    const canUseMastery = useMemo(() => {
+        return canCharacterUseMastery(formData);
+    }, [formData]);
 
     // Check if currently selected primary weapon is two-handed
     const isPrimaryTwoHanded = useMemo(() => {
@@ -391,6 +401,19 @@ export default function EquipmentSelectionStep({
                                             </span>
                                         )}
                                     </div>
+
+                                    {/* 2024 Weapon Mastery */}
+                                    {formData.ruleset_version === "2024" && (
+                                        <div className="pt-1">
+                                            <WeaponMasteryBadge
+                                                weaponName={formData.primary_weapon}
+                                                property={selectedPrimaryObj?.mastery_property}
+                                                canUse={canUseMastery}
+                                                size="sm"
+                                                showTooltip={true}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button
@@ -476,6 +499,19 @@ export default function EquipmentSelectionStep({
                                         <p className="text-[10px] text-amber-400/90 font-medium flex items-center gap-1 pt-1">
                                             <span>🏹</span> 20 Ammunition automatically supplied with this weapon
                                         </p>
+                                    )}
+
+                                    {/* 2024 Weapon Mastery */}
+                                    {formData.ruleset_version === "2024" && (
+                                        <div className="pt-1">
+                                            <WeaponMasteryBadge
+                                                weaponName={formData.secondary_weapon}
+                                                property={selectedSecondaryObj?.mastery_property}
+                                                canUse={canUseMastery}
+                                                size="sm"
+                                                showTooltip={true}
+                                            />
+                                        </div>
                                     )}
                                 </div>
 
@@ -937,6 +973,19 @@ export default function EquipmentSelectionStep({
                                                                 </span>
                                                             )}
                                                     </div>
+
+                                                    {/* 2024 Weapon Mastery */}
+                                                    {formData.ruleset_version === "2024" && (
+                                                        <div className="mt-2">
+                                                            <WeaponMasteryBadge
+                                                                weaponName={weapon.name}
+                                                                property={weapon.mastery_property}
+                                                                canUse={canUseMastery}
+                                                                size="xs"
+                                                                showTooltip={true}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">

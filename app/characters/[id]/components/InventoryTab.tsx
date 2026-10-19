@@ -9,6 +9,7 @@ import { charactersApi } from "@/lib/api/characters";
 import { itemsApi } from "@/lib/api/items";
 import type { Character, CharacterItem } from "@/lib/types/character";
 import { EquipmentPaperdoll } from "./EquipmentPaperdoll";
+import { WeaponMasteryBadge, canCharacterUseMastery } from "@/components/combat/WeaponMasteryBadge";
 
 interface InventoryTabProps {
     character: Character;
@@ -364,9 +365,17 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                 <div className="flex flex-wrap gap-2 mt-2">
                                                                     {/* Weapon Stats */}
                                                                     {item.item_details.damage_dice && (
-                                                                        <Badge variant="outline" className="border-red-900/50 bg-red-950/20 text-red-200 text-[10px] h-5 font-fira-sans">
-                                                                            {item.item_details.damage_dice} {item.item_details.damage_type}
-                                                                        </Badge>
+                                                                        <>
+                                                                            <Badge variant="outline" className="border-red-900/50 bg-red-950/20 text-red-200 text-[10px] h-5 font-fira-sans">
+                                                                                {item.item_details.damage_dice} {item.item_details.damage_type}
+                                                                            </Badge>
+                                                                            <WeaponMasteryBadge
+                                                                                weaponName={item.item_details.name}
+                                                                                property={item.item_details.mastery_property}
+                                                                                canUse={canCharacterUseMastery(character)}
+                                                                                size="xs"
+                                                                            />
+                                                                        </>
                                                                     )}
                                                                     {item.item_details.two_handed_damage_dice && (
                                                                         <Badge variant="outline" className="border-[#c5a059]/30 bg-[#0c0d12] text-[#d1cdb8] text-[10px] h-5 font-fira-sans">
@@ -570,6 +579,18 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                 <span className="font-fira-sans font-bold text-red-300">{selectedItem.item_details.two_handed_damage_dice}</span>
                                                             </div>
                                                         )}
+                                                        <div className="pt-2">
+                                                            <span className="text-xs uppercase font-cinzel font-bold text-[#c5a059] block mb-1">
+                                                                Weapon Mastery (2024 Rules)
+                                                            </span>
+                                                            <WeaponMasteryBadge
+                                                                weaponName={selectedItem.item_details.name}
+                                                                property={selectedItem.item_details.mastery_property}
+                                                                canUse={canCharacterUseMastery(character)}
+                                                                size="md"
+                                                                showDescription={true}
+                                                            />
+                                                        </div>
                                                     </>
                                                 )}
                                                 {selectedItem.item_details.base_ac !== undefined && (

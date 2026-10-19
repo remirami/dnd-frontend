@@ -25,6 +25,7 @@ import { ActionDock } from "@/components/combat/ActionDock";
 import { SpellCastModal } from "@/components/combat/SpellCastModal";
 import { CombatLogDrawer } from "@/components/combat/CombatLogDrawer";
 import { ParticipantInspectorDrawer } from "@/components/combat/ParticipantInspectorDrawer";
+import { getWeaponMasteryProperty, canCharacterUseMastery } from "@/components/combat/WeaponMasteryBadge";
 import { isIncapacitating } from "@/lib/data/conditions";
 import type { CombatSession, CombatParticipant, CombatAction, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
 import type { Enemy, Attack } from "@/lib/types/enemy";
@@ -534,6 +535,8 @@ export default function CombatPage() {
             use_divine_smite?: boolean;
             use_sneak_attack?: boolean;
             use_bardic_inspiration?: boolean;
+            cleave_target_id?: number;
+            power_attack?: boolean;
         }
     ) => {
         setAoeTargeting(null);
@@ -571,6 +574,8 @@ export default function CombatPage() {
                 use_divine_smite: options?.use_divine_smite,
                 use_sneak_attack: options?.use_sneak_attack,
                 use_bardic_inspiration: options?.use_bardic_inspiration,
+                cleave_target_id: options?.cleave_target_id,
+                power_attack: options?.power_attack,
             });
             if (res.data) {
                 const dmgAmount = res.data.damage_amount || res.data.damage || 0;
@@ -583,9 +588,10 @@ export default function CombatPage() {
                     critical: !!res.data.critical,
                     damage: dmgAmount,
                     timestamp: Date.now(),
+                    weaponMastery: res.data.weapon_mastery,
                 });
 
-                if (isHit && dmgAmount > 0) {
+                if ((isHit || res.data.weapon_mastery?.mastery === 'Graze') && dmgAmount > 0) {
                     setDamagedParticipantIds(prev => new Set([...prev, tid]));
                     setTimeout(() => {
                         setDamagedParticipantIds(prev => {
@@ -662,6 +668,9 @@ export default function CombatPage() {
         isBonusAction?: boolean;
         castingTime?: string;
         halfOnSave?: boolean;
+        metamagic?: string;
+        twinnedTargetId?: number;
+        carefulTargetIds?: number[];
     }) => {
         const current = getCurrentParticipant();
         if (!current) return;
@@ -698,6 +707,9 @@ export default function CombatPage() {
                 is_bonus_action: data.isBonusAction,
                 casting_time: data.castingTime,
                 half_on_save: data.halfOnSave,
+                metamagic: data.metamagic,
+                twinned_target_id: data.twinnedTargetId,
+                careful_target_ids: data.carefulTargetIds,
             });
 
             if (res.data) {
@@ -774,6 +786,36 @@ export default function CombatPage() {
             alert(`Spellcasting failed: ${errMsg}`);
         } finally {
             setIsCastingSpell(false);
+        }
+    };
+
+    const handleFontOfMagic = async (data: {
+        participantId: number;
+        actionType: 'convert_slot' | 'create_slot';
+        slotLevel: number;
+    }) => {
+        const current = getCurrentParticipant();
+        if (!current) return;
+        if (current.bonus_action_used) {
+            alert(`${current.name} has already used their bonus action this turn.`);
+            return;
+        }
+        try {
+            const res = await combatApi.fontOfMagic(sessionId, {
+                participant_id: data.participantId,
+                action_type: data.actionType,
+                slot_level: data.slotLevel,
+            });
+            if (res.data) {
+                await loadSession();
+            }
+        } catch (error: any) {
+            const errMsg =
+                error.response?.data?.error ||
+                (typeof error.response?.data === 'string' ? error.response.data : null) ||
+                error.message ||
+                "Font of Magic conversion failed";
+            alert(`Font of Magic failed: ${errMsg}`);
         }
     };
 
@@ -1368,6 +1410,8 @@ export default function CombatPage() {
                         isThrown,
                         rangeNormal,
                         rangeLong,
+                        mastery: (item as any).mastery_property || getWeaponMasteryProperty(item.name),
+                        canUseMastery: canCharacterUseMastery(charData, currentParticipant),
                     };
                 });
 
@@ -1390,6 +1434,8 @@ export default function CombatPage() {
                 isThrown: false,
                 rangeNormal: 5,
                 rangeLong: 5,
+                mastery: null,
+                canUseMastery: false,
             };
 
             return [...weapons, unarmedAttack];
@@ -1415,6 +1461,8 @@ export default function CombatPage() {
             isThrown: false,
             rangeNormal: 5,
             rangeLong: 5,
+            mastery: null,
+            canUseMastery: false,
         };
 
         if (currentParticipant?.equipped_items?.weapon) {
@@ -1444,6 +1492,8 @@ export default function CombatPage() {
                 isEquipped: true,
                 isRanged,
                 isThrown,
+                mastery: (weapon as any).mastery_property || getWeaponMasteryProperty(weapon.name),
+                canUseMastery: canCharacterUseMastery(charData, currentParticipant),
             }, unarmedAttack];
         }
 
@@ -1800,6 +1850,7 @@ export default function CombatPage() {
                 onEscapeGrapple={handleEscapeGrapple}
                 onReleaseGrapple={handleReleaseGrapple}
                 onPin={handlePin}
+                onFontOfMagic={handleFontOfMagic}
             />
 
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}

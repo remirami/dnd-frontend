@@ -7,6 +7,7 @@ import { CombatantPortrait } from "@/components/combat/CombatantPortrait";
 import type { CombatParticipant } from "@/lib/types/combat";
 import type { AttackFeedback } from "@/components/combat/BattlefieldArena";
 import { resolveSizeDisplay } from "@/lib/utils";
+import { WeaponMasteryBadge, getWeaponMasteryProperty, canCharacterUseMastery } from "@/components/combat/WeaponMasteryBadge";
 
 interface RollPrediction {
     hitChance?: number;
@@ -137,6 +138,17 @@ export function ClashCard({
     const attackerDamaged = attacker ? damagedParticipantIds.has(attacker.id) : false;
     const defenderDamaged = defender ? damagedParticipantIds.has(defender.id) : false;
 
+    // Resolve Attacker Weapon & Mastery
+    const charItems: any[] = attacker?.character?.character_items || (attacker?.character as any)?.inventory || [];
+    const attackerEquippedWeapon = charItems.find(
+        (inv: any) => inv.is_equipped && (inv.equipment_slot === "main_hand" || inv.item_details?.category === "weapon")
+    );
+    const attackerWeaponName = attackerEquippedWeapon?.item_details?.name;
+    const attackerMasteryProperty =
+        attackerEquippedWeapon?.item_details?.mastery_property ||
+        getWeaponMasteryProperty(attackerWeaponName);
+    const canUseMastery = canCharacterUseMastery(attacker?.character, attacker);
+
     return (
         <aside
             aria-label="Combat Clash Details"
@@ -257,6 +269,17 @@ export function ClashCard({
                                 {attacker?.character?.character_class?.name || (attacker?.participant_type === "enemy" ? `${resolveSizeDisplay(attacker.size, attacker.size_display || attacker.size_dimensions?.name)} ${attacker.creature_type || 'Hostile'}` : "Hero")}
                                 {attacker?.is_flying ? ` • 🪽 ${attacker.altitude ?? 0}ft` : ""}
                             </span>
+                            {attackerMasteryProperty && (
+                                <div className="mt-1">
+                                    <WeaponMasteryBadge
+                                        property={attackerMasteryProperty}
+                                        weaponName={attackerWeaponName}
+                                        canUse={canUseMastery}
+                                        size="xs"
+                                        showTooltip={true}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -436,6 +459,15 @@ export function ClashCard({
                                     <span className="px-1.5 py-0.2 rounded text-[10px] font-cinzel font-bold bg-rose-950 border border-rose-500/60 text-rose-300">
                                         🪢 Grappled by Target
                                     </span>
+                                )}
+                                {attackerMasteryProperty && canUseMastery && (
+                                    <WeaponMasteryBadge
+                                        property={attackerMasteryProperty}
+                                        weaponName={attackerWeaponName}
+                                        canUse={true}
+                                        size="xs"
+                                        showTooltip={true}
+                                    />
                                 )}
                             </>
                         )}

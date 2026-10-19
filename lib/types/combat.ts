@@ -52,6 +52,9 @@ export interface CharacterStats {
     martial_arts_die?: string;
     ki_points_max?: number;
     ki_points_current?: number;
+    sorcery_points_max?: number;
+    sorcery_points_current?: number;
+    created_spell_slots?: Record<string, number>;
 }
 
 export interface CharacterItemDetails {
@@ -78,6 +81,7 @@ export interface CharacterItemDetails {
     range_normal?: number;
     range_long?: number;
     versatile_damage?: string;
+    mastery_property?: string;
 }
 
 export interface CharacterItem {
@@ -269,6 +273,12 @@ export interface CombatParticipant {
     has_arcane_recovery?: boolean;
     arcane_recovery_used?: boolean;
     arcane_recovery_max_levels?: number;
+    is_sorcerer?: boolean;
+    sorcery_points_max?: number;
+    sorcery_points_current?: number;
+    has_font_of_magic?: boolean;
+    has_metamagic?: boolean;
+    created_spell_slots?: Record<string, number>;
     size?: string;
     size_display?: string;
     creature_type?: string;

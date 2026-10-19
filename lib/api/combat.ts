@@ -60,6 +60,8 @@ export const combatApi = {
         use_divine_smite?: boolean;
         use_sneak_attack?: boolean;
         use_bardic_inspiration?: boolean;
+        cleave_target_id?: number;
+        power_attack?: boolean;
     }) =>
         apiClient.post<any>(`/combat/sessions/${sessionId}/attack/`, data),
 
@@ -80,6 +82,9 @@ export const combatApi = {
         is_bonus_action?: boolean;
         casting_time?: string;
         half_on_save?: boolean;
+        metamagic?: string;
+        twinned_target_id?: number;
+        careful_target_ids?: number[];
     }) =>
         apiClient.post<{
             message: string;
@@ -233,4 +238,18 @@ export const combatApi = {
             message: string;
             session: CombatSession;
         }>(`/combat/sessions/${sessionId}/pin/`, data),
+
+    // Font of Magic (Sorcery Points <-> Spell Slots)
+    fontOfMagic: (sessionId: number, data: {
+        participant_id: number;
+        action_type: 'convert_slot' | 'create_slot';
+        slot_level: number;
+    }) =>
+        apiClient.post<{
+            message: string;
+            sorcery_points_current: number;
+            sorcery_points_max: number;
+            slot_level: number;
+            session?: CombatSession;
+        }>(`/combat/sessions/${sessionId}/font_of_magic/`, data),
 };

@@ -665,6 +665,8 @@ function BattleGridComponent({
             darkness?: boolean;
             spikes?: boolean;
             toxic?: boolean;
+            fire?: boolean;
+            radiant?: boolean;
             difficult?: boolean;
         }>();
         if (!environmentalEffects || environmentalEffects.length === 0) return map;
@@ -673,7 +675,7 @@ function BattleGridComponent({
             for (let r = 0; r < ROWS; r++) {
                 const tileX = c * 5;
                 const tileY = r * 5;
-                let greased = false, fogged = false, webbed = false, darkness = false, spikes = false, toxic = false, difficult = false;
+                let greased = false, fogged = false, webbed = false, darkness = false, spikes = false, toxic = false, fire = false, radiant = false, difficult = false;
                 for (const eff of environmentalEffects) {
                     if (eff.is_active === false) continue;
                     if (eff.effect_type === "terrain") {
@@ -703,14 +705,25 @@ function BattleGridComponent({
                         if (Math.hypot(tileX - eff.lighting_area_x, tileY - eff.lighting_area_y) <= ((eff.lighting_area_radius ?? 15) + 1.0)) {
                             darkness = true;
                         }
-                    } else if (eff.effect_type === "hazard" && eff.hazard_type === "poison_gas" && eff.hazard_area_x != null && eff.hazard_area_y != null) {
-                        if (Math.hypot(tileX - eff.hazard_area_x, tileY - eff.hazard_area_y) <= ((eff.hazard_area_radius ?? 20) + 1.0)) {
-                            toxic = true;
+                    } else if (eff.effect_type === "hazard" && eff.hazard_area_x != null && eff.hazard_area_y != null) {
+                        const dist = Math.hypot(tileX - eff.hazard_area_x, tileY - eff.hazard_area_y);
+                        const radius = (eff.hazard_area_radius ?? 20) + 1.0;
+                        if (dist <= radius) {
+                            if (eff.hazard_type === "poison_gas" || eff.hazard_type === "cloudkill") {
+                                toxic = true;
+                            } else if (eff.hazard_type === "spike_growth") {
+                                spikes = true;
+                                difficult = true;
+                            } else if (eff.hazard_type === "wall_of_fire") {
+                                fire = true;
+                            } else if (eff.hazard_type === "moonbeam") {
+                                radiant = true;
+                            }
                         }
                     }
                 }
-                if (greased || fogged || webbed || darkness || spikes || toxic || difficult) {
-                    map.set(`${c},${r}`, { greased, fogged, webbed, darkness, spikes, toxic, difficult });
+                if (greased || fogged || webbed || darkness || spikes || toxic || fire || radiant || difficult) {
+                    map.set(`${c},${r}`, { greased, fogged, webbed, darkness, spikes, toxic, fire, radiant, difficult });
                 }
             }
         }
@@ -1914,6 +1927,8 @@ function BattleGridComponent({
                                 const isDarknessTile = !!env?.darkness;
                                 const isSpikeGrowthTile = !!env?.spikes;
                                 const isToxicGasTile = !!env?.toxic;
+                                const isFireTile = !!env?.fire;
+                                const isRadiantTile = !!env?.radiant;
 
                                 const distFromCur = getChebyshevDist(curX, curY, tileX, tileY);
                                 const isHovered =
@@ -1988,6 +2003,10 @@ function BattleGridComponent({
                                                 ? "bg-[#0b0c10] border-2 border-slate-700/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]"
                                                 : isDarknessTile
                                                 ? "bg-black/95 border-2 border-purple-900/70 shadow-[inset_0_0_12px_rgba(88,28,135,0.6)]"
+                                                : isFireTile
+                                                ? "bg-[#2d120a]/90 border-2 border-orange-600/70 shadow-[inset_0_0_12px_rgba(234,88,12,0.5)]"
+                                                : isRadiantTile
+                                                ? "bg-[#102028]/90 border-2 border-cyan-400/70 shadow-[inset_0_0_12px_rgba(34,211,238,0.5)]"
                                                 : isGreasedTile
                                                 ? "bg-[#25180e]/90 border-2 border-amber-600/50 shadow-[inset_0_0_8px_rgba(217,119,6,0.3)] hover:border-amber-400"
                                                 : isWebbedTile
@@ -2045,7 +2064,23 @@ function BattleGridComponent({
                                                 </span>
                                             </div>
                                         )}
-                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && isWebbedTile && (
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && isFireTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs leading-none filter drop-shadow">🔥</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-orange-300 bg-orange-950/90 px-0.5 rounded-sm mt-0.5 border border-orange-700/60 leading-tight">
+                                                    Fire
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isFireTile && isRadiantTile && (
+                                            <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs leading-none filter drop-shadow">🌕</span>
+                                                <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-cyan-200 bg-cyan-950/90 px-0.5 rounded-sm mt-0.5 border border-cyan-700/60 leading-tight">
+                                                    Moonbeam
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isFireTile && !isRadiantTile && isWebbedTile && (
                                             <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
                                                 <span className="text-xs leading-none filter drop-shadow">🕸️</span>
                                                 <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-lime-300 bg-lime-950/90 px-0.5 rounded-sm mt-0.5 border border-lime-700/60 leading-tight">
@@ -2053,7 +2088,7 @@ function BattleGridComponent({
                                                 </span>
                                             </div>
                                         )}
-                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isWebbedTile && isSpikeGrowthTile && (
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isFireTile && !isRadiantTile && !isWebbedTile && isSpikeGrowthTile && (
                                             <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
                                                 <span className="text-xs leading-none filter drop-shadow">🌵</span>
                                                 <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-emerald-300 bg-emerald-950/90 px-0.5 rounded-sm mt-0.5 border border-emerald-700/60 leading-tight">
@@ -2061,7 +2096,7 @@ function BattleGridComponent({
                                                 </span>
                                             </div>
                                         )}
-                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isWebbedTile && !isSpikeGrowthTile && isToxicGasTile && (
+                                        {!occupant && !terrain && !isDarknessTile && !isGreasedTile && !isFireTile && !isRadiantTile && !isWebbedTile && !isSpikeGrowthTile && isToxicGasTile && (
                                             <div className="relative z-1 flex flex-col items-center justify-center pointer-events-none">
                                                 <span className="text-xs leading-none filter drop-shadow">☠️</span>
                                                 <span className="text-[6px] sm:text-[7px] font-fira-sans uppercase font-bold text-emerald-300 bg-emerald-950/90 px-0.5 rounded-sm mt-0.5 border border-emerald-700/60 leading-tight">

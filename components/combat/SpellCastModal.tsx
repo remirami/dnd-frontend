@@ -104,6 +104,48 @@ const SPELL_MECHANICS: Record<string, SpellMechanic> = {
     "counterspell": { range: "60 ft", castingTime: "1 reaction", requiresConcentration: false },
     "hellish rebuke": { saveType: "DEX", damageDice: "2d10", damageType: "fire", upcastDiceCount: 1, halfOnSave: true, range: "60 ft", castingTime: "1 reaction" },
     "misty step": { range: "Self", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: false },
+
+    // Expanded High-Priority Combat & Condition Spells
+    "bane": { saveType: "CHA", range: "30 ft", castingTime: "1 action", requiresConcentration: true, isAoE: true },
+    "banishment": { saveType: "CHA", range: "60 ft", castingTime: "1 action", requiresConcentration: true },
+    "bestow curse": { saveType: "WIS", range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "dominate monster": { saveType: "WIS", range: "60 ft", castingTime: "1 action", requiresConcentration: true },
+    "eyebite": { saveType: "WIS", range: "Self", castingTime: "1 action", requiresConcentration: true },
+    "feeblemind": { saveType: "INT", damageDice: "4d6", damageType: "psychic", range: "150 ft", castingTime: "1 action" },
+    "flesh to stone": { saveType: "CON", range: "60 ft", castingTime: "1 action", requiresConcentration: true },
+    "power word kill": { range: "60 ft", castingTime: "1 action" },
+    "power word stun": { range: "60 ft", castingTime: "1 action" },
+    "wall of thorns": { saveType: "DEX", damageDice: "7d8", damageType: "piercing", range: "120 ft", castingTime: "1 action", isAoE: true, requiresConcentration: true },
+    "storm of vengeance": { saveType: "CON", damageDice: "2d6", damageType: "thunder", range: "Sight", castingTime: "1 action", isAoE: true, requiresConcentration: true },
+    "reverse gravity": { saveType: "DEX", range: "120 ft", castingTime: "1 action", isAoE: true, requiresConcentration: true },
+    "telekinesis": { saveType: "STR", range: "60 ft", castingTime: "1 action", requiresConcentration: true },
+    "suggestion": { saveType: "WIS", range: "30 ft", castingTime: "1 action", requiresConcentration: true },
+    "mass suggestion": { saveType: "WIS", range: "60 ft", castingTime: "1 action", isAoE: true },
+    "true strike": { range: "30 ft", castingTime: "1 action", requiresConcentration: true },
+    "wall of force": { range: "120 ft", castingTime: "1 action", requiresConcentration: true, isAoE: true },
+    "wall of stone": { saveType: "DEX", range: "120 ft", castingTime: "1 action", requiresConcentration: true, isAoE: true },
+    "prismatic wall": { saveType: "DEX", damageDice: "10d6", damageType: "fire", range: "60 ft", castingTime: "1 action", isAoE: true },
+
+    // Expanded High-Priority Buffs & Defenses
+    "greater invisibility": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "hunter's mark": { range: "90 ft", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: true },
+    "hex": { range: "90 ft", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: true },
+    "divine favor": { range: "Self", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: true },
+    "crusader's mantle": { range: "Self (30-ft aura)", castingTime: "1 action", requiresConcentration: true },
+    "stoneskin": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "sanctuary": { range: "30 ft", castingTime: "1 bonus action", isBonusAction: true },
+    "death ward": { range: "Touch", castingTime: "1 action" },
+    "freedom of movement": { range: "Touch", castingTime: "1 action" },
+    "protection from energy": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "protection from poison": { range: "Touch", castingTime: "1 action" },
+    "beacon of hope": { range: "30 ft", castingTime: "1 action", requiresConcentration: true, isAoE: true },
+    "magic weapon": { range: "Touch", castingTime: "1 bonus action", isBonusAction: true, requiresConcentration: true },
+    "enlarge/reduce": { range: "30 ft", castingTime: "1 action", requiresConcentration: true },
+    "enhance ability": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "blink": { range: "Self", castingTime: "1 action" },
+    "see invisibility": { range: "Self", castingTime: "1 action" },
+    "spider climb": { range: "Touch", castingTime: "1 action", requiresConcentration: true },
+    "longstrider": { range: "Touch", castingTime: "1 action" },
 };
 
 const BUFF_TACTICAL_EFFECTS: Record<string, string> = {
@@ -122,6 +164,25 @@ const BUFF_TACTICAL_EFFECTS: Record<string, string> = {
     "barkskin": "🪵 Resilient: Target's AC cannot be less than 16, regardless of armor.",
     "guidance": "🌟 Divine Guidance: Touch a willing creature and choose a skill. Until the spell ends, the creature adds 1d4 to any ability check using the chosen skill (Touch: 5 ft, 1 min conc).",
     "resistance": "🛡️ Divine Resistance: Touch a willing creature. Target adds 1d4 to one saving throw of its choice (Touch: 5 ft, 1 min conc).",
+    "greater invisibility": "👁️ Flawless Invisibility: Attack rolls have advantage, attacks against have disadvantage. Does not break on attack or spellcasting.",
+    "hunter's mark": "🏹 Quarry: You deal an extra 1d6 damage to the marked target whenever you hit it with a weapon attack.",
+    "hex": "🔮 Cursed: Deal an extra 1d6 necrotic damage on hit and grant disadvantage on chosen ability checks.",
+    "divine favor": "⚔️ Radiant Strikes: Your weapon attacks deal an extra 1d4 radiant damage on hit.",
+    "crusader's mantle": "☀️ Holy Aura: 30-ft aura granting you and allies +1d4 radiant damage on weapon attacks.",
+    "stoneskin": "🪨 Granite Flesh: Resistance to nonmagical bludgeoning, piercing, and slashing damage.",
+    "sanctuary": "🕊️ Divine Ward: Any creature targeting target must make a Wisdom saving throw or lose the attack.",
+    "death ward": "🛡️ Death Denial: First time the target drops to 0 HP, it drops to 1 HP instead and the ward ends.",
+    "freedom of movement": "💨 Free Motion: Movement speed cannot be reduced; completely immune to paralyzed and restrained.",
+    "protection from energy": "🔥 Elemental Ward: Resistance to chosen damage type (acid, cold, fire, lightning, or thunder).",
+    "protection from poison": "🧪 Purity: Advantage on saves against poison and resistance to poison damage.",
+    "beacon of hope": "🌟 Hope Eternal: Allies have advantage on WIS and death saves, and regain maximum HP from healing.",
+    "magic weapon": "⚔️ Enchanted: Weapon gains +1 bonus to attack rolls and damage rolls.",
+    "enlarge/reduce": "🍄 Titan Form: Target grows one size, advantage on STR checks/saves, +1d4 weapon damage.",
+    "enhance ability": "✨ Ascendant: Advantage on checks with chosen ability; Bear's Endurance grants temporary hit points.",
+    "blink": "🌀 Ethereal Flicker: 50% chance at end of each turn to vanish into Ethereal Plane, reappearing next turn.",
+    "see invisibility": "👁️ True Sight: See invisible and ethereal creatures as if they were visible.",
+    "spider climb": "🕷️ Arachnid: Climbing speed equal to walking speed, walk up walls and across ceilings.",
+    "longstrider": "🏃 Swift Step: Walking speed increases by 10 feet.",
 };
 
 export interface SpellCastModalProps {
@@ -148,6 +209,9 @@ export interface SpellCastModalProps {
         isBonusAction?: boolean;
         castingTime?: string;
         halfOnSave?: boolean;
+        metamagic?: string;
+        twinnedTargetId?: number;
+        carefulTargetIds?: number[];
     }) => Promise<void>;
     onStartAoETargeting?: (config: AoETargetingConfig) => void;
 }
@@ -228,6 +292,28 @@ function SpellCastModalContent({
     const [selectedLevel, setSelectedLevel] = useState<number>(initialLevel);
     const [isRitual, setIsRitual] = useState<boolean>(false);
 
+    // Sorcerer Metamagic state & capabilities
+    const isSorcerer = !!(
+        caster.is_sorcerer ||
+        caster.character?.character_class?.name?.toLowerCase() === "sorcerer"
+    );
+    const sorceryPointsCurrent =
+        caster.sorcery_points_current ??
+        caster.character?.stats?.sorcery_points_current ??
+        0;
+    const sorceryPointsMax =
+        caster.sorcery_points_max ??
+        caster.character?.stats?.sorcery_points_max ??
+        0;
+    const hasMetamagic =
+        isSorcerer &&
+        ((caster.level || caster.character?.level || 1) >= 3 || !!caster.has_metamagic);
+
+    const [selectedMetamagic, setSelectedMetamagic] = useState<string | null>(null);
+    const [twinnedTargetId, setTwinnedTargetId] = useState<number | null>(null);
+    const [carefulTargetIds, setCarefulTargetIds] = useState<number[]>([]);
+    const twinnedCost = Math.max(1, isRitual ? 0 : selectedLevel);
+
     // Target selection state
     const spellDescription = spell.description || spell.spell_details?.description;
     const aoeDef = useMemo(() => {
@@ -254,7 +340,11 @@ function SpellCastModalContent({
             "mage armor", "shield", "shield of faith", "bless", "haste", "heroism", "barkskin",
             "protection from evil and good", "protection from undead", "protect from undead",
             "protect from evil and good", "guidance", "resistance", "invisibility",
-            "blur", "mirror image", "false life", "armor of agathys", "expeditious retreat", "fire shield", "aid", "fly"
+            "blur", "mirror image", "false life", "armor of agathys", "expeditious retreat", "fire shield", "aid", "fly",
+            "greater invisibility", "hunter's mark", "hex", "divine favor", "crusader's mantle",
+            "stoneskin", "sanctuary", "death ward", "freedom of movement", "protection from energy",
+            "protection from poison", "beacon of hope", "magic weapon", "enlarge/reduce",
+            "enhance ability", "blink", "see invisibility", "spider climb", "longstrider"
         ];
         return buffList.includes(clean);
     }, [spellNameLower]);
@@ -508,6 +598,54 @@ function SpellCastModalContent({
             return `+${boost} Max & Current HP`;
         }
 
+        if (spellNameLower === "power word kill") {
+            return "Instant death if target has ≤ 100 HP";
+        }
+
+        if (spellNameLower === "power word stun") {
+            return "Stunned if target has ≤ 150 HP";
+        }
+
+        if (spellNameLower === "hunter's mark") {
+            return "+1d6 Weapon Damage on hit";
+        }
+
+        if (spellNameLower === "hex") {
+            return "+1d6 Necrotic Damage on hit";
+        }
+
+        if (spellNameLower === "divine favor") {
+            return "+1d4 Radiant Damage on weapon attacks";
+        }
+
+        if (spellNameLower === "crusader's mantle") {
+            return "+1d4 Radiant Damage (30-ft aura)";
+        }
+
+        if (spellNameLower === "magic weapon") {
+            return "+1 to Attack and Damage rolls";
+        }
+
+        if (spellNameLower === "enlarge/reduce") {
+            return "+1d4 Weapon Damage & Advantage on STR";
+        }
+
+        if (spellNameLower === "enhance ability") {
+            return "Advantage on Ability Checks (+2d6 Temp HP if Bear)";
+        }
+
+        if (spellNameLower === "stoneskin") {
+            return "Resistance to nonmagical Bludgeoning/Piercing/Slashing";
+        }
+
+        if (spellNameLower === "death ward") {
+            return "Drops to 1 HP instead of 0 HP on fatal damage";
+        }
+
+        if (spellNameLower === "beacon of hope") {
+            return "Advantage on WIS/Death saves & Maximize all healing";
+        }
+
         if (mechanics.isHealing && mechanics.healingBaseDice) {
             const extra = selectedLevel > baseLevel ? (selectedLevel - baseLevel) * (mechanics.upcastDiceCount || 1) : 0;
             const match = mechanics.healingBaseDice.match(/^(\d+)d(\d+)$/);
@@ -645,6 +783,15 @@ function SpellCastModalContent({
             }
         }
 
+        const effectiveIsBonusAction =
+            isBonusAction || selectedMetamagic === "quickened";
+        const effectiveCastingTime =
+            selectedMetamagic === "quickened"
+                ? "1 bonus action"
+                : mechanics.castingTime ||
+                  spell.spell_details?.casting_time ||
+                  (isBonusAction ? "1 bonus action" : "1 action");
+
         await onCast({
             casterId: caster.id,
             targetId: targetsToCast[0] || null,
@@ -657,9 +804,16 @@ function SpellCastModalContent({
             isHealing: isHealingSpell,
             isRitual,
             requiresConcentration,
-            isBonusAction,
-            castingTime: mechanics.castingTime || spell.spell_details?.casting_time || (isBonusAction ? "1 bonus action" : "1 action"),
+            isBonusAction: effectiveIsBonusAction,
+            castingTime: effectiveCastingTime,
             halfOnSave: mechanics.halfOnSave ?? true,
+            metamagic: selectedMetamagic || undefined,
+            twinnedTargetId:
+                selectedMetamagic === "twinned" ? (twinnedTargetId || undefined) : undefined,
+            carefulTargetIds:
+                selectedMetamagic === "careful" && carefulTargetIds.length > 0
+                    ? carefulTargetIds
+                    : undefined,
         });
         onClose();
     };
@@ -777,6 +931,204 @@ function SpellCastModalContent({
                                 <p className="text-red-400 text-[11px] mt-1 font-semibold flex items-center gap-1">
                                     <span>⚠️</span> No Level {selectedLevel} spell slots remaining. Select another level or cast as ritual if available.
                                 </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Metamagic Selection (Sorcerer Feature) */}
+                    {hasMetamagic && (
+                        <div className="space-y-2 bg-gradient-to-r from-purple-950/40 via-[#151624] to-[#141520] p-3 rounded-lg border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-base">🔮</span>
+                                    <label className="font-cinzel font-bold text-purple-300 uppercase tracking-wider text-[11px]">
+                                        Metamagic Enhancement
+                                    </label>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-purple-950/80 border border-purple-500/50 text-purple-200 font-mono text-[10px] font-bold">
+                                    <span>💎</span>
+                                    <span>{sorceryPointsCurrent} / {sorceryPointsMax} SP</span>
+                                </div>
+                            </div>
+
+                            {/* Metamagic Options Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                                {[
+                                    {
+                                        id: null,
+                                        name: "Standard Cast",
+                                        icon: "✨",
+                                        cost: 0,
+                                        tagline: "No Metamagic",
+                                        desc: "Cast standard without spending Sorcery Points.",
+                                        available: true,
+                                    },
+                                    {
+                                        id: "quickened",
+                                        name: "Quickened",
+                                        icon: "⚡",
+                                        cost: 2,
+                                        tagline: "Bonus Action",
+                                        desc: "Changes casting time to 1 Bonus Action.",
+                                        available: !isBonusAction && sorceryPointsCurrent >= 2,
+                                    },
+                                    {
+                                        id: "twinned",
+                                        name: "Twinned",
+                                        icon: "👥",
+                                        cost: twinnedCost,
+                                        tagline: "2nd Target",
+                                        desc: "Target a second creature in range.",
+                                        available: !isAoE && !isSelfSpell && sorceryPointsCurrent >= twinnedCost,
+                                    },
+                                    {
+                                        id: "subtle",
+                                        name: "Subtle",
+                                        icon: "🤫",
+                                        cost: 1,
+                                        tagline: "No Verbal/Somatic",
+                                        desc: "Cast without verbal or somatic components.",
+                                        available: sorceryPointsCurrent >= 1,
+                                    },
+                                    {
+                                        id: "empowered",
+                                        name: "Empowered",
+                                        icon: "🔥",
+                                        cost: 1,
+                                        tagline: "Reroll Damage",
+                                        desc: "Reroll up to CHA modifier damage dice.",
+                                        available: (!!mechanics.damageDice || !!computedFormula) && sorceryPointsCurrent >= 1,
+                                    },
+                                    {
+                                        id: "heightened",
+                                        name: "Heightened",
+                                        icon: "🎯",
+                                        cost: 3,
+                                        tagline: "Disadv on Save",
+                                        desc: "Target has Disadvantage on the saving throw.",
+                                        available: !!mechanics.saveType && sorceryPointsCurrent >= 3,
+                                    },
+                                    {
+                                        id: "careful",
+                                        name: "Careful",
+                                        icon: "🛡️",
+                                        cost: 1,
+                                        tagline: "Protect Allies",
+                                        desc: "Chosen allies automatically succeed on the save.",
+                                        available: !!mechanics.saveType && sorceryPointsCurrent >= 1,
+                                    },
+                                ].map((meta) => {
+                                    const isSelected = selectedMetamagic === meta.id;
+                                    const isDisabled = !meta.available;
+
+                                    return (
+                                        <button
+                                            key={meta.name}
+                                            type="button"
+                                            onClick={() => setSelectedMetamagic(meta.id)}
+                                            disabled={isDisabled}
+                                            title={meta.desc}
+                                            className={`p-2 rounded-lg border text-left transition-all cursor-pointer relative ${
+                                                isSelected
+                                                    ? "bg-gradient-to-r from-purple-900 to-indigo-900 text-white border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.4)]"
+                                                    : isDisabled
+                                                    ? "bg-[#111218]/60 border-slate-800 text-slate-600 opacity-40 cursor-not-allowed"
+                                                    : "bg-[#161826] border-purple-900/40 hover:border-purple-500/60 text-slate-300 hover:text-white"
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-cinzel text-xs font-bold flex items-center gap-1">
+                                                    <span>{meta.icon}</span>
+                                                    <span>{meta.name}</span>
+                                                </span>
+                                                {meta.cost > 0 && (
+                                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                                                        isSelected
+                                                            ? "bg-purple-950 text-purple-200 border border-purple-400"
+                                                            : "bg-purple-950/60 text-purple-300"
+                                                    }`}>
+                                                        {meta.cost} SP
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">
+                                                {meta.tagline}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Secondary Target Selector for Twinned Spell */}
+                            {selectedMetamagic === "twinned" && (
+                                <div className="mt-2 p-2.5 rounded bg-purple-950/40 border border-purple-500/30">
+                                    <label className="text-[11px] font-cinzel font-bold text-purple-200 block mb-1.5">
+                                        👥 Select Secondary Target (Twinned Spell)
+                                    </label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {allParticipants
+                                            .filter((p) => p.is_active && p.current_hp > 0 && p.id !== caster.id && p.id !== selectedTargetId)
+                                            .map((p) => {
+                                                const isPicked = twinnedTargetId === p.id;
+                                                return (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onClick={() => setTwinnedTargetId(isPicked ? null : p.id)}
+                                                        className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                                            isPicked
+                                                                ? "bg-purple-600 text-white border-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                                                                : "bg-[#181a26] text-purple-200 border-purple-800/60 hover:border-purple-400"
+                                                        }`}
+                                                    >
+                                                        <span>{p.participant_type === "enemy" ? "👹" : "🛡️"}</span>
+                                                        <span>{p.name}</span>
+                                                        <span className="text-[10px] text-slate-400">({p.current_hp}/{p.max_hp} HP)</span>
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                    {!twinnedTargetId && (
+                                        <p className="text-[10px] text-amber-300/80 mt-1 italic">
+                                            Select a 2nd target creature within range to twin this spell.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Careful Spell Allies Multi-Select */}
+                            {selectedMetamagic === "careful" && (
+                                <div className="mt-2 p-2.5 rounded bg-purple-950/40 border border-purple-500/30">
+                                    <label className="text-[11px] font-cinzel font-bold text-purple-200 block mb-1.5">
+                                        🛡️ Protected Creatures (Auto-Succeed Save)
+                                    </label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {allParticipants
+                                            .filter((p) => p.is_active && p.current_hp > 0 && p.participant_type === caster.participant_type)
+                                            .map((p) => {
+                                                const isProtected = carefulTargetIds.includes(p.id);
+                                                return (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCarefulTargetIds((prev) =>
+                                                                isProtected ? prev.filter((x) => x !== p.id) : [...prev, p.id]
+                                                            );
+                                                        }}
+                                                        className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                                            isProtected
+                                                                ? "bg-emerald-700 text-white border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                                                                : "bg-[#181a26] text-slate-300 border-slate-700 hover:border-emerald-500"
+                                                        }`}
+                                                    >
+                                                        <span>{isProtected ? "✓" : "○"}</span>
+                                                        <span>{p.name}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                </div>
                             )}
                         </div>
                     )}

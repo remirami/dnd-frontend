@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import type { CombatParticipant, CharacterSpell, AoETargetingConfig } from "@/lib/types/combat";
 import { isAoESpell, getAoESpellConfig } from "@/lib/data/spellAoE";
 import { classifySpell, isCombatSpell } from "@/lib/data/spellClassification";
+import { WeaponMasteryBadge } from "@/components/combat/WeaponMasteryBadge";
 
 interface ActionDockProps {
     currentParticipant?: CombatParticipant | null;
@@ -15,7 +16,7 @@ interface ActionDockProps {
     gauntletRunId: number | null;
     isAttacking: boolean;
     currentIsIncapacitated: boolean;
-    onAttack: (attackName: string, attackBonus: number, options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean; is_ranged?: boolean; smite_slot_level?: number; use_divine_smite?: boolean; use_sneak_attack?: boolean; use_bardic_inspiration?: boolean }) => void;
+    onAttack: (attackName: string, attackBonus: number, options?: { advantage?: boolean; disadvantage?: boolean; dm_override?: boolean; inspiration?: boolean; is_ranged?: boolean; smite_slot_level?: number; use_divine_smite?: boolean; use_sneak_attack?: boolean; use_bardic_inspiration?: boolean; cleave_target_id?: number; power_attack?: boolean }) => void;
     // Weapon & Spell data
     characterWeapons: Array<{
         name: string;
@@ -29,6 +30,8 @@ interface ActionDockProps {
         isThrown?: boolean;
         rangeNormal?: number;
         rangeLong?: number;
+        mastery?: string | null;
+        canUseMastery?: boolean;
     }>;
     characterSpells: Map<number, CharacterSpell[]>;
     charData: any;
@@ -59,6 +62,11 @@ interface ActionDockProps {
     onEscapeGrapple?: () => Promise<void>;
     onReleaseGrapple?: () => Promise<void>;
     onPin?: () => Promise<void>;
+    onFontOfMagic?: (data: {
+        participantId: number;
+        actionType: 'convert_slot' | 'create_slot';
+        slotLevel: number;
+    }) => Promise<void>;
 }
 
 function getConditionNames(p?: CombatParticipant | null): string[] {
@@ -187,6 +195,19 @@ export function computeRollPrediction(
         advReasons.push('Heroic Inspiration');
     }
 
+    // 2024 Weapon Mastery: Vex gives attacker advantage against target on next attack
+    if (attacker && target) {
+        const vexTargetId = attacker.feature_uses?.vex_target_id || (attacker as any).vex_target_id;
+        if (vexTargetId && Number(vexTargetId) === Number(target.id)) {
+            advReasons.push('Vex Mastery (Advantage on next attack)');
+        }
+    }
+
+    // 2024 Weapon Mastery: Sapped condition gives target disadvantage on its next attack
+    if (atkConds.includes('sapped') || attacker?.feature_uses?.sap_disadvantage) {
+        disadvReasons.push('Sapped (Disadvantage from Sap Mastery)');
+    }
+
     let state: 'normal' | 'advantage' | 'disadvantage' | 'canceled' = 'normal';
     if (advReasons.length > 0 && disadvReasons.length > 0) {
         state = 'canceled';
@@ -234,9 +255,10 @@ export function ActionDock({
     onEscapeGrapple,
     onReleaseGrapple,
     onPin,
+    onFontOfMagic,
 }: ActionDockProps) {
     // Open drawer state: clicking a category button toggles open its drawer above the dock
-    const [openDrawer, setOpenDrawer] = useState<'weapons' | 'spells' | 'features' | 'consumables' | 'maneuvers' | 'test' | null>(null);
+    const [openDrawer, setOpenDrawer] = useState<'weapons' | 'spells' | 'features' | 'consumables' | 'maneuvers' | 'test' | 'fontOfMagic' | null>(null);
 
     // Feature state (Lay on Hands, Smite, Ki, Wild Shape, etc.)
     const [lohAmount, setLohAmount] = useState<number>(5);
@@ -256,6 +278,25 @@ export function ActionDock({
     const [selectedBeast, setSelectedBeast] = useState<string>('Wolf');
     const [preserveLifeTargetId, setPreserveLifeTargetId] = useState<number | null>(null);
     const [preserveLifeAmount, setPreserveLifeAmount] = useState<number>(5);
+    const [usePowerAttack, setUsePowerAttack] = useState<boolean>(false);
+
+    // Sorcerer Font of Magic details
+    const isSorcerer = Boolean(
+        currentParticipant?.is_sorcerer ||
+        currentParticipant?.character?.character_class?.name?.toLowerCase() === "sorcerer" ||
+        currentParticipant?.name?.toLowerCase().includes("sorcerer")
+    );
+    const sorceryPointsCurrent =
+        currentParticipant?.sorcery_points_current ??
+        currentParticipant?.character?.stats?.sorcery_points_current ??
+        0;
+    const sorceryPointsMax =
+        currentParticipant?.sorcery_points_max ??
+        currentParticipant?.character?.stats?.sorcery_points_max ??
+        0;
+    const hasFontOfMagic =
+        isSorcerer &&
+        ((currentParticipant?.level || currentParticipant?.character?.level || 1) >= 2 || !!currentParticipant?.has_font_of_magic);
 
     // Automatically close drawer when active participant / turn changes
     useEffect(() => {
@@ -331,6 +372,17 @@ export function ActionDock({
 
     const charFeatures = charData?.features || [];
     const characterFeats = charData?.character_feats || [];
+    const hasGWM = Boolean(
+        characterFeats.some((cf: any) => cf.feat?.name?.toLowerCase().includes('great weapon master') || cf.name?.toLowerCase().includes('great weapon master')) ||
+        charFeatures.some((f: any) => f.name?.toLowerCase().includes('great weapon master')) ||
+        (currentParticipant as any)?.has_great_weapon_master
+    );
+    const hasSharpshooter = Boolean(
+        characterFeats.some((cf: any) => cf.feat?.name?.toLowerCase().includes('sharpshooter') || cf.name?.toLowerCase().includes('sharpshooter')) ||
+        charFeatures.some((f: any) => f.name?.toLowerCase().includes('sharpshooter')) ||
+        (currentParticipant as any)?.has_sharpshooter
+    );
+    const hasPowerAttack = hasGWM || hasSharpshooter;
     const classLower = (charData?.character_class?.name || charData?.class_name || '').toLowerCase();
     const isPaladin = classLower === 'paladin' || charFeatures.some((f: any) => f.name?.toLowerCase() === 'lay on hands') || !!currentParticipant?.is_paladin;
     const isFighter = classLower === 'fighter' || charFeatures.some((f: any) => f.name?.toLowerCase() === 'second wind') || !!currentParticipant?.is_fighter;
@@ -477,6 +529,7 @@ export function ActionDock({
                 smite_slot_level: (useSmite && isMelee && isPaladin) ? smiteSlot : undefined,
                 use_sneak_attack: useSneakAttack && isRogue,
                 use_bardic_inspiration: useBardicInspiration,
+                power_attack: usePowerAttack,
             };
         }
         const pred = computeRollPrediction(currentParticipant, targetParticipant, isMelee, useInspiration, allParticipants);
@@ -490,6 +543,7 @@ export function ActionDock({
             smite_slot_level: (useSmite && isMelee && isPaladin) ? smiteSlot : undefined,
             use_sneak_attack: useSneakAttack && isRogue,
             use_bardic_inspiration: useBardicInspiration,
+            power_attack: usePowerAttack,
         };
         if (useInspiration) {
             setUseInspiration(false);
@@ -500,7 +554,7 @@ export function ActionDock({
         return opts;
     };
 
-    const toggleDrawer = (tab: 'weapons' | 'spells' | 'features' | 'consumables' | 'maneuvers' | 'test') => {
+    const toggleDrawer = (tab: 'weapons' | 'spells' | 'features' | 'consumables' | 'maneuvers' | 'test' | 'fontOfMagic') => {
         if (onCancelAoETargeting) {
             onCancelAoETargeting();
         }
@@ -520,6 +574,7 @@ export function ActionDock({
                             <span className="text-lg">
                                 {openDrawer === 'weapons' && '⚔️'}
                                 {openDrawer === 'spells' && '📖'}
+                                {openDrawer === 'fontOfMagic' && '🔮'}
                                 {openDrawer === 'features' && '🔱'}
                                 {openDrawer === 'consumables' && '🎒'}
                                 {openDrawer === 'maneuvers' && '🏃'}
@@ -528,6 +583,7 @@ export function ActionDock({
                             <h3 className="font-cinzel font-bold text-sm sm:text-base text-amber-200 tracking-wider">
                                 {openDrawer === 'weapons' && (isEnemyTurn ? 'Monster Arsenal' : 'Weapons Arsenal')}
                                 {openDrawer === 'spells' && 'Grimoire & Spellbook'}
+                                {openDrawer === 'fontOfMagic' && 'Font of Magic & Flexible Casting'}
                                 {openDrawer === 'features' && 'Class Features & Feats'}
                                 {openDrawer === 'consumables' && 'Consumables & Supplies'}
                                 {openDrawer === 'maneuvers' && 'Universal Maneuvers'}
@@ -537,6 +593,12 @@ export function ActionDock({
                                 <span className="text-[11px] font-fira-sans text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-600/50">
                                     Spell DC {charData.stats.spell_save_dc}
                                 </span>
+                            )}
+                            {openDrawer === 'fontOfMagic' && (
+                                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/50 text-purple-200 font-mono text-xs font-bold shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+                                    <span>💎</span>
+                                    <span>{sorceryPointsCurrent} / {sorceryPointsMax} SP</span>
+                                </div>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
@@ -743,9 +805,19 @@ export function ActionDock({
                                                             : 'bg-[#181a24] border-[#c5a059]/40 hover:border-[#c5a059] hover:bg-[#222536] hover:shadow-[0_0_15px_rgba(197,160,89,0.25)] cursor-pointer'
                                                     }`}
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-cinzel text-xs font-bold text-[#e0bc75] truncate">{wp.name}</span>
-                                                        <span className="text-xs font-fira-sans font-bold text-emerald-400">
+                                                    <div className="flex items-center justify-between gap-1.5">
+                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                            <span className="font-cinzel text-xs font-bold text-[#e0bc75] truncate">{wp.name}</span>
+                                                            {wp.mastery && (
+                                                                <WeaponMasteryBadge
+                                                                    property={wp.mastery}
+                                                                    weaponName={wp.name}
+                                                                    canUse={wp.canUseMastery ?? true}
+                                                                    size="xs"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        <span className="text-xs font-fira-sans font-bold text-emerald-400 shrink-0">
                                                             +{wp.bonus} to hit
                                                         </span>
                                                     </div>
@@ -988,6 +1060,198 @@ export function ActionDock({
                                         );
                                     })
                             )}
+                        </div>
+                    )}
+
+                    {/* 2.5 FONT OF MAGIC & FLEXIBLE CASTING DRAWER */}
+                    {openDrawer === 'fontOfMagic' && !isEnemyTurn && (
+                        <div className="space-y-4 font-fira-sans">
+                            {/* Feature Description & Tactical Rules Banner */}
+                            <div className="bg-gradient-to-r from-purple-950/60 via-[#181528] to-[#12111c] border border-purple-500/30 rounded-lg p-3 text-xs text-purple-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+                                <div className="space-y-0.5">
+                                    <div className="font-cinzel font-bold text-amber-200 flex items-center gap-1.5">
+                                        <span>🔮</span>
+                                        <span>Flexible Casting (5e Sorcerer)</span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-300 font-lora">
+                                        As a <span className="text-amber-300 font-semibold">Bonus Action</span> on your turn, spend Sorcery Points to create spell slots, or convert existing spell slots to regain Sorcery Points.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-purple-900/40 border border-purple-400/40 text-purple-100 font-mono text-xs font-bold shadow-[0_0_12px_rgba(168,85,247,0.2)]">
+                                        <span className="text-sm">💎</span>
+                                        <span>Pool: {sorceryPointsCurrent} / {sorceryPointsMax} SP</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dual Conversion Grids */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* CARD 1: CREATE SPELL SLOTS (SP -> Slot) */}
+                                <div className="bg-[#13141f] border border-purple-900/40 rounded-xl p-3.5 space-y-3 shadow-inner">
+                                    <div className="flex items-center justify-between border-b border-purple-900/30 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base">✨</span>
+                                            <h4 className="font-cinzel text-xs font-bold text-purple-200 uppercase tracking-wider">
+                                                Create Spell Slot
+                                            </h4>
+                                        </div>
+                                        <span className="text-[10px] text-purple-400/80 font-mono">Spend SP ➔ Slot</span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {[
+                                            { level: 1, cost: 2 },
+                                            { level: 2, cost: 3 },
+                                            { level: 3, cost: 5 },
+                                            { level: 4, cost: 6 },
+                                            { level: 5, cost: 7 },
+                                        ].map(({ level, cost }) => {
+                                            const slots = getSpellSlots(level);
+                                            const canAfford = sorceryPointsCurrent >= cost;
+                                            const bonusUsed = currentParticipant?.bonus_action_used;
+                                            const disabled = !canAfford || bonusUsed || isOperating;
+
+                                            return (
+                                                <div
+                                                    key={`create-${level}`}
+                                                    className="flex items-center justify-between p-2 rounded-lg bg-[#181a29]/80 border border-purple-900/30 hover:border-purple-500/40 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Badge className="bg-purple-950 text-purple-300 border-purple-700/60 font-mono text-[11px] px-2 py-0.5">
+                                                            Level {level}
+                                                        </Badge>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs text-slate-200 font-semibold">
+                                                                {slots.remaining}/{slots.total} Slots
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400">
+                                                                Cost: <span className="text-purple-300 font-bold font-mono">{cost} SP</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <Button
+                                                        size="sm"
+                                                        disabled={disabled}
+                                                        onClick={async () => {
+                                                            if (!onFontOfMagic || !currentParticipant) return;
+                                                            setIsOperating(true);
+                                                            try {
+                                                                await onFontOfMagic({
+                                                                    participantId: currentParticipant.id,
+                                                                    actionType: 'create_slot',
+                                                                    slotLevel: level,
+                                                                });
+                                                            } finally {
+                                                                setIsOperating(false);
+                                                            }
+                                                        }}
+                                                        className={`h-7 px-3 text-xs font-cinzel font-bold transition-all cursor-pointer ${
+                                                            disabled
+                                                                ? 'bg-purple-950/40 border border-purple-900/40 text-purple-400/40 opacity-50 cursor-not-allowed'
+                                                                : 'bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white border border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)] active:scale-95'
+                                                        }`}
+                                                        title={
+                                                            bonusUsed
+                                                                ? "Bonus action already used this turn"
+                                                                : !canAfford
+                                                                ? `Requires ${cost} Sorcery Points (have ${sorceryPointsCurrent})`
+                                                                : `Spend ${cost} SP to create a Level ${level} spell slot`
+                                                        }
+                                                    >
+                                                        + Create
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* CARD 2: CONVERT SPELL SLOTS (Slot -> SP) */}
+                                <div className="bg-[#13141f] border border-indigo-900/40 rounded-xl p-3.5 space-y-3 shadow-inner">
+                                    <div className="flex items-center justify-between border-b border-indigo-900/30 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base">♻️</span>
+                                            <h4 className="font-cinzel text-xs font-bold text-indigo-200 uppercase tracking-wider">
+                                                Convert Slot to Points
+                                            </h4>
+                                        </div>
+                                        <span className="text-[10px] text-indigo-400/80 font-mono">Sacrifice Slot ➔ Gain SP</span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {[
+                                            { level: 1, gain: 1 },
+                                            { level: 2, gain: 2 },
+                                            { level: 3, gain: 3 },
+                                            { level: 4, gain: 4 },
+                                            { level: 5, gain: 5 },
+                                        ].map(({ level, gain }) => {
+                                            const slots = getSpellSlots(level);
+                                            const hasSlots = slots.remaining > 0;
+                                            const poolNotFull = sorceryPointsCurrent < sorceryPointsMax;
+                                            const bonusUsed = currentParticipant?.bonus_action_used;
+                                            const disabled = !hasSlots || !poolNotFull || bonusUsed || isOperating;
+
+                                            return (
+                                                <div
+                                                    key={`convert-${level}`}
+                                                    className="flex items-center justify-between p-2 rounded-lg bg-[#181a29]/80 border border-indigo-900/30 hover:border-indigo-500/40 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Badge className="bg-indigo-950 text-indigo-300 border-indigo-700/60 font-mono text-[11px] px-2 py-0.5">
+                                                            Level {level}
+                                                        </Badge>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs text-slate-200 font-semibold">
+                                                                {slots.remaining} Available
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400">
+                                                                Gain: <span className="text-emerald-400 font-bold font-mono">+{gain} SP</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <Button
+                                                        size="sm"
+                                                        disabled={disabled}
+                                                        onClick={async () => {
+                                                            if (!onFontOfMagic || !currentParticipant) return;
+                                                            setIsOperating(true);
+                                                            try {
+                                                                await onFontOfMagic({
+                                                                    participantId: currentParticipant.id,
+                                                                    actionType: 'convert_slot',
+                                                                    slotLevel: level,
+                                                                });
+                                                            } finally {
+                                                                setIsOperating(false);
+                                                            }
+                                                        }}
+                                                        className={`h-7 px-3 text-xs font-cinzel font-bold transition-all cursor-pointer ${
+                                                            disabled
+                                                                ? 'bg-indigo-950/40 border border-indigo-900/40 text-indigo-400/40 opacity-50 cursor-not-allowed'
+                                                                : 'bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-600 hover:to-purple-700 text-white border border-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.3)] active:scale-95'
+                                                        }`}
+                                                        title={
+                                                            bonusUsed
+                                                                ? "Bonus action already used this turn"
+                                                                : !hasSlots
+                                                                ? "No spell slots of this level remaining to convert"
+                                                                : !poolNotFull
+                                                                ? "Sorcery Points are already at maximum capacity"
+                                                                : `Sacrifice a Level ${level} slot to regain ${gain} Sorcery Points`
+                                                        }
+                                                    >
+                                                        ♻️ Convert
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -1951,14 +2215,18 @@ export function ActionDock({
                                     </h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                         {characterFeats.map((cf: any) => (
-                                            <div key={cf.id} className="p-2.5 rounded-lg border border-amber-900/40 bg-[#161824] text-left">
+                                            <div
+                                                key={cf.id}
+                                                className="group relative p-2.5 rounded-lg border border-amber-900/40 bg-[#161824] hover:border-amber-700/60 hover:bg-[#1b1e2e] transition-all duration-200 text-left cursor-default shadow-sm hover:shadow-md"
+                                                title={cf.feat?.description}
+                                            >
                                                 <div className="flex items-center justify-between">
-                                                    <span className="font-cinzel text-xs font-bold text-amber-200 truncate">{cf.feat?.name}</span>
+                                                    <span className="font-cinzel text-xs font-bold text-amber-200 group-hover:text-amber-100 truncate">{cf.feat?.name}</span>
                                                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-800/50 text-amber-300 font-fira-sans">
                                                         Level {cf.level_taken} Feat
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] text-slate-300/80 font-lora mt-1 leading-snug">
+                                                <p className="text-[10px] text-slate-300/80 group-hover:text-slate-200 font-lora line-clamp-2 group-hover:line-clamp-none mt-1 leading-snug transition-all duration-200">
                                                     {cf.feat?.description}
                                                 </p>
                                             </div>
@@ -1977,15 +2245,40 @@ export function ActionDock({
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                         {charFeatures
                                             .filter((f: any) => !['lay on hands', 'second wind', 'rage', 'reckless attack', 'action surge', 'cunning action'].includes(f.name?.toLowerCase()))
-                                            .map((f: any) => (
-                                                <div key={f.id} className="p-2.5 rounded-lg border border-slate-800 bg-[#141620] text-left">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-cinzel text-xs font-semibold text-[#d1cdb8] truncate">{f.name}</span>
-                                                        <span className="text-[9px] px-1 rounded bg-slate-800 text-slate-300 font-fira-sans">{f.source || 'Class'}</span>
+                                            .map((f: any) => {
+                                                const selections = Array.isArray(f.selection)
+                                                    ? f.selection
+                                                    : f.selection
+                                                        ? [f.selection]
+                                                        : [];
+                                                return (
+                                                    <div
+                                                        key={f.id}
+                                                        className="group relative p-2.5 rounded-lg border border-slate-800 bg-[#141620] hover:border-[#c5a059]/50 hover:bg-[#181b29] transition-all duration-200 text-left cursor-default shadow-sm hover:shadow-md"
+                                                        title={f.description}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="font-cinzel text-xs font-semibold text-[#d1cdb8] group-hover:text-amber-200 transition-colors truncate">{f.name}</span>
+                                                            <span className="text-[9px] px-1 rounded bg-slate-800 text-slate-300 font-fira-sans">{f.source || 'Class'}</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-400 group-hover:text-slate-200 font-lora line-clamp-2 group-hover:line-clamp-none mt-1 leading-snug transition-all duration-200">
+                                                            {f.description}
+                                                        </p>
+                                                        {selections.length > 0 && (
+                                                            <div className="mt-1.5 flex flex-wrap gap-1">
+                                                                {selections.map((sel: string, idx: number) => (
+                                                                    <span
+                                                                        key={idx}
+                                                                        className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-700/60 text-amber-300 font-fira-sans flex items-center gap-1"
+                                                                    >
+                                                                        <span className="text-[8px] text-amber-400">✓</span> {sel}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <p className="text-[10px] text-slate-400 font-lora line-clamp-2 mt-1 leading-snug">{f.description}</p>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                     </div>
                                 </div>
                             )}
@@ -2532,6 +2825,23 @@ export function ActionDock({
                         <span>⭐</span>
                         <span>Inspiration</span>
                     </button>
+
+                    {/* Power Attack Toggle (GWM / Sharpshooter) */}
+                    {hasPowerAttack && (
+                        <button
+                            type="button"
+                            onClick={() => setUsePowerAttack(prev => !prev)}
+                            title={usePowerAttack ? "Power Attack Active: -5 attack roll, +10 bonus damage" : "Toggle Power Attack (-5 attack penalty for +10 damage)"}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded flex items-center gap-1 transition-all cursor-pointer ${
+                                usePowerAttack
+                                    ? 'bg-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.6)] font-bold border border-rose-400'
+                                    : 'text-rose-400/80 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-500/30'
+                            }`}
+                        >
+                            <span>💥</span>
+                            <span>Power Attack (-5/+10)</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -2560,7 +2870,18 @@ export function ActionDock({
                             }`}
                         >
                             <span>⚔️</span>
-                            <span className="truncate max-w-[150px] sm:max-w-[200px]">Strike {activeWeapon.name}</span>
+                            <span className="truncate max-w-[140px] sm:max-w-[180px]">Strike {activeWeapon.name}</span>
+                            {activeWeapon.mastery && (
+                                <span className="hidden md:inline-flex">
+                                    <WeaponMasteryBadge
+                                        property={activeWeapon.mastery}
+                                        weaponName={activeWeapon.name}
+                                        canUse={activeWeapon.canUseMastery ?? true}
+                                        size="xs"
+                                        showTooltip={false}
+                                    />
+                                </span>
+                            )}
                             <span className="text-[10px] font-fira-sans opacity-90 hidden sm:inline">(+{activeWeapon.bonus})</span>
                         </button>
                     )}
@@ -2610,6 +2931,26 @@ export function ActionDock({
                             <span>📖</span>
                             <span>Spellbook</span>
                             <span className="text-[10px] opacity-75">({isGauntlet ? combatSpellCount : `${combatSpellCount}/${totalSpellCount}`}) ▾</span>
+                        </button>
+                    )}
+
+                    {/* 2.5 Font of Magic Button (Sorcerer) */}
+                    {!isEnemyTurn && hasFontOfMagic && (
+                        <button
+                            type="button"
+                            onClick={() => toggleDrawer('fontOfMagic')}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 border ${
+                                openDrawer === 'fontOfMagic'
+                                    ? 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)]'
+                                    : 'bg-[#151722] border-purple-900/40 text-purple-200 hover:text-white hover:border-purple-500/50 hover:bg-[#221733]'
+                            }`}
+                        >
+                            <span>🔮</span>
+                            <span>Font of Magic</span>
+                            <span className="text-[10px] font-mono text-purple-300 font-bold px-1 rounded bg-purple-950/80 border border-purple-500/40">
+                                💎 {sorceryPointsCurrent}/{sorceryPointsMax}
+                            </span>
+                            <span className="text-[10px] opacity-75">▾</span>
                         </button>
                     )}
 

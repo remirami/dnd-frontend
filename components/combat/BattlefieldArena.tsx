@@ -26,6 +26,19 @@ export interface AttackFeedback {
     healingAmount?: number;
     saveSuccess?: boolean;
     conditionApplied?: string | null;
+    weaponMastery?: {
+        mastery?: string;
+        annotation?: string;
+        target_pushed?: boolean;
+        target_sapped?: boolean;
+        target_slowed?: boolean;
+        target_toppled?: boolean;
+        vex_applied?: boolean;
+        cleave_action?: any;
+        damage_amount?: number;
+        damage_type?: string;
+        concentration_broken?: boolean;
+    } | null;
 }
 
 interface BattlefieldArenaProps {
@@ -196,6 +209,22 @@ function FloatingCombatText({ text }: { text: AttackFeedback }) {
         );
     }
 
+    if (!text.hit && text.weaponMastery?.mastery === 'Graze' && text.damage != null && text.damage > 0) {
+        return (
+            <div className="animate-combat-hit flex flex-col items-center select-none">
+                <span className="font-cinzel text-xl sm:text-2xl font-black tracking-widest uppercase text-amber-400 drop-shadow-[0_0_18px_rgba(251,191,36,0.9)]">
+                    🛡️ GRAZE!
+                </span>
+                <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.85)] mt-0.5">
+                    -{text.damage} HP
+                </span>
+                <span className="font-cinzel text-[10px] sm:text-xs font-bold text-amber-300 uppercase tracking-widest mt-0.5 opacity-90">
+                    Damage On Miss
+                </span>
+            </div>
+        );
+    }
+
     return text.hit ? (
         <div className="animate-combat-hit flex flex-col items-center select-none">
             <span
@@ -211,6 +240,47 @@ function FloatingCombatText({ text }: { text: AttackFeedback }) {
                 <span className="font-fira-sans text-xl sm:text-2xl font-extrabold text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.85)] mt-0.5">
                     -{text.damage} HP
                 </span>
+            )}
+            {text.weaponMastery && (
+                <div className="mt-1 flex flex-col items-center">
+                    {text.weaponMastery.mastery === 'Topple' && (
+                        <span className={`font-cinzel text-xs sm:text-sm font-bold uppercase tracking-wider ${
+                            text.weaponMastery.target_toppled ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]' : 'text-slate-400'
+                        }`}>
+                            {text.weaponMastery.target_toppled ? '🔨 TOPPLE! Knocked Prone' : '🔨 TOPPLE: Resisted'}
+                        </span>
+                    )}
+                    {text.weaponMastery.mastery === 'Vex' && (
+                        <span className="font-cinzel text-xs sm:text-sm font-bold text-sky-400 drop-shadow-[0_0_10px_rgba(56,189,248,0.8)] uppercase tracking-wider">
+                            🎯 VEX! Advantage Granted
+                        </span>
+                    )}
+                    {text.weaponMastery.mastery === 'Push' && (
+                        <span className="font-cinzel text-xs sm:text-sm font-bold text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.8)] uppercase tracking-wider">
+                            💨 PUSH! 10 ft Shove
+                        </span>
+                    )}
+                    {text.weaponMastery.mastery === 'Sap' && (
+                        <span className="font-cinzel text-xs sm:text-sm font-bold text-violet-400 drop-shadow-[0_0_10px_rgba(167,139,250,0.8)] uppercase tracking-wider">
+                            💫 SAP! Disadvantage Inflicted
+                        </span>
+                    )}
+                    {text.weaponMastery.mastery === 'Slow' && (
+                        <span className="font-cinzel text-xs sm:text-sm font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] uppercase tracking-wider">
+                            ❄️ SLOW! Speed -10 ft
+                        </span>
+                    )}
+                    {text.weaponMastery.mastery === 'Cleave' && (
+                        <span className="font-cinzel text-xs sm:text-sm font-bold text-rose-400 drop-shadow-[0_0_10px_rgba(251,113,133,0.8)] uppercase tracking-wider">
+                            ⚔️ CLEAVE! Secondary Strike
+                        </span>
+                    )}
+                    {text.weaponMastery.mastery === 'Nick' && (
+                        <span className="font-cinzel text-xs sm:text-sm font-bold text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)] uppercase tracking-wider">
+                            🗡️ NICK! Extra Light Attack
+                        </span>
+                    )}
+                </div>
             )}
         </div>
     ) : (

@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ConditionBadge } from "@/components/combat/ConditionBadge";
+import { WeaponMasteryBadge, canCharacterUseMastery } from "@/components/combat/WeaponMasteryBadge";
 import { isBuffCondition } from "@/lib/data/conditions";
 import type { CombatParticipant } from "@/lib/types/combat";
 import { resolveSizeDisplay, getSizeFootprint } from "@/lib/utils";
@@ -106,6 +107,7 @@ export function ParticipantInspectorDrawer({
                 rarity: (details.rarity || 'common').toLowerCase(),
                 damage_dice: details.damage_dice,
                 damage_type: details.damage_type,
+                mastery_property: details.mastery_property,
                 base_ac: details.base_ac,
                 ac_bonus: details.ac_bonus,
                 is_attuned: ci.is_attuned,
@@ -121,6 +123,7 @@ export function ParticipantInspectorDrawer({
         rarity: (g.rarity || 'common').toLowerCase(),
         damage_dice: g.damage_dice,
         damage_type: g.damage_type,
+        mastery_property: g.mastery_property,
         base_ac: g.base_ac,
         ac_bonus: g.ac_bonus,
         is_attuned: g.is_attuned,
@@ -132,6 +135,7 @@ export function ParticipantInspectorDrawer({
             name: participant.equipped_items.weapon.name,
             slot: 'main_hand',
             damage_dice: participant.equipped_items.weapon.damage_dice,
+            mastery_property: (participant.equipped_items.weapon as any).mastery_property,
             rarity: 'common',
         });
     }
@@ -473,6 +477,14 @@ export function ParticipantInspectorDrawer({
                                                         <span className={`font-semibold truncate ${rStyle.text}`}>
                                                             {item.name}
                                                         </span>
+                                                        {item.damage_dice && (
+                                                            <WeaponMasteryBadge
+                                                                weaponName={item.name}
+                                                                property={item.mastery_property}
+                                                                canUse={canCharacterUseMastery(char, participant)}
+                                                                size="xs"
+                                                            />
+                                                        )}
                                                         {item.is_attuned && (
                                                             <span className="text-[9px] px-1 py-0.2 bg-[#c5a059]/20 text-[#e0bc75] rounded border border-[#c5a059]/40 font-mono">
                                                                 ⚡ Attuned

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CharacterItem } from "@/lib/types/character";
+import { WeaponMasteryBadge } from "@/components/combat/WeaponMasteryBadge";
 
 // ─── Slot definitions ─────────────────────────────────────────────────────────
 // Keys match backend equipment_slot choices exactly.
@@ -61,8 +62,16 @@ function ItemTooltip({ item }: { item: CharacterItem }) {
                 {item.item_details.rarity} · {item.item_details.category?.name}
             </div>
             {item.item_details.damage_dice && (
-                <div className="text-xs text-red-300 font-fira-sans mb-0.5">
-                    ⚔ {item.item_details.damage_dice} {item.item_details.damage_type}
+                <div className="mb-1">
+                    <div className="text-xs text-red-300 font-fira-sans mb-1">
+                        ⚔ {item.item_details.damage_dice} {item.item_details.damage_type}
+                    </div>
+                    <WeaponMasteryBadge
+                        weaponName={item.item_details.name}
+                        property={item.item_details.mastery_property}
+                        size="xs"
+                        showDescription={false}
+                    />
                 </div>
             )}
             {item.item_details.base_ac !== undefined && (

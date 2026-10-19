@@ -23,6 +23,7 @@ export interface WeaponItem {
     loading?: boolean;
     properties?: Array<{ id: number; name: string; description?: string }>;
     weight?: string | number;
+    mastery_property?: string;
 }
 
 export interface ClassProficiencyRule {

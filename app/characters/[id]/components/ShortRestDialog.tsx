@@ -22,7 +22,13 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
 
     const [hitDiceToSpend, setHitDiceToSpend] = useState(() => Math.min(1, availableHitDice));
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ hp_gained: number; message?: string } | null>(null);
+    const [result, setResult] = useState<{
+        hp_gained?: number;
+        hp_recovered?: number;
+        message?: string;
+        dice_rolls?: Array<{ die: string; roll: number; con_modifier: number; healed: number }>;
+        features_recovered?: string[];
+    } | null>(null);
 
     const handleShortRest = async () => {
         if (availableHitDice > 0 && hitDiceToSpend > availableHitDice) {
@@ -49,6 +55,8 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
         setHitDiceToSpend(Math.min(1, Math.max(0, availableHitDice)));
     }
 
+    const gainedHp = result?.hp_gained ?? result?.hp_recovered ?? 0;
+
     return (
         <Dialog open={open} onOpenChange={(val) => {
             if (!val) handleClose();
@@ -61,7 +69,7 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="bg-[#12141a] border border-[#c5a059] text-slate-100 sm:max-w-[425px] shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+            <DialogContent className="bg-[#12141a] border border-[#c5a059] text-slate-100 sm:max-w-[440px] shadow-[0_0_30px_rgba(0,0,0,0.8)]">
                 <DialogHeader>
                     <DialogTitle className="font-cinzel-decorative text-lg text-[#c5a059] font-bold tracking-wide">
                         Take a Short Rest
@@ -72,11 +80,50 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
                 </DialogHeader>
 
                 {result ? (
-                    <div className="py-6 text-center space-y-4 font-lora">
-                        <div className="text-[#c5a059] text-lg font-semibold">
-                            {result.message || `You regained ${result.hp_gained} Hit Points!`}
+                    <div className="py-4 text-center space-y-4 font-lora">
+                        <div className="p-3 bg-[#181a21] border border-[#c5a059]/30 rounded">
+                            <div className="text-[#c5a059] text-base font-semibold">
+                                {gainedHp > 0 ? `Regained +${gainedHp} Hit Points` : "Short Rest Complete"}
+                            </div>
+                            {result.message && (
+                                <p className="text-xs text-[#d1cdb8]/80 mt-1 italic">
+                                    {result.message}
+                                </p>
+                            )}
                         </div>
-                        <Button onClick={handleClose} className="w-full bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs">
+
+                        {result.dice_rolls && result.dice_rolls.length > 0 && (
+                            <div className="space-y-1.5 text-left">
+                                <span className="text-[11px] font-semibold tracking-wider uppercase text-[#c5a059]/80">
+                                    Hit Dice Rolls
+                                </span>
+                                <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                                    {result.dice_rolls.map((dr, idx) => (
+                                        <div key={idx} className="flex justify-between items-center text-xs p-2 bg-[#181a21]/60 border border-[#c5a059]/20 rounded">
+                                            <span className="font-mono text-[#d1cdb8]">{dr.die} Roll: {dr.roll} {dr.con_modifier >= 0 ? `+ ${dr.con_modifier}` : `- ${Math.abs(dr.con_modifier)}`} (CON)</span>
+                                            <span className="font-bold text-[#4ade80]">+{dr.healed} HP</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {result.features_recovered && result.features_recovered.length > 0 && (
+                            <div className="space-y-1.5 text-left">
+                                <span className="text-[11px] font-semibold tracking-wider uppercase text-[#c5a059]/80">
+                                    Restored Features
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {result.features_recovered.map((feat, idx) => (
+                                        <span key={idx} className="text-[11px] px-2 py-0.5 rounded bg-[#c5a059]/15 text-[#e0bc75] border border-[#c5a059]/30">
+                                            ⚡ {feat}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <Button onClick={handleClose} className="w-full bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs mt-2">
                             Close
                         </Button>
                     </div>
