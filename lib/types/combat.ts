@@ -371,6 +371,23 @@ export interface CombatParticipant {
     fly_speed?: number;
     has_hover?: boolean;
     can_fly?: boolean;
+    // Summoning & Persistent Minion / Token Spells
+    is_summon?: boolean;
+    is_spell_object?: boolean;
+    summon_details?: {
+        summon_type: string;
+        summoned_by: number;
+        caster_name?: string;
+        spell_name?: string;
+        remaining_rounds?: number;
+        duration_rounds?: number;
+        requires_concentration?: boolean;
+        speed?: number;
+        damage_formula?: string;
+        damage_type?: string;
+        attacks?: any[];
+        is_bonus_action_command?: boolean;
+    };
 }
 
 export interface EnvironmentalEffect {

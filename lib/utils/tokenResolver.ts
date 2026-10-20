@@ -81,6 +81,52 @@ export function resolveParticipantToken(participant?: CombatParticipant | null):
 
     const isHero = participant.participant_type === "character";
 
+    // 0. Summoned Minion or Persistent Spell Object
+    const isSummon = Boolean(participant.is_summon || (participant as any).feature_uses?.is_summon);
+    if (isSummon) {
+        const lowerName = participant.name.toLowerCase();
+        let icon = "✨";
+        let glow = "rgba(168, 85, 247, 0.7)";
+        let frame = "border-purple-400";
+
+        if (lowerName.includes("spiritual weapon") || lowerName.includes("sword") || lowerName.includes("hammer")) {
+            icon = "⚔️";
+            glow = "rgba(34, 211, 238, 0.85)";
+            frame = "border-cyan-400";
+        } else if (lowerName.includes("flaming sphere") || lowerName.includes("fire")) {
+            icon = "☄️";
+            glow = "rgba(249, 115, 22, 0.9)";
+            frame = "border-amber-500";
+        } else if (lowerName.includes("skeleton") || lowerName.includes("zombie") || lowerName.includes("undead")) {
+            icon = "💀";
+            glow = "rgba(20, 184, 166, 0.8)";
+            frame = "border-teal-400";
+        } else if (lowerName.includes("familiar") || lowerName.includes("owl") || lowerName.includes("raven")) {
+            icon = "🦉";
+            glow = "rgba(52, 211, 153, 0.8)";
+            frame = "border-emerald-400";
+        } else if (lowerName.includes("elemental")) {
+            icon = "🌪️";
+            glow = "rgba(251, 191, 36, 0.8)";
+            frame = "border-yellow-400";
+        } else if (lowerName.includes("wolf") || lowerName.includes("bear")) {
+            icon = "🐺";
+            glow = "rgba(146, 64, 14, 0.8)";
+            frame = "border-amber-600";
+        }
+
+        return {
+            imageUrl: null,
+            is3DModel: false,
+            name: participant.name,
+            classSlug: null,
+            raceSlug: "summon",
+            fallbackIcon: icon,
+            frameColor: frame,
+            glowColor: glow,
+        };
+    }
+
     if (isHero) {
         // 1. Identify Class
         let rawClass = (

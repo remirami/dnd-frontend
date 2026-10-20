@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,17 @@ interface ActionDockProps {
         participantId: number;
         actionType: 'convert_slot' | 'create_slot';
         slotLevel: number;
+    }) => Promise<void>;
+    onDeathSave?: () => Promise<void>;
+    onStabilize?: (targetId: number) => Promise<void>;
+    onCommandSummon?: (data: {
+        casterId: number;
+        summonId: number;
+        commandType: 'attack' | 'move' | 'ram' | 'help' | 'dismiss';
+        targetId?: number;
+        destX?: number;
+        destY?: number;
+        attackIndex?: number;
     }) => Promise<void>;
 }
 
@@ -256,6 +267,9 @@ export function ActionDock({
     onReleaseGrapple,
     onPin,
     onFontOfMagic,
+    onDeathSave,
+    onStabilize,
+    onCommandSummon,
 }: ActionDockProps) {
     // Open drawer state: clicking a category button toggles open its drawer above the dock
     const [openDrawer, setOpenDrawer] = useState<'weapons' | 'spells' | 'features' | 'consumables' | 'maneuvers' | 'test' | 'fontOfMagic' | null>(null);
@@ -322,6 +336,26 @@ export function ActionDock({
         return targetSize <= mySize + 1;
     })();
     const isTargetEnemy = Boolean(selectedTarget && selectedTarget.participant_type !== currentParticipant?.participant_type);
+    const isTargetAlly = Boolean(selectedTarget && selectedTarget.participant_type === 'character');
+    const isTargetDying = Boolean(isTargetAlly && (selectedTarget?.current_hp ?? 1) <= 0 && !selectedTarget?.death_save_status?.is_dead && !selectedTarget?.death_save_status?.is_stable);
+    const isTargetStable = Boolean(isTargetAlly && (selectedTarget?.current_hp ?? 1) <= 0 && selectedTarget?.death_save_status?.is_stable);
+
+    const isAtZeroHp = Boolean(currentParticipant && (currentParticipant.current_hp ?? 1) <= 0 && currentParticipant.participant_type === 'character');
+    const isDead = Boolean(currentParticipant?.death_save_status?.is_dead);
+    const isStable = Boolean(currentParticipant?.death_save_status?.is_stable);
+    const deathSaveSuccesses = currentParticipant?.death_save_status?.successes ?? 0;
+    const deathSaveFailures = currentParticipant?.death_save_status?.failures ?? 0;
+
+    const activeSummons = useMemo(() => {
+        if (!currentParticipant || !allParticipants) return [];
+        return allParticipants.filter(p =>
+            p.is_active && (
+                p.summon_details?.summoned_by === currentParticipant.id ||
+                (p as any).feature_uses?.summoned_by === currentParticipant.id ||
+                (p as any).feature_uses?.caster_id === currentParticipant.id
+            )
+        );
+    }, [currentParticipant, allParticipants]);
 
     // If it's an enemy turn, display the Autonomous AI indicator card with interactive controls
     if (isEnemyTurn) {
@@ -2460,6 +2494,57 @@ export function ActionDock({
                                 <span className="text-[10px] text-slate-400">Action • Dexterity (Stealth) check to become unseen</span>
                             </button>
 
+                            {/* 5e First Aid / Stabilize Dying Ally */}
+                            <button
+                                disabled={
+                                    currentIsIncapacitated ||
+                                    isOperating ||
+                                    Boolean(currentParticipant?.action_used) ||
+                                    !isTargetDying ||
+                                    !isTargetInMeleeReach
+                                }
+                                onClick={async () => {
+                                    if (!selectedTarget) {
+                                        alert("Select an unconscious dying ally to stabilize.");
+                                        return;
+                                    }
+                                    if (!isTargetInMeleeReach) {
+                                        alert(`${selectedTarget.name} is out of reach (must be within 5 ft).`);
+                                        return;
+                                    }
+                                    if (!onStabilize) return;
+                                    setIsOperating(true);
+                                    try {
+                                        await onStabilize(selectedTarget.id);
+                                        setOpenDrawer(null);
+                                    } finally {
+                                        setIsOperating(false);
+                                    }
+                                }}
+                                className="p-3 rounded-lg bg-[#14241d] border border-emerald-600/70 hover:border-emerald-400 text-emerald-200 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex flex-col gap-1 text-left shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                                title={
+                                    !selectedTarget
+                                        ? "Select an unconscious dying ally within 5 ft to administer first aid"
+                                        : !isTargetAlly
+                                        ? "First aid can only be administered to allies"
+                                        : !isTargetDying
+                                        ? `${selectedTarget.name} is not dying`
+                                        : !isTargetInMeleeReach
+                                        ? `${selectedTarget.name} is out of reach (must be within 5 ft)`
+                                        : "Use your Action to make a DC 10 Wisdom (Medicine) check and stabilize this ally"
+                                }
+                            >
+                                <div className="flex items-center gap-1.5">
+                                    <span>🩺</span>
+                                    <span className="font-cinzel font-bold text-xs text-emerald-300">
+                                        First Aid {isTargetDying && selectedTarget ? `(${selectedTarget.name})` : ''}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] text-emerald-300/80">
+                                    Action • DC 10 Medicine check to stabilize dying ally at 0 HP
+                                </span>
+                            </button>
+
                             {/* 5e Grapple Maneuver */}
                             <button
                                 disabled={
@@ -2711,9 +2796,128 @@ export function ActionDock({
             )}
 
             {/* ============================================================ */}
-            {/* TOP BAR: ACTION ECONOMY PILLS + ROLL ADVANTAGE STATUS        */}
+            {/* 0 HP / DYING / STABILIZED SPECIAL COMBAT INTERFACE           */}
             {/* ============================================================ */}
-            <div className="flex items-center justify-between gap-2 border-b border-[#c5a059]/15 pb-1.5 flex-wrap">
+            {isAtZeroHp ? (
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-3.5 rounded-xl border bg-gradient-to-r from-red-950/70 via-[#181216] to-red-950/70 border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.2)]">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-black/60 border border-red-500/50 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                            {isDead ? '🪦' : isStable ? '🛡️' : '💀'}
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-cinzel font-bold text-sm sm:text-base text-red-100 tracking-wide">
+                                    {isDead
+                                        ? `${currentParticipant?.name} has Fallen`
+                                        : isStable
+                                        ? `${currentParticipant?.name} is Stabilized`
+                                        : `${currentParticipant?.name} is Dying (0 HP)`}
+                                </h3>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-fira-sans font-bold uppercase tracking-wider border ${
+                                    isDead
+                                        ? 'bg-zinc-900 border-zinc-700 text-zinc-400'
+                                        : isStable
+                                        ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
+                                        : 'bg-red-950/90 border-red-500 text-red-200 animate-pulse'
+                                }`}>
+                                    {isDead ? 'Dead' : isStable ? 'Stable' : 'Unconscious'}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-300 font-lora mt-0.5 max-w-xl">
+                                {isDead
+                                    ? 'This character has died from fatal wounds. No further actions can be taken.'
+                                    : isStable
+                                    ? 'You are unconscious but stable at 0 HP. You do not need to make death saving throws unless you take further damage.'
+                                    : 'Make a DC 10 Death Saving Throw on your turn. Nat 20 revives at 1 HP. Nat 1 inflicts 2 failures. 3 successes stabilize; 3 failures result in death.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Death Save Counter & Controls */}
+                    <div className="flex items-center gap-3 flex-wrap justify-end">
+                        {!isDead && !isStable && (
+                            <>
+                                {/* Successes & Failures Tracker */}
+                                <div className="flex flex-col gap-1.5 bg-black/60 border border-red-900/40 rounded-lg p-2 text-xs font-cinzel">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-emerald-400 font-semibold text-[11px]">Success:</span>
+                                        <div className="flex items-center gap-1.5">
+                                            {[1, 2, 3].map(num => (
+                                                <span
+                                                    key={`success-${num}`}
+                                                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] border transition-all ${
+                                                        deathSaveSuccesses >= num
+                                                            ? 'bg-emerald-500 border-emerald-300 text-black font-bold shadow-[0_0_8px_rgba(16,185,129,0.8)]'
+                                                            : 'bg-slate-900 border-slate-700 text-slate-600'
+                                                    }`}
+                                                >
+                                                    {deathSaveSuccesses >= num ? '✓' : '•'}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-red-400 font-semibold text-[11px]">Failure:</span>
+                                        <div className="flex items-center gap-1.5">
+                                            {[1, 2, 3].map(num => (
+                                                <span
+                                                    key={`failure-${num}`}
+                                                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] border transition-all ${
+                                                        deathSaveFailures >= num
+                                                            ? 'bg-red-600 border-red-400 text-white font-bold shadow-[0_0_8px_rgba(239,68,68,0.8)]'
+                                                            : 'bg-slate-900 border-slate-700 text-slate-600'
+                                                    }`}
+                                                >
+                                                    {deathSaveFailures >= num ? '✗' : '•'}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Roll Death Save Button */}
+                                <button
+                                    type="button"
+                                    disabled={isOperating}
+                                    onClick={async () => {
+                                        if (!onDeathSave) return;
+                                        setIsOperating(true);
+                                        try {
+                                            await onDeathSave();
+                                        } finally {
+                                            setIsOperating(false);
+                                        }
+                                    }}
+                                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 hover:from-red-500 hover:to-amber-400 text-stone-950 font-cinzel font-bold text-xs sm:text-sm shadow-[0_0_20px_rgba(244,63,94,0.4)] active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                                >
+                                    <span className="text-base">🎲</span>
+                                    <span>Roll Death Save</span>
+                                </button>
+                            </>
+                        )}
+
+                        {/* End / Pass Turn Button */}
+                        {onNextTurn && (
+                            <button
+                                type="button"
+                                onClick={onNextTurn}
+                                className="px-3.5 py-2 rounded-lg bg-[#181a24] hover:bg-[#25283a] border border-[#c5a059]/60 hover:border-[#c5a059] text-amber-200 hover:text-amber-100 font-cinzel font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0"
+                            >
+                                <span>⏩</span>
+                                <span>{isStable ? 'Pass Turn' : 'End Turn'}</span>
+                                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] bg-black/60 border border-amber-500/30 rounded text-amber-300 font-mono font-normal">
+                                    Space
+                                </kbd>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* ============================================================ */}
+                    {/* TOP BAR: ACTION ECONOMY PILLS + ROLL ADVANTAGE STATUS        */}
+                    {/* ============================================================ */}
+                    <div className="flex items-center justify-between gap-2 border-b border-[#c5a059]/15 pb-1.5 flex-wrap">
                 {/* Left: 5e Action Economy Tracker Pills */}
                 <div className="flex items-center gap-2 font-cinzel text-[11px] flex-wrap">
                     {/* Action Pill */}
@@ -2849,8 +3053,90 @@ export function ActionDock({
             {/* BOTTOM COMMAND ROW: QUICK-STRIKE + 5 DRAWERS + END TURN      */}
             {/* ============================================================ */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
-                {/* Left Side: 1-Click Strike Action */}
+                {/* Left Side: 1-Click Strike Action / Stabilize Ally */}
                 <div className="flex items-center gap-1.5 flex-wrap">
+                    {!isEnemyTurn && isTargetDying && isTargetInMeleeReach && (
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                if (!onStabilize || !selectedTarget) return;
+                                setIsOperating(true);
+                                try {
+                                    await onStabilize(selectedTarget.id);
+                                } finally {
+                                    setIsOperating(false);
+                                }
+                            }}
+                            disabled={currentIsIncapacitated || isOperating || Boolean(currentParticipant?.action_used)}
+                            title={`First Aid: Administer first aid to stabilize ${selectedTarget?.name} (DC 10 Medicine check)`}
+                            className="px-3.5 py-1.5 rounded-lg border font-cinzel font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-stone-950 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.35)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                            <span>🩺</span>
+                            <span className="truncate max-w-[140px] sm:max-w-[180px]">Stabilize {selectedTarget?.name}</span>
+                        </button>
+                    )}
+                    {!isEnemyTurn && activeSummons.length > 0 && activeSummons.map((summon: CombatParticipant) => {
+                        const sDetails = summon.summon_details || (summon as any).feature_uses || {};
+                        const sType = sDetails.summon_type || 'minion';
+                        const isSpellObj = sType === 'spell_object';
+                        const sName = summon.name.replace(/\s*\(.*?\)/, '');
+                        const isBaUsed = Boolean(currentParticipant?.bonus_action_used);
+
+                        return (
+                            <div key={summon.id} className="flex items-center gap-1 bg-[#1a1420]/80 border border-purple-500/40 px-2 py-1 rounded-lg">
+                                <span className="text-[11px] font-cinzel font-bold text-purple-300 flex items-center gap-1">
+                                    <span>{sName.includes('Spiritual') ? '⚔️' : sName.includes('Flaming') ? '☄️' : sName.includes('Skeleton') ? '💀' : '✨'}</span>
+                                    <span className="truncate max-w-[90px]">{sName}</span>
+                                </span>
+                                {selectedTarget && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (!onCommandSummon || !currentParticipant) return;
+                                            setIsOperating(true);
+                                            try {
+                                                const cmdType = sName.toLowerCase().includes('flaming') ? 'ram' : 'attack';
+                                                await onCommandSummon({
+                                                    casterId: currentParticipant.id,
+                                                    summonId: summon.id,
+                                                    commandType: cmdType,
+                                                    targetId: selectedTarget.id,
+                                                });
+                                            } finally {
+                                                setIsOperating(false);
+                                            }
+                                        }}
+                                        disabled={currentIsIncapacitated || isOperating || (isSpellObj && isBaUsed)}
+                                        title={`Command ${sName} to attack/ram ${selectedTarget.name}${isSpellObj ? ' (Uses Bonus Action)' : ''}`}
+                                        className="px-2 py-1 rounded text-[10px] font-cinzel font-bold border border-purple-400 bg-purple-950/60 hover:bg-purple-800/80 text-purple-200 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        {sName.toLowerCase().includes('flaming') ? 'Ram' : 'Strike'}
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!onCommandSummon || !currentParticipant) return;
+                                        setIsOperating(true);
+                                        try {
+                                            await onCommandSummon({
+                                                casterId: currentParticipant.id,
+                                                summonId: summon.id,
+                                                commandType: 'dismiss',
+                                            });
+                                        } finally {
+                                            setIsOperating(false);
+                                        }
+                                    }}
+                                    disabled={currentIsIncapacitated || isOperating}
+                                    title={`Dismiss ${sName}`}
+                                    className="px-1.5 py-1 rounded text-[10px] border border-red-700/50 bg-red-950/40 hover:bg-red-900/60 text-red-300 transition-all cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        );
+                    })}
                     {!isEnemyTurn && activeWeapon && (
                         <button
                             type="button"
@@ -3049,6 +3335,8 @@ export function ActionDock({
                     </div>
                 )}
             </div>
+                </>
+            )}
         </div>
     );
 }

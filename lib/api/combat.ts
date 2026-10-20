@@ -252,4 +252,53 @@ export const combatApi = {
             slot_level: number;
             session?: CombatSession;
         }>(`/combat/sessions/${sessionId}/font_of_magic/`, data),
+
+    // Roll a death saving throw for an unconscious character at 0 HP
+    deathSave: (sessionId: number, data: { participant_id: number; roll?: number }) =>
+        apiClient.post<{
+            message: string;
+            success: boolean;
+            is_stable: boolean;
+            is_dead: boolean;
+            roll: number;
+            participant: CombatParticipant;
+            session: CombatSession;
+        }>(`/combat/sessions/${sessionId}/death_save/`, data),
+
+    // Stabilize an unconscious dying ally (DC 10 Medicine check or Healer's Kit)
+    stabilize: (sessionId: number, data: { healer_id: number; target_id: number; manual_roll?: number; use_healers_kit?: boolean; dm_override?: boolean }) =>
+        apiClient.post<{
+            success: boolean;
+            used_healers_kit?: boolean;
+            roll?: number;
+            total?: number;
+            dc?: number;
+            message: string;
+            healer: CombatParticipant;
+            target: CombatParticipant;
+            session: CombatSession;
+        }>(`/combat/sessions/${sessionId}/stabilize/`, data),
+
+    // Command a summoned minion or persistent spell object (e.g. Spiritual Weapon, Flaming Sphere, Animate Dead)
+    commandSummon: (sessionId: number, data: {
+        caster_id: number;
+        summon_id: number;
+        command_type: 'attack' | 'move' | 'ram' | 'help' | 'dismiss';
+        target_id?: number;
+        destination_x?: number;
+        destination_y?: number;
+        attack_index?: number;
+        manual_roll?: number;
+        dm_override?: boolean;
+    }) =>
+        apiClient.post<{
+            success: boolean;
+            message: string;
+            command_result: any;
+            caster: CombatParticipant;
+            summon: CombatParticipant;
+            target?: CombatParticipant;
+            session: CombatSession;
+        }>(`/combat/sessions/${sessionId}/command_summon/`, data),
 };
+

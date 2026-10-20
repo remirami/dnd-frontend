@@ -1262,6 +1262,80 @@ export default function CombatPage() {
         }
     };
 
+    const handleDeathSave = async () => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.deathSave(sessionId, { participant_id: current.id });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+                checkCombatOutcome(resp.data.session.participants);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to make death save:", err);
+            alert(err.response?.data?.error || "Death saving throw failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
+    const handleStabilize = async (targetId: number) => {
+        const current = getCurrentParticipant();
+        if (!current || !sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.stabilize(sessionId, { healer_id: current.id, target_id: targetId });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to stabilize ally:", err);
+            alert(err.response?.data?.error || "Stabilization failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
+    const handleCommandSummon = async (data: {
+        casterId: number;
+        summonId: number;
+        commandType: 'attack' | 'move' | 'ram' | 'help' | 'dismiss';
+        targetId?: number;
+        destX?: number;
+        destY?: number;
+        attackIndex?: number;
+    }) => {
+        if (!sessionId) return;
+        setIsMovementOperating(true);
+        try {
+            const resp = await combatApi.commandSummon(sessionId, {
+                caster_id: data.casterId,
+                summon_id: data.summonId,
+                command_type: data.commandType,
+                target_id: data.targetId,
+                destination_x: data.destX,
+                destination_y: data.destY,
+                attack_index: data.attackIndex,
+            });
+            if (resp.data.session) {
+                setSession(resp.data.session);
+                checkCombatOutcome(resp.data.session.participants);
+            } else {
+                await loadSession();
+            }
+        } catch (err: any) {
+            console.error("Failed to command summon:", err);
+            alert(err.response?.data?.error || "Summon command failed.");
+        } finally {
+            setIsMovementOperating(false);
+        }
+    };
+
     // 5E Spatial AoE Spell Targeting Handlers
     const handleStartAoETargeting = (config: AoETargetingConfig) => {
         setSelectedSpellForCast(null);
@@ -1851,6 +1925,9 @@ export default function CombatPage() {
                 onReleaseGrapple={handleReleaseGrapple}
                 onPin={handlePin}
                 onFontOfMagic={handleFontOfMagic}
+                onDeathSave={handleDeathSave}
+                onStabilize={handleStabilize}
+                onCommandSummon={handleCommandSummon}
             />
 
             {/* 5. Collapsible Bottom-Left Combat Log Drawer */}
