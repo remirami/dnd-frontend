@@ -72,6 +72,9 @@ export interface Enemy {
     challenge_rating: string | number;
     hp?: number;
     ac?: number;
+    has_legendary?: boolean;
+    has_multiattack?: boolean;
+    action_count?: number;
     attacks?: Attack[];
     actions?: EnemyAction[];
     abilities?: EnemyAbility[];

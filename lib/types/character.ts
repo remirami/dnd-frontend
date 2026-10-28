@@ -21,8 +21,16 @@ export interface CharacterStats {
     intelligence: number;
     wisdom: number;
     charisma: number;
+    // Effective Ability Scores (with magic items / overrides)
+    effective_strength?: number;
+    effective_dexterity?: number;
+    effective_constitution?: number;
+    effective_intelligence?: number;
+    effective_wisdom?: number;
+    effective_charisma?: number;
     hit_points: number;
     max_hit_points: number;
+    effective_max_hit_points?: number;
     temporary_hit_points?: number;
     armor_class: number;
     speed: number;
@@ -176,6 +184,15 @@ export interface CharacterItem {
         ac_bonus?: number;
         // Consumable specific
         consumable_type_display?: string;
+        // Magic item specific
+        bonus_to_hit?: number;
+        bonus_to_damage?: number;
+        bonus_to_ac?: number;
+        bonus_to_saves?: number;
+        attunement_required?: boolean;
+        charges?: number;
+        charges_per_day?: number;
+        spell_effect?: string;
     };
     quantity: number;
     is_equipped: boolean;

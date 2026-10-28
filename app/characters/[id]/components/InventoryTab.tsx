@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -29,6 +30,43 @@ const getRarityColors = (rarity: string) => {
     };
     return colors[rarityLower] || colors['common'];
 };
+
+function getStatOverrideBadge(name?: string, description?: string): string | null {
+    if (!name) return null;
+    const lower = name.toLowerCase();
+    if (lower.includes('belt of giant strength')) {
+        if (lower.includes('frost') || lower.includes('stone')) return 'STR 23';
+        if (lower.includes('fire')) return 'STR 25';
+        if (lower.includes('cloud')) return 'STR 27';
+        if (lower.includes('storm')) return 'STR 29';
+        return 'STR 21';
+    }
+
+    const desc = (description || '').toLowerCase();
+
+    // 1. Universal "score is X" or "increases to X"
+    const setMatch = desc.match(/(?:(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?(?:is|increases?\s+to)\s+(\d+)|increases?\s+(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?to\s+(\d+))/i);
+    if (setMatch) {
+        const stat = (setMatch[1] || setMatch[3]).slice(0, 3).toUpperCase();
+        const val = setMatch[2] || setMatch[4];
+        return `${stat} ${val}`;
+    }
+
+    // 2. Universal "increases by X"
+    const plusMatch = desc.match(/(?:(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?increases?\s+by\s+(\d+)|increases?\s+(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?by\s+(\d+))/i);
+    if (plusMatch) {
+        const stat = (plusMatch[1] || plusMatch[3]).slice(0, 3).toUpperCase();
+        const val = plusMatch[2] || plusMatch[4];
+        return `${stat} +${val}`;
+    }
+
+    // 3. Fallbacks for well-known items if description text is brief/omitted
+    if (lower.includes('amulet of health')) return 'CON 19';
+    if (lower.includes('gauntlets of ogre power')) return 'STR 19';
+    if (lower.includes('headband of intellect')) return 'INT 19';
+    if (lower.includes('belt of dwarvenkind')) return 'CON +2';
+    return null;
+}
 
 
 export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
@@ -77,9 +115,11 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
             });
             setSearchTerm(""); // Clear search
             onUpdate(); // Refresh character
-        } catch (error) {
+            toast.success(`Added ${item.name} to inventory`);
+        } catch (error: any) {
             console.error("Failed to add item:", error);
-            alert("Failed to add item");
+            const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to add item";
+            toast.error(msg);
         } finally {
             setAddingItemId(null);
         }
@@ -109,10 +149,11 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                 ...(slot ? { equipment_slot: slot } : {}),
             });
             onUpdate();
+            toast.success(`Equipped ${item.item_details.name}`);
         } catch (error: any) {
             console.error("Failed to equip item:", error);
-            const msg = error.response?.data?.error || "Failed to equip item";
-            alert(msg);
+            const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to equip item";
+            toast.error(msg);
         }
     };
 
@@ -123,12 +164,11 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
             });
             console.log("[Unequip Success]", response.data);
             onUpdate();
+            toast.success(`Unequipped ${item.item_details.name}`);
         } catch (error: any) {
             console.error("[Unequip Error]", error);
-            console.error("[Unequip Error Response]", error.response?.data);
-            console.error("[Unequip Error Status]", error.response?.status);
             const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to unequip item";
-            alert(msg);
+            toast.error(msg);
         }
     };
 
@@ -140,9 +180,11 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
         try {
             await charactersApi.removeItem(character.id, item.id);
             onUpdate();
+            toast.success(`Removed ${item.item_details.name}`);
         } catch (error: any) {
             console.error("Failed to remove item:", error);
-            alert("Failed to remove item");
+            const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to remove item";
+            toast.error(msg);
         }
     };
 
@@ -150,9 +192,10 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
         try {
             await charactersApi.attuneItem(character.id, item.id);
             onUpdate();
+            toast.success(`Attuned to ${item.item_details.name}`);
         } catch (error: any) {
-            const msg = error.response?.data?.error || "Failed to attune item";
-            alert(msg);
+            const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to attune item";
+            toast.error(msg);
         }
     };
 
@@ -160,9 +203,10 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
         try {
             await charactersApi.unattuneItem(character.id, item.id);
             onUpdate();
+            toast.success(`Removed attunement from ${item.item_details.name}`);
         } catch (error: any) {
-            const msg = error.response?.data?.error || "Failed to remove attunement";
-            alert(msg);
+            const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to remove attunement";
+            toast.error(msg);
         }
     };
 
@@ -394,12 +438,34 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                             +2 AC
                                                                         </Badge>
                                                                     )}
+
+                                                                    {/* Magic Item Bonuses */}
+                                                                    {!!item.item_details.bonus_to_ac && item.item_details.bonus_to_ac > 0 && (
+                                                                        <Badge variant="outline" className="border-amber-500/60 bg-amber-950/40 text-amber-300 text-[10px] h-5 font-fira-sans font-bold">
+                                                                            +{item.item_details.bonus_to_ac} AC
+                                                                        </Badge>
+                                                                    )}
+                                                                    {!!item.item_details.bonus_to_hit && item.item_details.bonus_to_hit > 0 && (
+                                                                        <Badge variant="outline" className="border-amber-500/60 bg-amber-950/40 text-amber-300 text-[10px] h-5 font-fira-sans font-bold">
+                                                                            +{item.item_details.bonus_to_hit} Atk/Dmg
+                                                                        </Badge>
+                                                                    )}
+                                                                    {!!item.item_details.bonus_to_saves && item.item_details.bonus_to_saves > 0 && (
+                                                                        <Badge variant="outline" className="border-cyan-500/60 bg-cyan-950/40 text-cyan-300 text-[10px] h-5 font-fira-sans font-bold">
+                                                                            +{item.item_details.bonus_to_saves} Saves
+                                                                        </Badge>
+                                                                    )}
+                                                                    {getStatOverrideBadge(item.item_details.name, item.item_details.description) && (
+                                                                        <Badge variant="outline" className="border-purple-500/60 bg-purple-950/40 text-purple-300 text-[10px] h-5 font-fira-sans font-bold">
+                                                                            ⚡ {getStatOverrideBadge(item.item_details.name, item.item_details.description)}
+                                                                        </Badge>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div className="flex gap-2 flex-wrap justify-end">
                                                             {/* Attune / Unattune (only for attunement items) */}
-                                                            {item.item_details.requires_attunement && (
+                                                            {(item.item_details.requires_attunement || item.item_details.attunement_required) && (
                                                                 item.is_attuned ? (
                                                                     <Button
                                                                         variant="outline"
@@ -554,7 +620,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                 <span className="text-[#d1cdb8]/70">Value:</span>
                                                 <span className="font-fira-sans font-bold text-[#c5a059]">{selectedItem.item_details.cost || "—"}</span>
                                             </div>
-                                            {selectedItem.item_details.requires_attunement && (
+                                            {(selectedItem.item_details.requires_attunement || selectedItem.item_details.attunement_required) && (
                                                 <div className="flex justify-between">
                                                     <span className="text-[#d1cdb8]/70">Attunement:</span>
                                                     <span className="font-fira-sans font-bold text-[#e0bc75]">Required</span>
@@ -563,9 +629,9 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                         </div>
                                     </div>
 
-                                    {(selectedItem.item_details.damage_dice || selectedItem.item_details.base_ac !== undefined) && (
+                                    {(selectedItem.item_details.damage_dice || selectedItem.item_details.base_ac !== undefined || (selectedItem.item_details.bonus_to_ac ?? 0) > 0 || (selectedItem.item_details.bonus_to_hit ?? 0) > 0 || (selectedItem.item_details.bonus_to_saves ?? 0) > 0 || getStatOverrideBadge(selectedItem.item_details.name)) && (
                                         <div>
-                                            <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Combat Stats</h4>
+                                            <h4 className="font-cinzel-decorative text-xs font-bold uppercase tracking-widest text-[#c5a059] mb-2">Combat & Magical Properties</h4>
                                             <div className="space-y-1.5 text-sm font-lora">
                                                 {selectedItem.item_details.damage_dice && (
                                                     <>
@@ -606,6 +672,30 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                             </div>
                                                         )}
                                                     </>
+                                                )}
+                                                {!!selectedItem.item_details.bonus_to_ac && selectedItem.item_details.bonus_to_ac > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[#d1cdb8]/70">Magic AC Bonus:</span>
+                                                        <span className="font-fira-sans font-bold text-amber-300">+{selectedItem.item_details.bonus_to_ac} AC</span>
+                                                    </div>
+                                                )}
+                                                {!!selectedItem.item_details.bonus_to_hit && selectedItem.item_details.bonus_to_hit > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[#d1cdb8]/70">Attack & Damage:</span>
+                                                        <span className="font-fira-sans font-bold text-amber-300">+{selectedItem.item_details.bonus_to_hit} to Attack & Damage</span>
+                                                    </div>
+                                                )}
+                                                {!!selectedItem.item_details.bonus_to_saves && selectedItem.item_details.bonus_to_saves > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[#d1cdb8]/70">Saving Throws:</span>
+                                                        <span className="font-fira-sans font-bold text-cyan-300">+{selectedItem.item_details.bonus_to_saves} to All Saves</span>
+                                                    </div>
+                                                )}
+                                                {getStatOverrideBadge(selectedItem.item_details.name, selectedItem.item_details.description) && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[#d1cdb8]/70">Ability Score Effect:</span>
+                                                        <span className="font-fira-sans font-bold text-purple-300">{getStatOverrideBadge(selectedItem.item_details.name, selectedItem.item_details.description)}</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

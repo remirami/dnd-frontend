@@ -58,12 +58,12 @@ export function ParticipantInspectorDrawer({
     const stats = char?.stats;
 
     const playerAbilities = stats ? [
-        { label: 'STR', name: 'Strength', score: stats.strength, modifier: stats.strength_modifier },
-        { label: 'DEX', name: 'Dexterity', score: stats.dexterity, modifier: stats.dexterity_modifier },
-        { label: 'CON', name: 'Constitution', score: stats.constitution, modifier: stats.constitution_modifier },
-        { label: 'INT', name: 'Intelligence', score: stats.intelligence, modifier: stats.intelligence_modifier },
-        { label: 'WIS', name: 'Wisdom', score: stats.wisdom, modifier: stats.wisdom_modifier },
-        { label: 'CHA', name: 'Charisma', score: stats.charisma, modifier: stats.charisma_modifier },
+        { label: 'STR', name: 'Strength', score: stats.effective_strength ?? stats.strength, modifier: stats.strength_modifier },
+        { label: 'DEX', name: 'Dexterity', score: stats.effective_dexterity ?? stats.dexterity, modifier: stats.dexterity_modifier },
+        { label: 'CON', name: 'Constitution', score: stats.effective_constitution ?? stats.constitution, modifier: stats.constitution_modifier },
+        { label: 'INT', name: 'Intelligence', score: stats.effective_intelligence ?? stats.intelligence, modifier: stats.intelligence_modifier },
+        { label: 'WIS', name: 'Wisdom', score: stats.effective_wisdom ?? stats.wisdom, modifier: stats.wisdom_modifier },
+        { label: 'CHA', name: 'Charisma', score: stats.effective_charisma ?? stats.charisma, modifier: stats.charisma_modifier },
     ] : null;
 
     const sizeName = resolveSizeDisplay(

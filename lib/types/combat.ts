@@ -34,6 +34,12 @@ export interface CharacterStats {
     intelligence: number;
     wisdom: number;
     charisma: number;
+    effective_strength?: number;
+    effective_dexterity?: number;
+    effective_constitution?: number;
+    effective_intelligence?: number;
+    effective_wisdom?: number;
+    effective_charisma?: number;
     strength_modifier: number;
     dexterity_modifier: number;
     constitution_modifier: number;
@@ -42,6 +48,7 @@ export interface CharacterStats {
     charisma_modifier: number;
     hit_points: number;
     max_hit_points: number;
+    effective_max_hit_points?: number;
     armor_class: number;
     speed: number;
     initiative: number;
@@ -82,6 +89,15 @@ export interface CharacterItemDetails {
     range_long?: number;
     versatile_damage?: string;
     mastery_property?: string;
+    // Magic item fields
+    bonus_to_hit?: number;
+    bonus_to_damage?: number;
+    bonus_to_ac?: number;
+    bonus_to_saves?: number;
+    attunement_required?: boolean;
+    charges?: number;
+    charges_per_day?: number;
+    spell_effect?: string;
 }
 
 export interface CharacterItem {

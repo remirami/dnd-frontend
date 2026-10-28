@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { 
   Search, 
@@ -80,6 +80,34 @@ export default function BestiaryPage() {
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedCr, setSelectedCr] = useState<string>("");
   const [selectedMonster, setSelectedMonster] = useState<Enemy | null>(null);
+  const [isInspecting, setIsInspecting] = useState<boolean>(false);
+  const monsterDetailCache = useRef<Map<number, Enemy>>(new Map());
+
+  // Inspect statblock with Best-of-Both-Worlds Client Cache
+  const handleInspectMonster = async (enemy: Enemy) => {
+    // 1. Instant hit if full details are already in client cache
+    const cached = monsterDetailCache.current.get(enemy.id);
+    if (cached) {
+      setSelectedMonster(cached);
+      setIsInspecting(false);
+      return;
+    }
+
+    // 2. Open modal immediately using summary stats and show loading spinner for deep relations
+    setSelectedMonster(enemy);
+    setIsInspecting(true);
+
+    try {
+      const response = await enemiesApi.getById(enemy.id);
+      const fullEnemy = response.data;
+      monsterDetailCache.current.set(enemy.id, fullEnemy);
+      setSelectedMonster(fullEnemy);
+    } catch (err) {
+      console.error("Failed to load full monster statblock:", err);
+    } finally {
+      setIsInspecting(false);
+    }
+  };
 
   // Debounce search query
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
@@ -404,7 +432,7 @@ export default function BestiaryPage() {
                   {/* Card Bottom Actions */}
                   <div className="pt-2 border-t border-[#c5a059]/20 font-cinzel">
                     <button
-                      onClick={() => setSelectedMonster(enemy)}
+                      onClick={() => handleInspectMonster(enemy)}
                       className="w-full py-2 px-3 rounded text-xs font-bold text-[#c5a059] hover:text-[#0c0d12] bg-[#c5a059]/10 hover:bg-[#c5a059] border border-[#c5a059]/40 hover:shadow-[0_0_12px_rgba(197,160,89,0.3)] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -459,7 +487,11 @@ export default function BestiaryPage() {
       {/* Monster Statblock Modal */}
       <BestiaryStatblockModal
         enemy={selectedMonster}
-        onClose={() => setSelectedMonster(null)}
+        isLoading={isInspecting}
+        onClose={() => {
+          setSelectedMonster(null);
+          setIsInspecting(false);
+        }}
       />
     </div>
   );

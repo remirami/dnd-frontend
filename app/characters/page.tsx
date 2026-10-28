@@ -543,15 +543,16 @@ export default function CharactersPage() {
                   {[
                     {
                       label: "STR",
-                      val: currentHero.stats?.strength ?? currentHero.strength ?? 10,
+                      val: currentHero.stats?.effective_strength ?? currentHero.stats?.strength ?? currentHero.strength ?? 10,
                     },
                     {
                       label: "DEX",
-                      val: currentHero.stats?.dexterity ?? currentHero.dexterity ?? 10,
+                      val: currentHero.stats?.effective_dexterity ?? currentHero.stats?.dexterity ?? currentHero.dexterity ?? 10,
                     },
                     {
                       label: "CON",
                       val:
+                        currentHero.stats?.effective_constitution ??
                         currentHero.stats?.constitution ??
                         currentHero.constitution ??
                         10,
@@ -559,17 +560,18 @@ export default function CharactersPage() {
                     {
                       label: "INT",
                       val:
+                        currentHero.stats?.effective_intelligence ??
                         currentHero.stats?.intelligence ??
                         currentHero.intelligence ??
                         10,
                     },
                     {
                       label: "WIS",
-                      val: currentHero.stats?.wisdom ?? currentHero.wisdom ?? 10,
+                      val: currentHero.stats?.effective_wisdom ?? currentHero.stats?.wisdom ?? currentHero.wisdom ?? 10,
                     },
                     {
                       label: "CHA",
-                      val: currentHero.stats?.charisma ?? currentHero.charisma ?? 10,
+                      val: currentHero.stats?.effective_charisma ?? currentHero.stats?.charisma ?? currentHero.charisma ?? 10,
                     },
                   ].map((stat) => (
                     <div

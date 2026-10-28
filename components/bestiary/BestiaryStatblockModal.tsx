@@ -7,10 +7,11 @@ import { resolveSizeDisplay, getSizeFootprint } from "@/lib/utils";
 
 interface BestiaryStatblockModalProps {
   enemy: Enemy | null;
+  isLoading?: boolean;
   onClose: () => void;
 }
 
-export function BestiaryStatblockModal({ enemy, onClose }: BestiaryStatblockModalProps) {
+export function BestiaryStatblockModal({ enemy, isLoading = false, onClose }: BestiaryStatblockModalProps) {
   if (!enemy) return null;
 
   const stats = enemy.stats;
@@ -301,8 +302,18 @@ export function BestiaryStatblockModal({ enemy, onClose }: BestiaryStatblockModa
           </div>
         </div>
 
-        {/* Secondary Attributes (Saves, Immunities, Senses, Languages, CR) */}
-        <div className="space-y-1.5 text-xs sm:text-sm font-lora pb-3.5 border-b-2 border-[#a63a3a] mb-4 text-[#d1cdb8]/95">
+        {/* Full Details or Loading Placeholder */}
+        {isLoading ? (
+          <div className="py-14 flex flex-col items-center justify-center space-y-3 bg-[#0c0d12]/40 rounded-lg border border-[#c5a059]/20 my-4">
+            <div className="w-8 h-8 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
+            <p className="font-lora text-xs text-[#d1cdb8]/80 italic">
+              Unfurling complete monster dossier, traits & actions...
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Secondary Attributes (Saves, Immunities, Senses, Languages, CR) */}
+            <div className="space-y-1.5 text-xs sm:text-sm font-lora pb-3.5 border-b-2 border-[#a63a3a] mb-4 text-[#d1cdb8]/95">
           {savingThrows.length > 0 && (
             <div>
               <strong className="text-white">Saving Throws:</strong>{" "}
@@ -557,6 +568,8 @@ export function BestiaryStatblockModal({ enemy, onClose }: BestiaryStatblockModa
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
 
         {/* Modal Action Bar */}

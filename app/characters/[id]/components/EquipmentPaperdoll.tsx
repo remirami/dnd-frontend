@@ -80,6 +80,41 @@ function ItemTooltip({ item }: { item: CharacterItem }) {
             {item.item_details.ac_bonus !== undefined && (
                 <div className="text-xs text-[#c5a059] font-fira-sans mb-0.5">🛡 +{item.item_details.ac_bonus} AC</div>
             )}
+            {item.item_details.bonus_to_ac !== undefined && item.item_details.bonus_to_ac > 0 && (
+                <div className="text-xs text-amber-300 font-fira-sans font-bold mb-0.5">🛡 +{item.item_details.bonus_to_ac} Magic AC</div>
+            )}
+            {item.item_details.bonus_to_hit !== undefined && item.item_details.bonus_to_hit > 0 && (
+                <div className="text-xs text-amber-300 font-fira-sans font-bold mb-0.5">⚔ +{item.item_details.bonus_to_hit} Attack & Damage</div>
+            )}
+            {item.item_details.bonus_to_saves !== undefined && item.item_details.bonus_to_saves > 0 && (
+                <div className="text-xs text-cyan-300 font-fira-sans font-bold mb-0.5">✨ +{item.item_details.bonus_to_saves} Saving Throws</div>
+            )}
+            {(() => {
+                const name = item.item_details.name;
+                const desc = item.item_details.description || '';
+                const lower = name.toLowerCase();
+                let badge: string | null = null;
+                if (lower.includes('belt of giant strength')) {
+                    if (lower.includes('frost') || lower.includes('stone')) badge = 'STR 23';
+                    else if (lower.includes('fire')) badge = 'STR 25';
+                    else if (lower.includes('cloud')) badge = 'STR 27';
+                    else if (lower.includes('storm')) badge = 'STR 29';
+                    else badge = 'STR 21';
+                } else {
+                    const setMatch = desc.match(/(?:(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?(?:is|increases?\s+to)\s+(\d+)|increases?\s+(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?to\s+(\d+))/i);
+                    if (setMatch) {
+                        badge = `${(setMatch[1] || setMatch[3]).slice(0, 3).toUpperCase()} ${setMatch[2] || setMatch[4]}`;
+                    } else {
+                        const plusMatch = desc.match(/(?:(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?increases?\s+by\s+(\d+)|increases?\s+(?:your\s+)?(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(?:score\s+)?by\s+(\d+))/i);
+                        if (plusMatch) {
+                            badge = `${(plusMatch[1] || plusMatch[3]).slice(0, 3).toUpperCase()} +${plusMatch[2] || plusMatch[4]}`;
+                        }
+                    }
+                }
+                return badge ? (
+                    <div className="text-xs text-purple-300 font-fira-sans font-bold mb-0.5">⚡ {badge}</div>
+                ) : null;
+            })()}
             {item.item_details.description && (
                 <p className="text-[11px] text-[#d1cdb8]/80 font-lora mt-2 leading-relaxed line-clamp-3 border-t border-[#c5a059]/20 pt-2">
                     {item.item_details.description}
@@ -88,7 +123,7 @@ function ItemTooltip({ item }: { item: CharacterItem }) {
             {item.is_attuned && (
                 <div className="text-[10px] text-[#c5a059] font-fira-sans mt-1.5 font-semibold">⚡ Attuned</div>
             )}
-            {item.item_details.requires_attunement && !item.is_attuned && (
+            {(item.item_details.requires_attunement || item.item_details.attunement_required) && !item.is_attuned && (
                 <div className="text-[10px] text-[#c5a059]/60 font-lora italic mt-1">Requires attunement</div>
             )}
             <div className="text-[9px] text-[#c5a059]/50 font-lora mt-2 italic">Click to unequip</div>

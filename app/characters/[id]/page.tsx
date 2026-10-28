@@ -121,10 +121,12 @@ export default function CharacterDetailsPage() {
 
         try {
             await charactersApi.delete(characterId);
+            toast.success("Character deleted successfully");
             router.push("/characters");
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to delete character:", err);
-            alert("Failed to delete character");
+            const msg = err.response?.data?.error || err.response?.data?.detail || "Failed to delete character";
+            toast.error(msg);
         }
     };
 
@@ -146,11 +148,12 @@ export default function CharacterDetailsPage() {
         try {
             await charactersApi.updateStats(characterId, editedStats);
             setIsEditingStats(false);
-            // Force page reload to show updated stats
-            window.location.reload();
-        } catch (err) {
+            await loadCharacter(characterId);
+            toast.success("Ability scores updated successfully");
+        } catch (err: any) {
             console.error("Failed to update stats:", err);
-            alert("Failed to update stats");
+            const msg = err.response?.data?.error || err.response?.data?.detail || "Failed to update stats";
+            toast.error(msg);
         }
     };
 
@@ -169,10 +172,12 @@ export default function CharacterDetailsPage() {
 
         try {
             await charactersApi.levelUp(characterId);
-            window.location.reload();
-        } catch (err) {
+            await loadCharacter(characterId);
+            toast.success(`Leveled up to Level ${character.level + 1}!`);
+        } catch (err: any) {
             console.error("Failed to level up:", err);
-            alert("Failed to level up character");
+            const msg = err.response?.data?.error || err.response?.data?.detail || "Failed to level up character";
+            toast.error(msg);
         }
     };
 
@@ -195,15 +200,23 @@ export default function CharacterDetailsPage() {
             <div className="min-h-screen bg-[#0c0d12] bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,#1a1d29_0%,#0c0d12_70%)] text-slate-100 flex flex-col">
                 <Navbar showActions={true} />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
-                    <p className="font-cinzel-decorative text-xl text-[#c5a059] font-bold">
-                        {error || "Character not found"}
-                    </p>
-                    <Button
-                        onClick={() => router.push("/characters")}
-                        className="bg-[#181a21] border border-[#c5a059] text-[#c5a059] hover:bg-[#c5a059]/15 text-xs font-lora"
-                    >
-                        Back to Characters
-                    </Button>
+                    <div className="p-8 max-w-md w-full bg-[#12141a]/90 border border-[#c5a059]/30 rounded-xl shadow-[0_4px_25px_rgba(0,0,0,0.7)] text-center space-y-4">
+                        <div className="w-12 h-12 mx-auto rounded-full bg-[#c5a059]/10 border border-[#c5a059]/40 flex items-center justify-center text-[#c5a059]">
+                            <ArrowLeft className="w-6 h-6" />
+                        </div>
+                        <h2 className="font-cinzel-decorative text-2xl text-[#c5a059] font-bold">
+                            {error || "Character Not Found"}
+                        </h2>
+                        <p className="font-lora text-sm text-[#d1cdb8]/70">
+                            The parchment for this character could not be found or has been lost to the annals of history.
+                        </p>
+                        <Button
+                            onClick={() => router.push("/characters")}
+                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-semibold text-xs font-lora px-4 py-2 cursor-pointer"
+                        >
+                            Return to Character Roster
+                        </Button>
+                    </div>
                 </div>
             </div>
         );
@@ -211,12 +224,48 @@ export default function CharacterDetailsPage() {
 
     const stats = character.stats;
     const abilityScores = [
-        { name: "STR", score: stats?.strength ?? 10, mod: stats?.strength ? getAbilityModifier(stats.strength) : 0 },
-        { name: "DEX", score: stats?.dexterity ?? 10, mod: stats?.dexterity ? getAbilityModifier(stats.dexterity) : 0 },
-        { name: "CON", score: stats?.constitution ?? 10, mod: stats?.constitution ? getAbilityModifier(stats.constitution) : 0 },
-        { name: "INT", score: stats?.intelligence ?? 10, mod: stats?.intelligence ? getAbilityModifier(stats.intelligence) : 0 },
-        { name: "WIS", score: stats?.wisdom ?? 10, mod: stats?.wisdom ? getAbilityModifier(stats.wisdom) : 0 },
-        { name: "CHA", score: stats?.charisma ?? 10, mod: stats?.charisma ? getAbilityModifier(stats.charisma) : 0 },
+        {
+            name: "STR",
+            score: stats?.effective_strength ?? stats?.strength ?? 10,
+            baseScore: stats?.strength ?? 10,
+            isEnhanced: !!stats?.effective_strength && stats.effective_strength !== stats.strength,
+            mod: stats?.strength_modifier ?? (stats?.strength ? getAbilityModifier(stats.strength) : 0),
+        },
+        {
+            name: "DEX",
+            score: stats?.effective_dexterity ?? stats?.dexterity ?? 10,
+            baseScore: stats?.dexterity ?? 10,
+            isEnhanced: !!stats?.effective_dexterity && stats.effective_dexterity !== stats.dexterity,
+            mod: stats?.dexterity_modifier ?? (stats?.dexterity ? getAbilityModifier(stats.dexterity) : 0),
+        },
+        {
+            name: "CON",
+            score: stats?.effective_constitution ?? stats?.constitution ?? 10,
+            baseScore: stats?.constitution ?? 10,
+            isEnhanced: !!stats?.effective_constitution && stats.effective_constitution !== stats.constitution,
+            mod: stats?.constitution_modifier ?? (stats?.constitution ? getAbilityModifier(stats.constitution) : 0),
+        },
+        {
+            name: "INT",
+            score: stats?.effective_intelligence ?? stats?.intelligence ?? 10,
+            baseScore: stats?.intelligence ?? 10,
+            isEnhanced: !!stats?.effective_intelligence && stats.effective_intelligence !== stats.intelligence,
+            mod: stats?.intelligence_modifier ?? (stats?.intelligence ? getAbilityModifier(stats.intelligence) : 0),
+        },
+        {
+            name: "WIS",
+            score: stats?.effective_wisdom ?? stats?.wisdom ?? 10,
+            baseScore: stats?.wisdom ?? 10,
+            isEnhanced: !!stats?.effective_wisdom && stats.effective_wisdom !== stats.wisdom,
+            mod: stats?.wisdom_modifier ?? (stats?.wisdom ? getAbilityModifier(stats.wisdom) : 0),
+        },
+        {
+            name: "CHA",
+            score: stats?.effective_charisma ?? stats?.charisma ?? 10,
+            baseScore: stats?.charisma ?? 10,
+            isEnhanced: !!stats?.effective_charisma && stats.effective_charisma !== stats.charisma,
+            mod: stats?.charisma_modifier ?? (stats?.charisma ? getAbilityModifier(stats.charisma) : 0),
+        },
     ];
 
     return (
@@ -343,13 +392,6 @@ export default function CharacterDetailsPage() {
 
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-2 items-center justify-start lg:justify-end">
-                        <Button
-                            onClick={() => router.push("/characters")}
-                            className="bg-[#181a21] border border-[#c5a059]/50 text-[#c5a059] hover:bg-[#c5a059]/15 text-xs font-lora font-semibold px-3 py-1.5 h-auto rounded transition-colors shadow-sm"
-                        >
-                            Back to Characters
-                        </Button>
-
                         {/* Rest Actions */}
                         <div className="flex items-center bg-[#12141a] p-1 rounded border border-[#c5a059]/30">
                             <ShortRestDialog
@@ -481,7 +523,7 @@ export default function CharacterDetailsPage() {
                                         <div className="text-3xl sm:text-4xl font-bold font-fira-sans text-emerald-400 my-2 flex items-center justify-center gap-2">
                                             <span>{stats?.hit_points ?? 0}</span>
                                             <span className="text-lg text-[#d1cdb8]/40">/</span>
-                                            <span className="text-2xl text-emerald-500/80">{stats?.max_hit_points ?? 0}</span>
+                                            <span className="text-2xl text-emerald-500/80">{stats?.effective_max_hit_points ?? stats?.max_hit_points ?? 0}</span>
                                         </div>
                                         {stats?.temporary_hit_points ? (
                                             <div className="text-xs font-bold font-fira-sans text-amber-300">
@@ -489,7 +531,7 @@ export default function CharacterDetailsPage() {
                                             </div>
                                         ) : (
                                             <div className="text-[11px] font-lora text-[#d1cdb8]/50">
-                                                Max HP: {stats?.max_hit_points ?? 0}
+                                                Max HP: {stats?.effective_max_hit_points ?? stats?.max_hit_points ?? 0}
                                             </div>
                                         )}
                                     </FantasyCard>
@@ -527,8 +569,8 @@ export default function CharacterDetailsPage() {
                                 <div className="my-2">
                                     {(() => {
                                         const pb = Math.ceil(1 + (character.level / 4));
-                                        const strMod = stats?.strength ? getAbilityModifier(stats.strength) : 0;
-                                        const dexMod = stats?.dexterity ? getAbilityModifier(stats.dexterity) : 0;
+                                        const strMod = stats?.strength_modifier ?? (stats?.strength ? getAbilityModifier(stats.strength) : 0);
+                                        const dexMod = stats?.dexterity_modifier ?? (stats?.dexterity ? getAbilityModifier(stats.dexterity) : 0);
 
                                         const weapon = character.character_items?.find(i => i.is_equipped && i.equipment_slot === 'main_hand');
                                         const isMonk = character.character_class?.name?.toLowerCase() === 'monk';
@@ -548,16 +590,38 @@ export default function CharacterDetailsPage() {
                                             if (dexMod > strMod) mod = dexMod;
                                         }
 
-                                        const toHit = formatModifier(mod + pb);
-                                        const damageMod = mod >= 0 ? `+${mod}` : `${mod}`;
+                                        // Sum magic item attack & damage bonuses from all equipped and attuned items
+                                        const magicBonuses = character.character_items?.reduce(
+                                            (acc, ci) => {
+                                                if (!ci.is_equipped) return acc;
+                                                const details = ci.item_details;
+                                                const requiresAttune = details.requires_attunement || details.attunement_required;
+                                                if (requiresAttune && !ci.is_attuned) return acc;
+                                                return {
+                                                    toHit: acc.toHit + (details.bonus_to_hit || 0),
+                                                    toDamage: acc.toDamage + (details.bonus_to_damage || 0),
+                                                };
+                                            },
+                                            { toHit: 0, toDamage: 0 }
+                                        ) || { toHit: 0, toDamage: 0 };
+
+                                        const totalDamageMod = mod + magicBonuses.toDamage;
+                                        const toHit = formatModifier(mod + pb + magicBonuses.toHit);
+                                        const damageMod = totalDamageMod >= 0 ? `+${totalDamageMod}` : `${totalDamageMod}`;
 
                                         return (
                                             <div className="flex flex-col items-center">
-                                                <div className="text-2xl sm:text-3xl font-bold font-fira-sans text-[#c5a059]">
-                                                    {toHit} <span className="text-xs font-lora font-normal text-[#d1cdb8]/70">To Hit</span>
+                                                <div className="text-2xl sm:text-3xl font-bold font-fira-sans text-[#c5a059] flex items-center gap-1.5">
+                                                    <span>{toHit}</span>
+                                                    <span className="text-xs font-lora font-normal text-[#d1cdb8]/70">To Hit</span>
                                                 </div>
-                                                <div className="text-xs font-lora text-[#d1cdb8] mt-0.5">
-                                                    {damageDice} {mod !== 0 && damageMod} Dmg
+                                                <div className="text-xs font-lora text-[#d1cdb8] mt-0.5 flex items-center gap-1">
+                                                    <span>{damageDice} {totalDamageMod !== 0 && damageMod} Dmg</span>
+                                                    {magicBonuses.toDamage > 0 && (
+                                                        <span className="text-[10px] text-amber-400 font-mono font-bold" title={`Includes +${magicBonuses.toDamage} magic damage bonus`}>
+                                                            (+{magicBonuses.toDamage}✨)
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -722,12 +786,17 @@ export default function CharacterDetailsPage() {
                                     };
                                     const statKey = statNameMap[ability.name.toLowerCase()];
                                     const displayScore = isEditingStats ? editedStats[statKey] : ability.score;
-                                    const displayMod = getAbilityModifier(displayScore);
+                                    const displayMod = isEditingStats ? getAbilityModifier(displayScore) : ability.mod;
 
                                     return (
-                                        <div key={ability.name} className="bg-[#12141a] rounded-sm p-3.5 text-center border border-[#c5a059]/30 shadow-md flex flex-col items-center justify-between">
-                                            <div className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1">
-                                                {ability.name}
+                                        <div key={ability.name} className={`bg-[#12141a] rounded-sm p-3.5 text-center border shadow-md flex flex-col items-center justify-between transition-colors ${
+                                            ability.isEnhanced && !isEditingStats ? 'border-purple-500/50 bg-[#161324]/80' : 'border-[#c5a059]/30'
+                                        }`}>
+                                            <div className="font-cinzel-decorative text-xs font-bold text-[#c5a059] tracking-wider mb-1 flex items-center justify-center gap-1">
+                                                <span>{ability.name}</span>
+                                                {ability.isEnhanced && !isEditingStats && (
+                                                    <span className="text-[10px] text-purple-400 font-mono font-bold" title={`Enhanced by magic item (Base: ${ability.baseScore})`}>⚡</span>
+                                                )}
                                             </div>
                                             {isEditingStats ? (
                                                 <Input
@@ -742,13 +811,22 @@ export default function CharacterDetailsPage() {
                                                     className="text-2xl font-bold text-center bg-[#181a21] border-[#c5a059]/40 text-[#c5a059] mb-1.5 h-12 font-fira-sans"
                                                 />
                                             ) : (
-                                                <div className="text-2xl sm:text-3xl font-bold font-fira-sans text-slate-100 mb-1.5">
-                                                    {displayScore}
+                                                <div className="text-2xl sm:text-3xl font-bold font-fira-sans text-slate-100 mb-1.5 flex items-center justify-center gap-1">
+                                                    <span className={ability.isEnhanced ? "text-purple-200" : ""}>{displayScore}</span>
                                                 </div>
                                             )}
-                                            <div className="text-xs font-bold font-fira-sans px-2.5 py-0.5 rounded-full bg-[#181a21] border border-[#c5a059]/40 text-[#c5a059] shadow-[0_0_8px_rgba(197,160,89,0.15)]">
+                                            <div className={`text-xs font-bold font-fira-sans px-2.5 py-0.5 rounded-full border shadow-[0_0_8px_rgba(197,160,89,0.15)] ${
+                                                ability.isEnhanced && !isEditingStats
+                                                    ? 'bg-purple-950/60 border-purple-500/50 text-purple-300'
+                                                    : 'bg-[#181a21] border-[#c5a059]/40 text-[#c5a059]'
+                                            }`}>
                                                 {formatModifier(displayMod)}
                                             </div>
+                                            {ability.isEnhanced && !isEditingStats && (
+                                                <div className="text-[10px] font-lora text-purple-400/70 mt-1">
+                                                    Base {ability.baseScore}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}

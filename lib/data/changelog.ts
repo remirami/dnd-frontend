@@ -17,14 +17,131 @@ export interface ReleaseVersion {
     items: ChangelogItem[];
 }
 
-export const CURRENT_VERSION = "v1.15.0";
+export const CURRENT_VERSION = "v1.17.0";
 
 export const CHANGELOG_DATA: ReleaseVersion[] = [
+    {
+        version: "v1.17.0",
+        date: "October 22, 2026",
+        title: "Magic Item Mechanics, Equipment Stat Overrides, Attunement Engine & AC Bonuses",
+        tag: "Latest",
+        summary: "Transformed static, descriptive magic items into active gameplay mechanics. Implemented dynamic AC calculations from magical armors, shields, and protective accessories; ability score overrides (Amulet of Health, Gauntlets of Ogre Power, Headband of Intellect, Belts of Giant Strength); strict 5e attunement enforcement across combat and inventory; corrected 252 misclassified database items; and added live combat property badges across the inventory UI and paperdoll.",
+        items: [
+            {
+                id: "1.17.0-1",
+                title: "🛡️ Magic AC Bonuses & Dynamic Inventory Recalculation",
+                description: "Equipping magic armors, shields, rings, and cloaks now dynamically modifies character AC and combat stats.",
+                category: "character",
+                details: [
+                    "Magic Armor & Shields: Equipped +1, +2, or +3 armors and shields automatically add their magical enhancement bonus to base Armor Class.",
+                    "Protective Accessories: Ring of Protection (+1 AC, +1 Saves), Cloak of Protection (+1 AC, +1 Saves), Staff of Power (+2 AC), and Defender (+3 AC) dynamically apply to the character sheet upon equip and attunement.",
+                    "Bracers of Defense: Accurately checks 5e conditions (+2 AC only applies while wearing no armor and wielding no shield).",
+                    "Dual-Slot Stacking: Correctly calculates simultaneous shield + armor + accessory magical bonuses without conflicts."
+                ]
+            },
+            {
+                id: "1.17.0-2",
+                title: "⚡ 5e Attunement Rules & Combat Engine Integration",
+                description: "Enforced strict Rules-as-Written 5e attunement limits and wired magic bonuses into combat attacks and saves.",
+                category: "combat",
+                details: [
+                    "Attunement Enforcement: Items with requires_attunement only grant their AC, attack, damage, and saving throw bonuses when attuned (max 3 items at once).",
+                    "Saving Throw Integration: Participant saving throws against spells, monster abilities, and hazards now include equipped magic item saving throw bonuses (e.g. Ring of Protection, Cloak of Protection, Stone of Good Luck).",
+                    "Combat Attacks: Magic weapons (+1/+2/+3) correctly pass down to combat attack rolls, damage calculations, and reaction triggers.",
+                    "Database Repair Migration: Created migration 0007 repairing 252 items where magic armors and shields had bonuses erroneously assigned to hit/damage instead of AC."
+                ]
+            },
+            {
+                id: "1.17.0-3",
+                title: "💪 Ability Score Overrides & Item Stat Caps",
+                description: "Equipping stat-setting magic items overrides character ability scores and recomputes all dependent modifiers without mutating base rolled stats.",
+                category: "feature",
+                details: [
+                    "Amulet of Health: Sets effective Constitution to 19 (+4 modifier), updating HP calculations and Barbarian Unarmored Defense.",
+                    "Gauntlets of Ogre Power: Sets effective Strength to 19 (+4 modifier), dynamically scaling melee weapon attack and damage rolls.",
+                    "Headband of Intellect: Sets effective Intelligence to 19 (+4 modifier), scaling spell save DCs and spell attack rolls for Wizards and Artificers.",
+                    "Belts of Giant Strength: Scaled support for Hill Giant (21), Stone/Frost Giant (23), Fire Giant (25), Cloud Giant (27), and Storm Giant (29) Strength overrides.",
+                    "Belt of Dwarvenkind: Grants +2 Constitution bonus up to a maximum of 20."
+                ]
+            },
+            {
+                id: "1.17.0-4",
+                title: "🎨 Frontend Inventory Badges & Paperdoll Tooltips",
+                description: "Added vibrant badges and enhanced modals displaying live mechanical bonuses for every item.",
+                category: "ui",
+                details: [
+                    "Inventory Badges: Item cards show gold and amber badges for +X AC, +X Atk/Dmg, +X Saves, and ⚡ Stat Overrides (e.g., ⚡ CON 19).",
+                    "Attunement Controls: Real-time 'Attune' and '⚡ Unattune' buttons appear on all eligible magic items with live attunement slot tracking.",
+                    "Item Detail Modal: Added a dedicated 'Combat & Magical Properties' section displaying all active numerical benefits.",
+                    "Equipment Paperdoll: Paperdoll slot tooltips show magic AC, attack bonuses, and attunement status."
+                ]
+            }
+        ]
+    },
+    {
+        version: "v1.16.0",
+        date: "October 21, 2026",
+        title: "5e Dying & Stabilization Mechanics, Summoning & Minion Engine, Bestiary Payload Optimization & Frontend Polish",
+        summary: "Implemented full D&D 5e Rules-as-Written dying rules (death saves, massive damage instant death, Healer's Kit auto-stabilize, and Grave Domain Circle of Mortality). Introduced a persistent summoning engine (Spiritual Weapon, Flaming Sphere, Animate Dead, Find Familiar, Conjure Spells) with tactical grid token rendering and ActionDock commands. Supercharged the Bestiary Compendium with a lightweight summary serializer and client-side LRU cache, and replaced hard reloads and native alert popups with seamless reactive state updates and sonner toasts.",
+        items: [
+            {
+                id: "1.16.0-1",
+                title: "💀 5e Dying Mechanics, Death Saves, Instant Death & Stabilization",
+                description: "Implemented full SRD 5.1 & 5.2 dying, stabilization, and survival rules across the combat rules engine, API endpoints, and ActionDock UI.",
+                category: "combat",
+                details: [
+                    "0 HP & Death Saves: Combatants at 0 HP enter the unconscious and prone state, break concentration, drop Rage, and retain their initiative turn to roll death saves.",
+                    "Roll Outcomes: Natural 20 instantly restores 1 HP and wakes the creature; Natural 1 inflicts 2 death save failures; rolls >= 10 (with Paladin Aura bonuses) add 1 success (3 stabilize), while < 10 adds 1 failure (3 kill).",
+                    "Damage at 0 HP & Instant Death: Damage while at 0 HP breaks stabilization and inflicts 1 failure (2 failures on critical hits). Massive damage exceeding max HP immediately triggers instant death.",
+                    "Stabilize Action: DC 10 Wisdom (Medicine) first aid action with reach validation. Using a Healer's Kit auto-stabilizes the target and expends 1 kit charge.",
+                    "Grave Domain Circle of Mortality: Spare the Dying can be cast as a Bonus Action with a 30 ft range, and healing spells cast on creatures at 0 HP automatically maximize all healing dice.",
+                    "ActionDock 0 HP Tracker: Visual 3-dot success and failure tracker, 1-click 'Roll Death Save' button, and 1-click 'Stabilize Ally' quick-actions."
+                ]
+            },
+            {
+                id: "1.16.0-2",
+                title: "⚔️ Persistent Summoning & Minion Engine (Spiritual Weapon, Flaming Sphere, Familiars)",
+                description: "Built an integrated 5e summoning engine supporting persistent spell objects and commanded minion creatures with tactical grid tokens.",
+                category: "spell",
+                details: [
+                    "Spiritual Weapon: Non-concentration 1-minute spell object. Executes a free melee spell attack on cast (1d8 + mod force damage, upcasting +1d8 per 2 slot levels) and bonus action strike/move commands.",
+                    "Flaming Sphere: Concentration spell object with 30 ft movement and bonus action Ram commands forcing a Dexterity saving throw vs Spell DC for 2d6 fire damage.",
+                    "Animate Dead & Find Familiar: Persistent undead minions (Skeletons/Zombies) and familiars (Owl, Cat, Bat, Raven) capable of executing Flyby Help actions (granting advantage on attacks) and touch spell delivery.",
+                    "Turn Order Skipping & Concentration Tracking: Spell objects act via caster bonus actions and are skipped in initiative turn order. Losing concentration automatically dismisses all linked summons.",
+                    "Tactical Tokens & ActionDock Panel: Custom glowing translucent auras and token badges (⚔️, ☄️, 💀, 🦉, 🌪️) on the 2.5D battle map, plus 1-click strike, ram, help, and dismiss command buttons."
+                ]
+            },
+            {
+                id: "1.16.0-3",
+                title: "⚡ Bestiary Payload Optimization & In-Memory LRU Cache",
+                description: "Restructured the Bestiary compendium architecture with lightweight summary serializers and an instant client-side cache.",
+                category: "feature",
+                details: [
+                    "75%+ Payload Reduction: Introduced EnemySummarySerializer for list and filter queries, eliminating 13 deep relational joins on catalog browsing.",
+                    "Targeted Relation Prefetching: Backend queries only touch core vital stats and counts, dramatically accelerating search and pagination speeds.",
+                    "Instant Client LRU Cache: First-time inspection fetches complete actions and traits on demand; subsequent inspections open instantaneously with 0 ms latency.",
+                    "Graceful Modal Loading: Displays core vitals and ability scores immediately with a dark-fantasy parchment loading shimmer while full actions populate."
+                ]
+            },
+            {
+                id: "1.16.0-4",
+                title: "🎨 Character Sheet Reactivity, Sonner Toasts & Themed 404 Experience",
+                description: "Polished user interaction flows, replaced jarring browser reloads with reactive data refreshes, and standardized UI notifications.",
+                category: "ui",
+                details: [
+                    "No More Full Page Reloads: Editing ability scores and leveling up characters updates state asynchronously via loadCharacter without full browser refreshes.",
+                    "Modern Toast Notifications: Replaced disruptive native alert() popups with sonner toasts across inventory equipping, attunement, item deletion, and resting.",
+                    "Deduplicated Navigation: Removed redundant 'Back to Characters' action buttons in favor of top-left breadcrumb navigation.",
+                    "Dark-Fantasy 404 Fallback: Enhanced broken or missing character URLs with an ornate parchment card and direct roster return button."
+                ]
+            }
+        ]
+    },
     {
         version: "v1.15.0",
         date: "October 8, 2026",
         title: "Tactical Combat Spell Filter, Gauntlet Utility Pruning & 5e Combat Buff Verification",
-        tag: "Latest",
+        tag: "Major",
         summary: "Introduced an intelligent 5e spell classification engine to filter out out-of-combat exploration and downtime spells from the combat ActionDock Grimoire, with strict automated pruning in Gauntlet Mode. Fully verified and expanded backend test coverage for core utility/buff spells including Shield (+5 AC reaction), Bless (+1d4 attacks and saving throws), and Mage Armor (13 + Dex AC).",
         items: [
             {
