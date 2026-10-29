@@ -331,6 +331,22 @@ export default function CharacterDetailsPage() {
                             Background: {character.background?.name || "None"} | Alignment: {character.alignment || "N"}
                         </p>
 
+                        {(stats?.exhaustion_level ?? 0) > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2 items-center">
+                                <HPManagementDialog character={character} onUpdate={() => loadCharacter(characterId)} initialTab="exhaustion">
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-950/60 border border-amber-500/50 text-amber-300 hover:bg-amber-900/60 transition-colors text-xs font-lora shadow-sm cursor-pointer"
+                                        title="Click to view and adjust cumulative exhaustion penalties"
+                                    >
+                                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                                        <span className="font-cinzel-decorative font-bold">Exhaustion Level {stats?.exhaustion_level}</span>
+                                        <span className="text-[#d1cdb8]/80 text-[11px]">(-{stats?.exhaustion_level} d20/DC, -{5 * (stats?.exhaustion_level ?? 0)} ft spd)</span>
+                                    </button>
+                                </HPManagementDialog>
+                            </div>
+                        )}
+
                         {/* XP Progress Bar */}
                         <div className="mt-4 space-y-1.5 max-w-md">
                             <div className="flex justify-between items-center text-xs font-lora">
@@ -408,11 +424,11 @@ export default function CharacterDetailsPage() {
                                 variant="ghost"
                                 className="text-xs text-[#d1cdb8] hover:text-[#c5a059] hover:bg-[#c5a059]/10 h-7 px-2.5 font-lora transition-colors cursor-pointer"
                                 onClick={async () => {
-                                    if (confirm("Take a Long Rest? This will restore HP, Hit Dice, and Spell Slots to maximum.")) {
+                                    if (confirm("Take a Long Rest? This will restore HP, Hit Dice, Spell Slots to maximum, and reduce Exhaustion by 1 level.")) {
                                         try {
                                             const response = await charactersApi.longRest(characterId);
                                             await loadCharacter(characterId);
-                                            toast.success(response.data?.message || "Long rest completed! HP, Hit Dice, and Spell Slots fully restored.");
+                                            toast.success(response.data?.message || "Long rest completed! HP, Hit Dice, Spell Slots restored, and 1 Exhaustion level removed.");
                                         } catch (e: any) {
                                             console.error("Long rest failed", e);
                                             const msg = e.response?.data?.error || e.message || "Long rest failed";
@@ -550,17 +566,27 @@ export default function CharacterDetailsPage() {
                                 </div>
                             </FantasyCard>
 
-                            <FantasyCard glowOnHover={false} className="p-4 text-center flex flex-col justify-between">
-                                <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase">
-                                    Speed
+                            <HPManagementDialog character={character} onUpdate={() => loadCharacter(characterId)} initialTab="exhaustion">
+                                <div className="cursor-pointer">
+                                    <FantasyCard glowOnHover={true} className="p-4 text-center flex flex-col justify-between group">
+                                        <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase group-hover:text-[#c5a059] transition-colors">
+                                            Speed
+                                        </div>
+                                        <div className={`text-3xl sm:text-4xl font-bold font-fira-sans my-2 ${stats?.exhaustion_level ? 'text-amber-400' : 'text-[#c5a059]'}`}>
+                                            {Math.max(0, (stats?.speed ?? 30) - (5 * (stats?.exhaustion_level ?? 0)))} <span className="text-sm font-normal font-lora text-[#d1cdb8]/70">ft.</span>
+                                        </div>
+                                        {stats?.exhaustion_level ? (
+                                            <div className="text-[11px] font-lora text-amber-300 font-semibold">
+                                                -{5 * stats.exhaustion_level} ft. Exhaustion
+                                            </div>
+                                        ) : (
+                                            <div className="text-[11px] font-lora text-[#d1cdb8]/50">
+                                                Combat Move
+                                            </div>
+                                        )}
+                                    </FantasyCard>
                                 </div>
-                                <div className="text-3xl sm:text-4xl font-bold font-fira-sans text-[#c5a059] my-2">
-                                    {stats?.speed ?? 30} <span className="text-sm font-normal font-lora text-[#d1cdb8]/70">ft.</span>
-                                </div>
-                                <div className="text-[11px] font-lora text-[#d1cdb8]/50">
-                                    Combat Move
-                                </div>
-                            </FantasyCard>
+                            </HPManagementDialog>
 
                             <FantasyCard glowOnHover={false} className="p-4 text-center col-span-2 md:col-span-4 lg:col-span-1 flex flex-col justify-between">
                                 <div className="font-cinzel-decorative text-xs font-semibold text-[#d1cdb8]/70 tracking-widest uppercase">
@@ -605,8 +631,10 @@ export default function CharacterDetailsPage() {
                                             { toHit: 0, toDamage: 0 }
                                         ) || { toHit: 0, toDamage: 0 };
 
+                                        const exhaustionPenalty = stats?.exhaustion_level ?? 0;
                                         const totalDamageMod = mod + magicBonuses.toDamage;
-                                        const toHit = formatModifier(mod + pb + magicBonuses.toHit);
+                                        const effectiveToHitVal = mod + pb + magicBonuses.toHit - exhaustionPenalty;
+                                        const toHit = formatModifier(effectiveToHitVal);
                                         const damageMod = totalDamageMod >= 0 ? `+${totalDamageMod}` : `${totalDamageMod}`;
 
                                         return (
@@ -615,6 +643,11 @@ export default function CharacterDetailsPage() {
                                                     <span>{toHit}</span>
                                                     <span className="text-xs font-lora font-normal text-[#d1cdb8]/70">To Hit</span>
                                                 </div>
+                                                {exhaustionPenalty > 0 && (
+                                                    <span className="text-[10px] text-amber-400 font-mono font-semibold">
+                                                        (-{exhaustionPenalty} Exhaustion)
+                                                    </span>
+                                                )}
                                                 <div className="text-xs font-lora text-[#d1cdb8] mt-0.5 flex items-center gap-1">
                                                     <span>{damageDice} {totalDamageMod !== 0 && damageMod} Dmg</span>
                                                     {magicBonuses.toDamage > 0 && (

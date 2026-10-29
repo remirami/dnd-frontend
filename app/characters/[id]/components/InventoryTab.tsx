@@ -144,12 +144,13 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
 
     const handleEquipWithSlot = async (item: CharacterItem, slot: string | undefined) => {
         try {
-            await charactersApi.equipItem(character.id, {
+            const response = await charactersApi.equipItem(character.id, {
                 character_item_id: item.id,
                 ...(slot ? { equipment_slot: slot } : {}),
             });
             onUpdate();
-            toast.success(`Equipped ${item.item_details.name}`);
+            const msg = (response as any).data?.message || `Equipped ${item.item_details.name}`;
+            toast.success(msg);
         } catch (error: any) {
             console.error("Failed to equip item:", error);
             const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to equip item";
@@ -212,6 +213,39 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
 
     const attunedCount = character.character_items?.filter(i => i.is_attuned).length ?? 0;
 
+    // Carrying capacity and encumbrance calculations based on STR (5e Rules)
+    const strength = character.stats?.strength ?? 10;
+    const maxCapacity = strength * 15;
+    const heavyThreshold = strength * 10;
+    const encumberedThreshold = strength * 5;
+    const weightPercentage = Math.min(100, Math.round((totalWeight / Math.max(1, maxCapacity)) * 100));
+
+    let encumbranceBadge: { label: string; desc: string; cls: string } | null = null;
+    let weightColorCls = "text-[#c5a059]";
+
+    if (totalWeight > maxCapacity) {
+        weightColorCls = "text-red-400";
+        encumbranceBadge = {
+            label: "Overloaded",
+            desc: `Carrying more than maximum capacity (${maxCapacity} lb). Speed drops to 5 ft; disadvantage on ability checks, attack rolls, and saving throws with STR/DEX/CON.`,
+            cls: "border-red-500/60 bg-red-950/60 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.3)]",
+        };
+    } else if (totalWeight > heavyThreshold) {
+        weightColorCls = "text-amber-400";
+        encumbranceBadge = {
+            label: "Heavily Encumbered",
+            desc: `Carrying over ${heavyThreshold} lb. Speed reduced by 20 ft; disadvantage on ability checks, attack rolls, and saving throws with STR/DEX/CON.`,
+            cls: "border-amber-500/60 bg-amber-950/50 text-amber-300",
+        };
+    } else if (totalWeight > encumberedThreshold) {
+        weightColorCls = "text-yellow-300";
+        encumbranceBadge = {
+            label: "Encumbered",
+            desc: `Carrying over ${encumberedThreshold} lb. Speed reduced by 10 ft.`,
+            cls: "border-yellow-500/40 bg-yellow-950/40 text-yellow-300",
+        };
+    }
+
     // Filter Buttons Config
     const filters = [
         { id: 'all', label: 'All Items', icon: null },
@@ -226,18 +260,51 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="font-cinzel-decorative text-xl sm:text-2xl font-bold text-[#c5a059]">Inventory</h2>
-                <div className="flex gap-4 items-center w-full md:w-auto justify-between md:justify-end">
+                <div className="flex flex-wrap gap-3 items-center w-full md:w-auto justify-between md:justify-end">
                     {/* Attunement Slots */}
-                    <div className={`flex items-center gap-1.5 text-xs font-fira-sans font-medium px-3 py-1.5 rounded-full border ${
+                    <div className={`flex items-center gap-1.5 text-xs font-fira-sans font-medium px-3 py-1.5 rounded-full border transition-all ${
                         attunedCount >= 3
-                            ? 'border-[#c5a059] bg-[#181a21] text-[#c5a059] shadow-[0_0_10px_rgba(197,160,89,0.3)]'
+                            ? 'border-[#c5a059] bg-[#181a21] text-[#c5a059] shadow-[0_0_12px_rgba(197,160,89,0.35)]'
                             : 'border-[#c5a059]/30 bg-[#181a21] text-[#d1cdb8]'
                     }`}>
                         <Zap size={13} className={attunedCount >= 3 ? 'text-[#c5a059]' : 'text-[#c5a059]/60'} />
                         Attunement: <span className="font-bold text-[#c5a059]">{attunedCount}</span>/3
+                        {attunedCount >= 3 && (
+                            <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-950/70 border border-amber-600/40 px-1 py-0.2 rounded ml-1">
+                                Full
+                            </span>
+                        )}
                     </div>
-                    <div className="text-xs font-lora text-[#d1cdb8]/70">
-                        Weight: <span className={`font-fira-sans font-bold ${totalWeight > 150 ? "text-red-400" : "text-[#c5a059]"}`}>{totalWeight.toFixed(1)} lb</span>
+
+                    {/* Weight & Carrying Capacity with Dynamic 5e Encumbrance */}
+                    <div className="flex items-center gap-2">
+                        {encumbranceBadge && (
+                            <span
+                                className={`text-[11px] font-fira-sans font-medium px-2 py-0.5 rounded border ${encumbranceBadge.cls}`}
+                                title={encumbranceBadge.desc}
+                            >
+                                ⚠️ {encumbranceBadge.label}
+                            </span>
+                        )}
+                        <div
+                            className="flex items-center gap-2.5 bg-[#181a21] border border-[#c5a059]/30 px-3 py-1.5 rounded-full text-xs"
+                            title={`Carrying Capacity: ${totalWeight.toFixed(1)} / ${maxCapacity} lb (STR ${strength} × 15 lb). Encumbered at ${encumberedThreshold} lb, Heavily Encumbered at ${heavyThreshold} lb.`}
+                        >
+                            <span className="font-lora text-[#d1cdb8]/70">Weight:</span>
+                            <span className={`font-fira-sans font-bold ${weightColorCls}`}>
+                                {totalWeight.toFixed(1)} <span className="text-[#d1cdb8]/50 font-normal">/ {maxCapacity} lb</span>
+                            </span>
+                            <div className="w-14 sm:w-16 h-1.5 bg-[#0c0d12] rounded-full overflow-hidden border border-[#c5a059]/20">
+                                <div
+                                    className={`h-full transition-all duration-300 ${
+                                        totalWeight > maxCapacity ? "bg-red-500" :
+                                        totalWeight > heavyThreshold ? "bg-amber-500" :
+                                        totalWeight > encumberedThreshold ? "bg-yellow-400" : "bg-[#c5a059]"
+                                    }`}
+                                    style={{ width: `${weightPercentage}%` }}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -479,10 +546,16 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
+                                                                        disabled={attunedCount >= 3}
+                                                                        title={attunedCount >= 3 ? "Attunement slots full (3/3 max). Unattune an item first." : "Attune to this item"}
                                                                         onClick={(e) => { e.stopPropagation(); handleAttune(item); }}
-                                                                        className="border-[#c5a059]/40 text-[#d1cdb8] hover:border-[#c5a059] hover:text-[#c5a059] hover:bg-[#181a21] h-8 text-xs font-cinzel-decorative rounded-sm"
+                                                                        className={`h-8 text-xs font-cinzel-decorative rounded-sm transition-all ${
+                                                                            attunedCount >= 3
+                                                                                ? "border-[#c5a059]/20 text-[#d1cdb8]/40 cursor-not-allowed bg-[#181a21]/50"
+                                                                                : "border-[#c5a059]/40 text-[#d1cdb8] hover:border-[#c5a059] hover:text-[#c5a059] hover:bg-[#181a21]"
+                                                                        }`}
                                                                     >
-                                                                        Attune
+                                                                        {attunedCount >= 3 ? "🔒 Attune (3/3 Full)" : "Attune"}
                                                                     </Button>
                                                                 )
                                                             )}
@@ -704,7 +777,7 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
 
                                 <div className="flex gap-2 flex-wrap pt-4 border-t border-[#c5a059]/20">
                                     {/* Attunement button in modal */}
-                                    {selectedItem.item_details.requires_attunement && (
+                                    {(selectedItem.item_details.requires_attunement || selectedItem.item_details.attunement_required) && (
                                         selectedItem.is_attuned ? (
                                             <Button
                                                 variant="outline"
@@ -714,13 +787,26 @@ export function InventoryTab({ character, onUpdate }: InventoryTabProps) {
                                                 ⚡ Remove Attunement
                                             </Button>
                                         ) : (
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => { handleAttune(selectedItem); setSelectedItem(null); }}
-                                                className="border-[#c5a059]/40 text-[#d1cdb8] hover:border-[#c5a059] hover:text-[#c5a059] hover:bg-[#181a21] font-cinzel-decorative rounded-sm"
-                                            >
-                                                Attune
-                                            </Button>
+                                            <div className="flex flex-col gap-1">
+                                                <Button
+                                                    variant="outline"
+                                                    disabled={attunedCount >= 3}
+                                                    title={attunedCount >= 3 ? "Attunement slots full (3/3 max). Unattune an item first." : "Attune to this item"}
+                                                    onClick={() => { handleAttune(selectedItem); setSelectedItem(null); }}
+                                                    className={`font-cinzel-decorative rounded-sm transition-all ${
+                                                        attunedCount >= 3
+                                                            ? "border-[#c5a059]/20 text-[#d1cdb8]/40 cursor-not-allowed bg-[#181a21]/50"
+                                                            : "border-[#c5a059]/40 text-[#d1cdb8] hover:border-[#c5a059] hover:text-[#c5a059] hover:bg-[#181a21]"
+                                                    }`}
+                                                >
+                                                    {attunedCount >= 3 ? "🔒 Attune (3/3 Slots Used)" : "⚡ Attune Item"}
+                                                </Button>
+                                                {attunedCount >= 3 && (
+                                                    <span className="text-[11px] font-lora italic text-amber-400/80">
+                                                        All 3 attunement slots are occupied. Unattune an item to attune this one.
+                                                    </span>
+                                                )}
+                                            </div>
                                         )
                                     )}
                                     {selectedItem.is_equipped ? (

@@ -62,6 +62,7 @@ export interface CharacterStats {
     sorcery_points_max?: number;
     sorcery_points_current?: number;
     created_spell_slots?: Record<string, number>;
+    exhaustion_level?: number;
 }
 
 export interface CharacterItemDetails {
@@ -153,6 +154,7 @@ export interface CharacterData {
     id: number;
     name: string;
     level: number;
+    ruleset_version?: string;
     proficiency_bonus: number;
     character_class?: { id: number; name: string } | null;
     class_name?: string;
@@ -234,6 +236,7 @@ export interface CombatParticipant {
     armor_class: number;
     is_player: boolean;
     is_active: boolean;
+    exhaustion_level?: number;
     conditions: Array<string | { id: number; name: string; description?: string }>;
     attacks_remaining: number;
     action_used?: boolean;

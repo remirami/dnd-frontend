@@ -53,6 +53,7 @@ export interface CharacterStats {
     ki_points_current?: number;
     ki_points_used?: number;
     martial_arts_die?: string;
+    exhaustion_level?: number;
 }
 
 export interface ClassLevel {
@@ -69,6 +70,7 @@ export interface Character {
     character_class: CharacterClass;
     level: number;
     experience_points: number;
+    ruleset_version?: string;
     stats?: CharacterStats;
     background?: any;
     alignment?: string;
@@ -248,6 +250,7 @@ export interface CharacterFeature {
 
 export interface CharacterCreateData {
     name: string;
+    ruleset_version?: string;
     race_id: number;
     character_class_id: number;
     background_id?: number;

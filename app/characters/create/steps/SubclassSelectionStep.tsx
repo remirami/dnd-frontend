@@ -69,7 +69,7 @@ export default function SubclassSelectionStep({
     return (
         <div className="space-y-6">
             <div className="text-center mb-6">
-                <h2 className="font-cinzel-decorative text-xl font-bold text-[#c5a059]">Choose Your Path</h2>
+                <h2 className="font-cinzel text-xl font-bold tracking-wide text-[#c5a059]">Choose Your Path</h2>
                 <p className="font-lora text-xs text-[#d1cdb8]/70 mt-1">Select a subclass to specialize your character.</p>
             </div>
 
@@ -105,7 +105,7 @@ export default function SubclassSelectionStep({
                             }`}
                             onClick={() => handleSelect(sc.id)}
                         >
-                            <h3 className={`text-base font-semibold mb-2 font-cinzel-decorative transition-colors ${
+                            <h3 className={`text-base font-semibold mb-2 font-cinzel transition-colors ${
                                 currentSelection === sc.id ? "text-[#c5a059]" : "text-[#d1cdb8]"
                             }`}>
                                 {sc.name}

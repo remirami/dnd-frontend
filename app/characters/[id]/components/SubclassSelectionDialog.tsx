@@ -72,7 +72,7 @@ export function SubclassSelectionDialog({ character, onUpdate }: SubclassSelecti
             </DialogTrigger>
             <DialogContent className="bg-[#12141a] text-slate-100 border border-[#c5a059] max-w-4xl max-h-[85vh] overflow-y-auto shadow-[0_0_30px_rgba(0,0,0,0.8)]">
                 <DialogHeader>
-                    <DialogTitle className="font-cinzel-decorative text-xl text-[#c5a059] font-bold tracking-wide">
+                    <DialogTitle className="font-cinzel text-xl text-[#c5a059] font-bold tracking-wide">
                         Select a {className} Subclass
                     </DialogTitle>
                     <DialogDescription className="font-lora text-xs text-[#d1cdb8]/70">
@@ -91,7 +91,7 @@ export function SubclassSelectionDialog({ character, onUpdate }: SubclassSelecti
                             onClick={() => setSelectedSubclass(sub)}
                         >
                             <CardHeader className="pb-2">
-                                <CardTitle className="flex justify-between items-center text-base font-cinzel-decorative font-bold text-slate-100">
+                                <CardTitle className="flex justify-between items-center text-base font-cinzel font-bold text-slate-100">
                                     <span>{sub.name}</span>
                                     {selectedSubclass?.name === sub.name && (
                                         <span className="text-[#c5a059] text-xs font-lora font-bold">Selected</span>

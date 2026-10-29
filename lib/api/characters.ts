@@ -67,8 +67,13 @@ export const charactersApi = {
         apiClient.post(`/characters/${id}/update_hp/`, data),
 
     // Level up
-    levelUp: (id: number, class_id?: number) =>
-        apiClient.post(`/characters/${id}/level_up/`, { class_id }),
+    // Level up
+    levelUp: (id: number, dataOrClassId?: number | { class_id?: number; hp_mode?: 'fixed' | 'rolled'; roll?: number; subclass?: string }) => {
+        const payload = typeof dataOrClassId === 'number'
+            ? { class_id: dataOrClassId }
+            : (dataOrClassId || {});
+        return apiClient.post(`/characters/${id}/level_up/`, payload);
+    },
 
     // Features
     updateFeature: (id: number, featureId: number, data: { selection: string[] }) =>
@@ -87,9 +92,8 @@ export const charactersApi = {
         apiClient.post(`/characters/${id}/apply_asi/`, data),
 
     // Subclasses
-    // Subclasses
-    getEligibleSubclasses: (id: number) =>
-        apiClient.get(`/characters/${id}/eligible_subclasses/`),
+    getEligibleSubclasses: (id: number, className?: string) =>
+        apiClient.get(`/characters/${id}/eligible_subclasses/${className ? `?class_name=${encodeURIComponent(className)}` : ''}`),
 
     chooseSubclass: (id: number, data: { subclass: string }) =>
         apiClient.post(`/characters/${id}/choose_subclass/`, data),
@@ -107,4 +111,5 @@ export const charactersApi = {
     expendSpellSlot: (id: number, level: number) => apiClient.post(`/characters/${id}/expend_spell_slot/`, { level }),
     restoreSpellSlot: (id: number, level: number) => apiClient.post(`/characters/${id}/restore_spell_slot/`, { level }),
     useKi: (id: number, data?: { amount?: number; action?: 'spend' | 'regain' | 'reset' }) => apiClient.post(`/characters/${id}/use_ki/`, data || { amount: 1, action: 'spend' }),
+    adjustExhaustion: (id: number, data: { level?: number; delta?: number }) => apiClient.post(`/characters/${id}/adjust_exhaustion/`, data),
 };

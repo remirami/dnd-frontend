@@ -142,8 +142,18 @@
 }
 
 /* D&D 5E Custom Typography */
+.font-cinzel {
+  font-family: var(--font-cinzel), serif;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0, "dlig" 0, "calt" 0;
+  letter-spacing: 0.025em;
+}
+
 .font-cinzel-decorative {
   font-family: var(--font-cinzel-decorative), serif;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0, "dlig" 0, "calt" 0;
+  letter-spacing: 0.03em;
 }
 
 .font-lora {

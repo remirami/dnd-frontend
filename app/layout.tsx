@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Cinzel_Decorative, Lora, Fira_Sans } from "next/font/google";
+import { Geist, Geist_Mono, Cinzel, Cinzel_Decorative, Lora, Fira_Sans } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/layout/Footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -11,6 +11,12 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
+  weight: ["400", "500", "600", "700", "800", "900"],
   subsets: ["latin"],
 });
 
@@ -45,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${cinzelDecorative.variable} ${lora.variable} ${firaSans.variable} antialiased bg-[#0c0d12] text-slate-100 min-h-screen flex flex-col selection:bg-[#c5a059]/30 selection:text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${cinzelDecorative.variable} ${lora.variable} ${firaSans.variable} antialiased bg-[#0c0d12] text-slate-100 min-h-screen flex flex-col selection:bg-[#c5a059]/30 selection:text-white`}
       >
         <main className="flex-1">{children}</main>
         <Toaster />

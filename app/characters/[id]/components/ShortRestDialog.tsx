@@ -172,7 +172,7 @@ export function ShortRestDialog({ character, onUpdate, className, children }: Sh
                         )}
 
                         <div className="text-[11px] text-[#d1cdb8]/50 mt-1 italic">
-                            Note: Warlocks regain spell slots, and Monks regain Ki points on a short rest.
+                            Note: Short Rests restore class features like Ki points and Pact slots. To recover Exhaustion levels or full HP/Hit Dice, take a Long Rest.
                         </div>
                     </div>
                 )}
