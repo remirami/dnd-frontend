@@ -300,7 +300,7 @@ export function HPManagementDialog({ character, onUpdate, children, initialTab =
                             <div className="p-2.5 rounded bg-[#181a21]/60 border border-[#c5a059]/20 text-[11px] text-[#d1cdb8]/70 space-y-1">
                                 <div className="font-semibold text-[#c5a059] flex items-center gap-1.5">
                                     <span>📜</span>
-                                    <span>2024 D&D Rules Summary</span>
+                                    <span>2024 SRD 5.2 Rules Summary</span>
                                 </div>
                                 <p>• Exhaustion subtracts your exhaustion level from all d20 tests and spell save DCs.</p>
                                 <p>• Speed is reduced by 5 feet per exhaustion level.</p>

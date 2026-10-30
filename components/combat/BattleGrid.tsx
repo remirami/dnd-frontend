@@ -412,7 +412,7 @@ function getAoECells(
                     const py = (r - casterRow) * 5;
                     const distAlong = px * dirX + py * dirY;
                     const distPerp = Math.abs(px * (-dirY) + py * dirX);
-                    // D&D 5E cone: width at distance D is D (half-width D/2)
+                    // SRD 5.2 5E cone: width at distance D is D (half-width D/2)
                     if (distAlong > 0 && distAlong <= sizeFt && distPerp <= (distAlong / 2) + 2.5) {
                         affected.add(`${c},${r}`);
                     }

@@ -26,7 +26,8 @@ import {
     Award,
     Zap,
     Search,
-    Flame
+    Flame,
+    AlertCircle
 } from "lucide-react";
 
 interface LevelUpDialogProps {
@@ -49,6 +50,14 @@ interface CurrentClassLevel {
     subclass?: string;
 }
 
+interface MulticlassOption {
+    class_id: number;
+    class_name: string;
+    can_multiclass: boolean;
+    reason?: string | null;
+    prerequisites?: Record<string, any>;
+}
+
 const ABILITIES = [
     { value: "strength", label: "Strength", short: "STR" },
     { value: "dexterity", label: "Dexterity", short: "DEX" },
@@ -67,6 +76,7 @@ export default function LevelUpDialog({ character, onUpdate, className, label }:
     // Classes data
     const [availableClasses, setAvailableClasses] = useState<ClassInfo[]>([]);
     const [currentClasses, setCurrentClasses] = useState<CurrentClassLevel[]>([]);
+    const [multiclassOptions, setMulticlassOptions] = useState<MulticlassOption[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
 
     // HP state
@@ -119,8 +129,12 @@ export default function LevelUpDialog({ character, onUpdate, className, label }:
             let myClasses: CurrentClassLevel[] = [];
             try {
                 const multiRes = await charactersApi.getMulticlassInfo(character.id);
-                if (multiRes.data.class_levels && multiRes.data.class_levels.length > 0) {
-                    myClasses = multiRes.data.class_levels;
+                const classData = multiRes.data?.current_classes || multiRes.data?.class_levels;
+                if (classData && classData.length > 0) {
+                    myClasses = classData;
+                }
+                if (multiRes.data?.available_classes) {
+                    setMulticlassOptions(multiRes.data.available_classes);
                 }
             } catch (err) {
                 console.warn("Using fallback class level data");
@@ -160,6 +174,13 @@ export default function LevelUpDialog({ character, onUpdate, className, label }:
     const nextClassLevel = currentClassLevel + 1;
     const nextTotalLevel = character.level + 1;
     const isMaxLevel = character.level >= 20;
+
+    // Multiclass eligibility check
+    const isMulticlassSelected = Boolean(selectedClassId && !currentClasses.some(c => c.class_id === selectedClassId));
+    const selectedMulticlassOption = isMulticlassSelected
+        ? multiclassOptions.find(o => o.class_id === selectedClassId || o.class_name.toLowerCase() === selectedClassObj?.name.toLowerCase())
+        : null;
+    const isMulticlassIneligible = Boolean(selectedMulticlassOption && !selectedMulticlassOption.can_multiclass);
 
     // Hit Die size
     const hitDieStr = selectedClassObj?.hit_dice || "d8";
@@ -554,7 +575,11 @@ export default function LevelUpDialog({ character, onUpdate, className, label }:
                                                 <div className="mt-3">
                                                     <span className="text-[11px] text-[#d1cdb8]/60 font-lora">Or Multiclass into a new class:</span>
                                                     <select
-                                                        className="mt-1 w-full bg-[#181a21] border border-[#c5a059]/30 rounded p-2 text-xs text-slate-200 focus:outline-none focus:border-[#c5a059]"
+                                                        className={`mt-1 w-full bg-[#181a21] border rounded p-2 text-xs text-slate-200 focus:outline-none ${
+                                                            isMulticlassIneligible
+                                                                ? "border-rose-500/70 focus:border-rose-400"
+                                                                : "border-[#c5a059]/30 focus:border-[#c5a059]"
+                                                        }`}
                                                         onChange={(e) => {
                                                             const val = Number(e.target.value);
                                                             if (selectedClassId !== val) {
@@ -567,13 +592,48 @@ export default function LevelUpDialog({ character, onUpdate, className, label }:
                                                         <option value="" disabled>Select a new class...</option>
                                                         {availableClasses
                                                             .filter(c => !currentClasses.some(cur => cur.class_id === c.id))
-                                                            .map(c => (
-                                                                <option key={c.id} value={c.id}>
-                                                                    {c.name.charAt(0).toUpperCase() + c.name.slice(1)} (Hit Die: {c.hit_dice})
-                                                                </option>
-                                                            ))
+                                                            .map(c => {
+                                                                const opt = multiclassOptions.find(o => o.class_id === c.id || o.class_name.toLowerCase() === c.name.toLowerCase());
+                                                                const statusText = opt
+                                                                    ? (opt.can_multiclass ? "✓ Eligible" : `⚠️ Ineligible: ${opt.reason}`)
+                                                                    : "";
+                                                                return (
+                                                                    <option key={c.id} value={c.id}>
+                                                                        {c.name.charAt(0).toUpperCase() + c.name.slice(1)} (Hit Die: {c.hit_dice}) {statusText ? `[${statusText}]` : ""}
+                                                                    </option>
+                                                                );
+                                                            })
                                                         }
                                                     </select>
+
+                                                    {/* Prerequisite feedback card */}
+                                                    {isMulticlassSelected && selectedMulticlassOption && (
+                                                        <div className="mt-2.5">
+                                                            {!selectedMulticlassOption.can_multiclass ? (
+                                                                <div className="p-3 bg-rose-950/40 border border-rose-500/50 rounded-lg flex items-start gap-2.5 text-rose-200 text-xs shadow-sm">
+                                                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                                                                    <div className="space-y-1">
+                                                                        <div className="font-semibold text-rose-300 font-cinzel tracking-wide">
+                                                                            Multiclass Prerequisite Not Met
+                                                                        </div>
+                                                                        <div className="text-[11px] text-rose-200 leading-relaxed font-lora">
+                                                                            {selectedMulticlassOption.reason}
+                                                                        </div>
+                                                                        <div className="text-[10px] text-rose-300/70 pt-0.5">
+                                                                            Under D&D rules, characters must meet ability score minimums (usually 13) for both their current class and their new multiclass.
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="p-2.5 bg-emerald-950/30 border border-emerald-500/35 rounded-lg flex items-center gap-2 text-emerald-200 text-xs">
+                                                                    <Check className="w-4 h-4 shrink-0 text-emerald-400 stroke-[3]" />
+                                                                    <span className="font-lora text-[11px]">
+                                                                        Prerequisites met! You will gain 1st-level proficiencies for this class upon advancing.
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -1121,8 +1181,8 @@ export default function LevelUpDialog({ character, onUpdate, className, label }:
                                     {step === 1 && (
                                         <Button
                                             onClick={handleProceedToStep2}
-                                            disabled={!selectedClassId || loading || (hpMode === 'rolled' && (rolledHP === null || isRolling))}
-                                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs shadow-[0_0_12px_rgba(197,160,89,0.3)] transition-all flex items-center gap-1.5"
+                                            disabled={!selectedClassId || loading || (hpMode === 'rolled' && (rolledHP === null || isRolling)) || isMulticlassIneligible}
+                                            className="bg-[#c5a059] hover:bg-[#d6b16a] text-[#0c0d12] font-bold text-xs shadow-[0_0_12px_rgba(197,160,89,0.3)] transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Continue to Milestones
                                             <ChevronRight className="w-3.5 h-3.5" />

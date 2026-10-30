@@ -82,7 +82,7 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
         version: "v1.16.0",
         date: "October 21, 2026",
         title: "5e Dying & Stabilization Mechanics, Summoning & Minion Engine, Bestiary Payload Optimization & Frontend Polish",
-        summary: "Implemented full D&D 5e Rules-as-Written dying rules (death saves, massive damage instant death, Healer's Kit auto-stabilize, and Grave Domain Circle of Mortality). Introduced a persistent summoning engine (Spiritual Weapon, Flaming Sphere, Animate Dead, Find Familiar, Conjure Spells) with tactical grid token rendering and ActionDock commands. Supercharged the Bestiary Compendium with a lightweight summary serializer and client-side LRU cache, and replaced hard reloads and native alert popups with seamless reactive state updates and sonner toasts.",
+        summary: "Implemented full SRD 5.2 5e Rules-as-Written dying rules (death saves, massive damage instant death, Healer's Kit auto-stabilize, and Grave Domain Circle of Mortality). Introduced a persistent summoning engine (Spiritual Weapon, Flaming Sphere, Animate Dead, Find Familiar, Conjure Spells) with tactical grid token rendering and ActionDock commands. Supercharged the Bestiary Compendium with a lightweight summary serializer and client-side LRU cache, and replaced hard reloads and native alert popups with seamless reactive state updates and sonner toasts.",
         items: [
             {
                 id: "1.16.0-1",
@@ -302,7 +302,7 @@ export const CHANGELOG_DATA: ReleaseVersion[] = [
         date: "September 26, 2026",
         title: "5E Active Buff System, Battle Grid Tactical Auras & Eldritch Targeting Correction",
         tag: "Major",
-        summary: "Implemented full D&D 5E mechanical enforcement and tactical visual indicators for positive buff spells. Buffs like Protection from Evil and Good, Shield of Faith, Bless, Mage Armor, Haste, and Heroism now actively modify Armor Class, attack rolls, and saving throws, while granting creature-type protections (Disadvantage on attacks from undead/fiends and charm/fear immunity). Buffed combatants now radiate a shimmering emerald tactical aura ring and star badge on the battle grid.",
+        summary: "Implemented full SRD 5.2 5E mechanical enforcement and tactical visual indicators for positive buff spells. Buffs like Protection from Evil and Good, Shield of Faith, Bless, Mage Armor, Haste, and Heroism now actively modify Armor Class, attack rolls, and saving throws, while granting creature-type protections (Disadvantage on attacks from undead/fiends and charm/fear immunity). Buffed combatants now radiate a shimmering emerald tactical aura ring and star badge on the battle grid.",
         items: [
             {
                 id: "1.12.0-1",
